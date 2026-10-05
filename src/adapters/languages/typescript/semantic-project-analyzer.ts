@@ -62,8 +62,9 @@ export class TypeScriptProjectAnalyzer {
         if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
           const resolved = checker.getSymbolAtLocation(node.moduleSpecifier);
           const target = resolved?.declarations?.[0];
-          const targetPath = target ? target.getSourceFile().fileName.replaceAll("\\", "/") : resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);
-          const targetFile = targetPath ? fileNodes.get(resolveFileName(targetPath, fileNodes)) : undefined;
+          const targetPath = target ? target.getSourceFile().fileName.replaceAll("\\", "/") : undefined;
+          const resolvedTargetPath = targetPath && fileNodes.has(targetPath) ? targetPath : resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);
+          const targetFile = resolvedTargetPath ? fileNodes.get(resolveFileName(resolvedTargetPath, fileNodes)) : undefined;
           if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "typescript-resolved-import"));
         }
         if (ts.isCallExpression(node)) {
