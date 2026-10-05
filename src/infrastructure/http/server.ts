@@ -6,7 +6,7 @@ export async function startServer(root: string, port: number): Promise<void> {
   const git = new CliGitRepository(repository.root);
   const store = new JsonGraphStore(repository.root + "/.gctg/graph");
   const indexer = new RepositoryIndexer(git, new TypeScriptSemanticAnalyzer(), store);
-  const analyzerVersion = "0.2.0";
+  const analyzerVersion = "0.3.0";
   const configuration = {};
   const index = async (commit: string) => indexer.index({ repository: repository.root, commit, configuration, analyzerVersion });
 
