@@ -14,7 +14,7 @@ export function buildClassifiedFileGraph(input: ClassifiedGraphInput): { nodes: 
   const edges: GraphEdge[] = [];
   for (const path of input.files) {
     const kind = classifyFile(path);
-    if (kind === FileKind.SOURCE || kind === FileKind.GENERATED || kind === FileKind.ASSET || kind === FileKind.DOCUMENTATION || kind === FileKind.RUNTIME_DATA || kind === FileKind.UNKNOWN) continue;
+    if (kind === FileKind.SOURCE || kind === FileKind.TEST || kind === FileKind.GENERATED || kind === FileKind.ASSET || kind === FileKind.DOCUMENTATION || kind === FileKind.RUNTIME_DATA || kind === FileKind.UNKNOWN) continue;
     const id = stableId("file", normalize(path));
     const type = kind === FileKind.SCHEMA ? NodeType.SCHEMA : kind === FileKind.FIXTURE ? NodeType.FIXTURE : NodeType.CONFIG;
     nodes.push({ id, type, attributes: { path: normalize(path), kind } });
