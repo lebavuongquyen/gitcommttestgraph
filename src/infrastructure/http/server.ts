@@ -1,11 +1,11 @@
 import { createServer } from "node:http";
-import { discoverRepository, CliGitRepository, TypeScriptSemanticAnalyzer, JsonGraphStore, RepositoryIndexer, ImpactQueryService, diffSnapshots } from "../../index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, RepositoryIndexer, ImpactQueryService, diffSnapshots } from "../../index.js";
 
 export async function startServer(root: string, port: number): Promise<void> {
   const repository = await discoverRepository(root);
   const git = new CliGitRepository(repository.root);
   const store = new JsonGraphStore(repository.root + "/.gctg/graph");
-  const indexer = new RepositoryIndexer(git, new TypeScriptSemanticAnalyzer(), store);
+  const indexer = new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store);
   const analyzerVersion = "0.3.0";
   const configuration = {};
   const index = async (commit: string) => indexer.index({ repository: repository.root, commit, configuration, analyzerVersion });
