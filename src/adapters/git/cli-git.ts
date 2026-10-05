@@ -2,6 +2,7 @@ import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import type { ChangedPath, Commit, CommitDiff } from "../../domain/git/model.js";
 import type { GitRepositoryPort } from "../../application/ports/git.js";
+import { GitOperationError, InvalidCommitError } from "../../domain/errors.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -23,7 +24,7 @@ export class CliGitRepository implements GitRepositoryPort {
   async getCommit(hash: string): Promise<Commit> {
     const value = await this.run(["show", "-s", "--format=%H%x00%P%x00%an%x00%cn%x00%cI%x00%s", hash]);
     const [commitHash, parents, author, committer, timestamp, message] = value.split("\0");
-    if (!commitHash || !timestamp) throw new Error(`Invalid Git commit: ${hash}`);
+    if (!commitHash || !timestamp) throw new InvalidCommitError(`Invalid Git commit: ${hash}`);
     return {
       hash: commitHash,
       parents: parents ? parents.split(" ").filter(Boolean) : [],
@@ -59,7 +60,7 @@ export class CliGitRepository implements GitRepositoryPort {
       return stdout;
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
-      throw new Error(`Git operation failed: git ${args.join(" ")}: ${detail}`);
+      throw new GitOperationError(`Git operation failed: git ${args.join(" ")}: ${detail}`, error);
     }
   }
 }
