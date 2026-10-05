@@ -59,17 +59,6 @@ export class TypeScriptProjectAnalyzer {
             edges.push(edge(fileId, EdgeType.CONTAINS, id, commit, file.path, start, end, "ast-declaration"));
           }
         }
-        if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-          const fallbackPath = resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);
-          const fallbackFile = fallbackPath ? fileNodes.get(fallbackPath) : undefined;
-          if (fallbackFile) edges.push(edge(fileId, EdgeType.IMPORTS, fallbackFile, commit, file.path, line(source, node), line(source, node), "path-resolved-import"));
-          const resolved = checker.getSymbolAtLocation(node.moduleSpecifier);
-          const target = resolved?.declarations?.[0];
-          const targetPath = target ? target.getSourceFile().fileName.replaceAll("\\", "/") : undefined;
-          const resolvedTargetPath = targetPath && fileNodes.has(targetPath) ? targetPath : fallbackPath;
-          const targetFile = resolvedTargetPath ? fileNodes.get(resolveFileName(resolvedTargetPath, fileNodes)) : undefined;
-          if (targetFile && targetFile !== fallbackFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "typescript-resolved-import"));
-        }
         if (ts.isCallExpression(node)) {
           const target = checker.getSymbolAtLocation(node.expression);
           const targetId = target ? symbolIdFor(target, checker, symbols) : undefined;
