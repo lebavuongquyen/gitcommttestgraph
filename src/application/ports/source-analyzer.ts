@@ -1,4 +1,4 @@
-import type { GraphEdge, GraphNode } from "../../domain/graph/model.js";
+﻿import type { GraphEdge, GraphNode } from "../../domain/graph/model.js";
 
 export interface SourceFileInput {
   readonly path: string;
@@ -22,5 +22,6 @@ export interface SemanticSourceAnalyzer extends SourceAnalyzer {
 export interface SourceProjectInput {
   readonly files: readonly SourceFileInput[];
   readonly pathAliases?: Readonly<Record<string, readonly string[]>>;
-  readonly baseUrl?: string;
+  readonly baseUrl?: string;`r`n  readonly packageRoots?: Readonly<Record<string, string>>;
 }
+
