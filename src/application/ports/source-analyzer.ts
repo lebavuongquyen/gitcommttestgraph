@@ -14,3 +14,13 @@ export interface SourceAnalysis {
 export interface SourceAnalyzer {
   analyze(input: SourceFileInput, commit: string): SourceAnalysis;
 }
+
+export interface SemanticSourceAnalyzer extends SourceAnalyzer {
+  analyzeProject(input: SourceProjectInput, commit: string): SourceAnalysis;
+}
+
+export interface SourceProjectInput {
+  readonly files: readonly SourceFileInput[];
+  readonly pathAliases?: Readonly<Record<string, readonly string[]>>;
+  readonly baseUrl?: string;
+}
