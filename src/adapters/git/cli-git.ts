@@ -12,6 +12,14 @@ export class CliGitRepository implements GitRepositoryPort {
     return (await this.run(["rev-parse", "HEAD"])).trim();
   }
 
+  async listCommits(limit = 50): Promise<readonly Commit[]> {
+    const output = await this.run(["log", `-${Math.max(1, Math.floor(limit))}`, "--format=%H%x00%P%x00%an%x00%cn%x00%cI%x00%s"]);
+    return output.split("\n").filter(Boolean).map(line => {
+      const [hash, parents, author, committer, timestamp, message] = line.split("\0");
+      return { hash: hash ?? "", parents: parents ? parents.split(" ").filter(Boolean) : [], author: author ?? "", committer: committer ?? "", timestamp: timestamp ?? "", message: message ?? "" };
+    });
+  }
+
   async getCommit(hash: string): Promise<Commit> {
     const value = await this.run(["show", "-s", "--format=%H%x00%P%x00%an%x00%cn%x00%cI%x00%s", hash]);
     const [commitHash, parents, author, committer, timestamp, message] = value.split("\0");
