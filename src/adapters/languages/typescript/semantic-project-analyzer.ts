@@ -32,6 +32,7 @@ export class TypeScriptProjectAnalyzer {
     const nodes: GraphNode[] = [];
     const edges: GraphEdge[] = [];
     const symbols = new Map<ts.Symbol, string>();
+    const symbolsByName = new Map<string, string[]>();
     const fileNodes = new Map<string, string>();
 
     for (const file of normalized) {
@@ -55,6 +56,9 @@ export class TypeScriptProjectAnalyzer {
             const end = source.getLineAndCharacterOfPosition(node.end).line + 1;
             const id = stableId("symbol", file.path, name, String(start), String(end));
             symbols.set(symbol, id);
+            const named = symbolsByName.get(name) ?? [];
+            named.push(id);
+            symbolsByName.set(name, named);
             nodes.push({ id, type: NodeType.SYMBOL, attributes: { fileId, kind: symbolKind(node), name, exported: hasExportModifier(node), startLine: start, endLine: end } });
             edges.push(edge(fileId, EdgeType.CONTAINS, id, commit, file.path, start, end, "ast-declaration"));
           }
@@ -62,7 +66,8 @@ export class TypeScriptProjectAnalyzer {
         if (ts.isCallExpression(node)) {
           const target = checker.getSymbolAtLocation(node.expression);
           const targetId = target ? symbolIdFor(target, checker, symbols) : undefined;
-          if (targetId) edges.push(edgeNearest(node, EdgeType.CALLS, targetId, fileId, commit, source, "typescript-typechecker-call"));
+          const fallbackTargetId = ts.isIdentifier(node.expression) && (symbolsByName.get(node.expression.text)?.length === 1) ? symbolsByName.get(node.expression.text)?.[0] : undefined;
+          if (targetId ?? fallbackTargetId) edges.push(edgeNearest(node, EdgeType.CALLS, targetId ?? fallbackTargetId!, fileId, commit, source, targetId ? "typescript-typechecker-call" : "name-resolved-call"));
         }
         if (ts.isClassDeclaration(node) && node.heritageClauses) {
           for (const clause of node.heritageClauses) {
