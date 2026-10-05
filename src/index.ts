@@ -33,3 +33,6 @@ export * from "./adapters/languages/typescript/semantic-project-analyzer.js";
 export * from "./adapters/package-managers/workspace-dependencies.js";
 export * from "./application/indexing/classified-file-graph.js";
 export * from "./application/tests/test-graph-builder.js";
+
+export * from "./application/indexing/incremental-indexer.js";
+export * from "./infrastructure/http/server.js";
