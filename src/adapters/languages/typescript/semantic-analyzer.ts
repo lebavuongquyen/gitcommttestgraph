@@ -2,10 +2,33 @@ import ts from "typescript";
 import { stableId, edgeId } from "../../../domain/graph/ids.js";
 import { Confidence } from "../../../domain/evidence/model.js";
 import { EdgeType, NodeType, type GraphEdge, type GraphNode } from "../../../domain/graph/model.js";
-import type { SourceAnalyzer, SourceAnalysis, SourceFileInput } from "../../../application/ports/source-analyzer.js";
+import type { SemanticSourceAnalyzer, SourceAnalysis, SourceFileInput, SourceProjectInput } from "../../../application/ports/source-analyzer.js";
 import { SymbolKind } from "../../../domain/symbol/model.js";
+import { TypeScriptModuleResolver } from "./module-resolver.js";
 
-export class TypeScriptSemanticAnalyzer implements SourceAnalyzer {
+export class TypeScriptSemanticAnalyzer implements SemanticSourceAnalyzer {
+  analyzeProject(input: SourceProjectInput, commit: string): SourceAnalysis {
+    const analyses = input.files.map(file => this.analyze(file, commit));
+    const nodes = analyses.flatMap(item => item.nodes);
+    const edges = analyses.flatMap(item => item.edges);
+    const files = new Set(input.files.map(file => file.path.replaceAll("\\", "/")));
+    const resolver = new TypeScriptModuleResolver();
+    for (const file of input.files) {
+      const analysis = analyses.find(item => item.nodes.some(node => node.attributes.path === file.path));
+      if (!analysis) continue;
+      for (const edge of analysis.edges.filter(edge => edge.type === EdgeType.IMPORTS)) {
+        const specifier = String(edge.evidence[0]?.text ?? "");
+        const resolved = resolver.resolve({ specifier, importer: file.path, extensions: [".ts",".tsx",".js",".jsx",".mjs",".cjs"], files, pathAliases: input.pathAliases, baseUrl: input.baseUrl });
+        if (!resolved.target) continue;
+        const targetFile = nodes.find(node => node.type === NodeType.FILE && node.attributes.path === resolved.target);
+        if (!targetFile) continue;
+        const index = edges.findIndex(candidate => candidate.id === edge.id);
+        if (index >= 0) edges[index] = { ...edge, target: targetFile.id, confidence: Confidence.EXACT, evidence: [...edge.evidence, { kind: resolved.strategy, filePath: file.path, text: resolved.target }] };
+      }
+    }
+    return { nodes, edges };
+  }
+
   analyze(input: SourceFileInput, commit: string): SourceAnalysis {
     const scriptKind = scriptKindFor(input.path);
     const fileId = stableId("file", input.path, input.content);
