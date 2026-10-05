@@ -45,7 +45,7 @@ export class RepositoryIndexer {
 
     for (const pkg of packageInfo.packages) {
       nodes.push({ id: pkg.id, type: NodeType.PACKAGE, attributes: { name: pkg.name, rootPath: pkg.rootPath, manifestPath: pkg.manifestPath, manager: pkg.manager } });
-      edges.push(makeEdge(nodes[0].id, EdgeType.CONTAINS, pkg.id, options.commit, pkg.manifestPath, "package-boundary"));
+      edges.push(makeEdge(nodes[0]!.id, EdgeType.CONTAINS, pkg.id, options.commit, pkg.manifestPath, "package-boundary"));
       for (const dep of Object.keys(pkg.dependencies)) {
         const target = packageInfo.byName.get(dep);
         if (!target) continue;
@@ -60,7 +60,7 @@ export class RepositoryIndexer {
       sourceInputs.push({ path, content, ...(pkg ? { packageId: pkg.id } : {}) });
     }
 
-    const analysis = this.analyzer.analyzeProject(sourceInputs, options.commit);
+    const analysis = this.analyzer.analyzeProject({ files: sourceInputs }, options.commit);
     nodes.push(...analysis.nodes);
     edges.push(...analysis.edges);
 
@@ -171,7 +171,7 @@ function makeEdge(source: string, type: EdgeType, target: string, commit: string
     target,
     type,
     confidence: Confidence.EXACT,
-    evidence: [{ kind, filePath, text }],
+    evidence: [{ kind, filePath, ...(text ? { text } : {}) }],
     sourceCommit: commit
   };
 }
