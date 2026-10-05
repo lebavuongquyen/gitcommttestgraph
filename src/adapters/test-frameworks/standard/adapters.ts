@@ -1,4 +1,4 @@
-import ts from "typescript";
+﻿import ts from "typescript";
 import { basename } from "node:path";
 import type { TestFrameworkAdapter, TestDetectionContext, TestProjectContext, TestCommandContext } from "../../../application/tests/test-registry.js";
 
@@ -71,7 +71,7 @@ export class NodeTestAdapter extends AstTestAdapter {
   async detect(context: TestDetectionContext) {
     const detected = context.files.some(file => this.patterns.some(pattern => pattern.test(file))) &&
       context.files.some(file => /\.(mjs|cjs|js)$/.test(file));
-    return { detected, confidence: detected ? "MEDIUM" as const : "LOW" as const };
+    return { detected, confidence: detected ? "HIGH" as const : "LOW" as const };
   }
 }
 export class PlaywrightAdapter extends AstTestAdapter {
