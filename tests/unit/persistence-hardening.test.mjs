@@ -51,3 +51,32 @@ test("index lock serializes concurrent writers and recovers stale locks", async 
     await rm(root, { recursive: true, force: true });
   }
 });
+
+
+test("semantic cache reuses identical source artifacts", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-semantic-cache-"));
+  try {
+    const { JsonSemanticCache, semanticCacheKey } = await import("../../dist/index.js");
+    const cache = new JsonSemanticCache(root);
+    const input = {
+      analyzerVersion: "test",
+      files: [{ path: "src/a.ts", content: "export const a = 1;", packageId: "pkg" }],
+      pathAliases: {},
+      packageRoots: { pkg: "." },
+      packageEntrypoints: { pkg: "src/a.ts" }
+    };
+    const key = semanticCacheKey(input);
+    const analysis = {
+      nodes: [{ id: "file:a", type: "File", attributes: { path: "src/a.ts" } }],
+      edges: [],
+      analyzedPaths: ["src/a.ts"]
+    };
+    assert.equal(await cache.get(key), null);
+    await cache.save(key, analysis);
+    assert.deepEqual(await cache.get(key), analysis);
+    assert.notEqual(key, semanticCacheKey({ ...input, files: [{ ...input.files[0], content: "export const a = 2;" }] }));
+  } finally {
+    const { rm } = await import("node:fs/promises");
+    await rm(root, { recursive: true, force: true });
+  }
+});

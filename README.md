@@ -40,7 +40,7 @@ Vitest, Jest, Node test, Playwright and generic package scripts.
 
 ## Persistence
 
-Snapshots are stored under `.gctg/graph`. Snapshot reuse is exact for the repository, commit, analyzer version and configuration fingerprint. Semantic incremental indexing uses the parent graph as a dependency index, analyzes only impacted source paths, reuses unaffected semantic nodes and edges, and is verified against a clean full-index graph in the test suite.
+Snapshots are stored under `.gctg/graph`. Semantic artifacts are content-addressed under `.gctg/cache/semantic` using source-content hashes plus analyzer and resolution fingerprints, allowing identical source graphs to be reused across different commits. Snapshot reuse is exact for the repository, commit, analyzer version and configuration fingerprint. Semantic incremental indexing uses the parent graph as a dependency index, analyzes only impacted source paths, reuses unaffected semantic nodes and edges, and is verified against a clean full-index graph in the test suite. CLI indexing uses an atomic repository lock with timeout and stale-lock recovery so concurrent indexers cannot corrupt the same repository index.
 
 ## HTTP API
 

@@ -14,7 +14,9 @@ import { buildDataReferenceGraph } from "./data-reference-graph.js";
 import { VitestAdapter, JestAdapter, NodeTestAdapter, PlaywrightAdapter } from "../../adapters/test-frameworks/standard/adapters.js";
 import type { GitRepositoryPort } from "../ports/git.js";
 import type { GraphStore } from "../ports/graph-store.js";
-import type { SemanticSourceAnalyzer, SourceFileInput } from "../ports/source-analyzer.js";
+import type { SemanticSourceAnalyzer, SourceFileInput, SourceAnalysis } from "../ports/source-analyzer.js";
+import { semanticCacheKey } from "../ports/semantic-cache.js";
+import type { SemanticCache } from "../ports/semantic-cache.js";
 
 export interface IndexOptions {
   readonly repository: string;
@@ -29,7 +31,8 @@ export class RepositoryIndexer {
   constructor(
     private readonly git: GitRepositoryPort,
     private readonly analyzer: SemanticSourceAnalyzer,
-    private readonly store: GraphStore
+    private readonly store: GraphStore,
+    private readonly semanticCache?: SemanticCache
   ) {}
 
   async index(options: IndexOptions) {
@@ -94,7 +97,12 @@ export class RepositoryIndexer {
     nodes.push(...classifiedGraph.nodes);
     edges.push(...classifiedGraph.edges);
 
-    const rawAnalysis = this.analyzer.analyzeProject({ files: sourceInputs, pathAliases, packageRoots, packageEntrypoints, ...(options.semanticAnalysisPaths ? { analysisPaths: options.semanticAnalysisPaths } : {}) }, options.commit);
+    const cacheKey = this.semanticCache ? semanticCacheKey({ analyzerVersion: options.analyzerVersion, files: sourceInputs, pathAliases, packageRoots, packageEntrypoints, ...(options.semanticAnalysisPaths ? { analysisPaths: options.semanticAnalysisPaths } : {}) }) : undefined;
+    const cachedAnalysis = cacheKey ? await this.semanticCache!.get(cacheKey) : null;
+    const rawAnalysis = cachedAnalysis
+      ? remapAnalysisForCommit(cachedAnalysis, options.commit)
+      : this.analyzer.analyzeProject({ files: sourceInputs, pathAliases, packageRoots, packageEntrypoints, ...(options.semanticAnalysisPaths ? { analysisPaths: options.semanticAnalysisPaths } : {}) }, options.commit);
+    if (!cachedAnalysis && cacheKey) await this.semanticCache!.save(cacheKey, rawAnalysis);
     const analysis = options.incrementalParentSnapshot && options.semanticAnalysisPaths
       ? mergeIncrementalSemanticAnalysis(rawAnalysis, options.incrementalParentSnapshot, files, options.semanticAnalysisPaths, options.commit)
       : rawAnalysis;
@@ -314,6 +322,14 @@ function mergeIncrementalSemanticAnalysis(
 
 function remapEdgeForCommit(edge: GraphEdge, commit: string): GraphEdge {
   return { ...edge, id: edgeId(edge.source, edge.type, edge.target, commit), sourceCommit: commit };
+}
+
+function remapAnalysisForCommit(analysis: SourceAnalysis, commit: string): SourceAnalysis {
+  return {
+    nodes: analysis.nodes,
+    edges: analysis.edges.map(edge => remapEdgeForCommit(edge, commit)),
+    ...(analysis.analyzedPaths ? { analyzedPaths: analysis.analyzedPaths } : {})
+  };
 }
 
 function dedupeNodes(nodes: readonly GraphNode[]): GraphNode[] {

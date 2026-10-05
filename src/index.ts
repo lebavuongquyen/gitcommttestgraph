@@ -35,6 +35,7 @@ export * from "./application/indexing/classified-file-graph.js";
 export * from "./application/tests/test-graph-builder.js";
 
 export * from "./application/indexing/incremental-indexer.js";
+export * from "./application/ports/semantic-cache.js";
 export * from "./infrastructure/http/server.js";
 
 export * from "./adapters/test-frameworks/standard/adapters.js";
@@ -45,3 +46,4 @@ export * from "./domain/errors.js";
 export * from "./application/tests/execution-service.js";
 export * from "./infrastructure/persistence/json-test-result-store.js";
 export * from "./infrastructure/persistence/index-lock.js";
+export * from "./infrastructure/persistence/json-semantic-cache.js";

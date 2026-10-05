@@ -2,6 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { TypeScriptProjectAnalyzer } from "../../dist/adapters/languages/typescript/semantic-project-analyzer.js";
 import { EdgeType, NodeType } from "../../dist/domain/graph/model.js";
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 test("semantic benchmark covers true edges and forbidden cross-boundary links", () => {
   const result = new TypeScriptProjectAnalyzer().analyzeProject({
@@ -40,4 +43,36 @@ test("semantic benchmark covers true edges and forbidden cross-boundary links", 
   assert.equal(falseCases.filter(Boolean).length, 0);
   assert.equal(trueCases.length, 4);
   assert.equal(falseCases.length, 2);
+});
+
+
+test("semantic cache benchmark avoids re-analysis for unchanged 120-file history", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-semantic-benchmark-"));
+  try {
+    const { RepositoryIndexer, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache } = await import("../../dist/index.js");
+    const files = ["package.json", ...Array.from({ length: 120 }, (_, i) => "src/file" + i + ".ts")];
+    const contents = new Map(files.map(path => [path, path === "package.json" ? JSON.stringify({ name: "benchmark" }) : "export const value = 1;"]));
+    const git = {
+      async getCommit(hash) { return { hash, parents: [], author: "a", committer: "c", timestamp: "2026-01-01T00:00:00Z", message: hash }; },
+      async listFilesAtCommit() { return files; },
+      async readFileAtCommit(commit, path) { return contents.get(path); }
+    };
+    class CountingAnalyzer extends TypeScriptProjectAnalyzer {
+      calls = 0;
+      analyzeProject(input, commit) { this.calls++; return super.analyzeProject(input, commit); }
+    }
+    const analyzer = new CountingAnalyzer();
+    const indexer = new RepositoryIndexer(git, analyzer, new JsonGraphStore(join(root, "graph")), new JsonSemanticCache(join(root, "cache")));
+    const start = performance.now();
+    await indexer.index({ repository: "benchmark", commit: "a", configuration: {}, analyzerVersion: "benchmark" });
+    const firstMs = performance.now() - start;
+    const cachedStart = performance.now();
+    await indexer.index({ repository: "benchmark", commit: "b", configuration: {}, analyzerVersion: "benchmark" });
+    const cachedMs = performance.now() - cachedStart;
+    assert.equal(analyzer.calls, 1);
+    assert.ok(firstMs >= 0);
+    assert.ok(cachedMs >= 0);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
 });

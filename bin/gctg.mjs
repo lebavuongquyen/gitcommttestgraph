@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, diffSnapshots, configurationFingerprint, runProcess, IndexLock } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, diffSnapshots, configurationFingerprint, runProcess, IndexLock } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
@@ -13,10 +13,11 @@ async function context() {
   const repository = await discoverRepository(root);
   const git = new CliGitRepository(repository.root);
   const store = new JsonGraphStore(repository.root + "/.gctg/graph");
-  return { repository, git, store };
+  const semanticCache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
+  return { repository, git, store, semanticCache };
 }
-async function indexAt(git, store, repository, commit) {
-  const fullIndexer = new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store);
+async function indexAt(git, store, semanticCache, repository, commit) {
+  const fullIndexer = new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store, semanticCache);
   const incremental = new IncrementalRepositoryIndexer(
     git,
     fullIndexer,
@@ -46,43 +47,43 @@ try {
     process.exit(0);
   }
   if (command === "index") {
-    const { repository, git, store } = await context();
+    const { repository, git, store, semanticCache } = await context();
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, repository.root, commit);
+    const result = await indexAt(git, store, semanticCache, repository.root, commit);
     json({ commit, reused: result.reused, nodes: result.snapshot.nodes.length, edges: result.snapshot.edges.length, metadata: result.snapshot.metadata });
     process.exit(0);
   }
   if (command === "graph") {
-    const { repository, git, store } = await context();
+    const { repository, git, store, semanticCache } = await context();
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, repository.root, commit);
+    const result = await indexAt(git, store, semanticCache, repository.root, commit);
     const type = process.argv[4];
     json(type ? result.snapshot.nodes.filter(node => node.type === type) : result.snapshot);
     process.exit(0);
   }
   if (command === "diff") {
-    const { repository, git, store } = await context();
+    const { repository, git, store, semanticCache } = await context();
     const from = process.argv[3];
     const to = process.argv[4] ?? await git.getHead();
     if (!from) throw new Error("Usage: gctg diff <fromCommit> <toCommit>");
-    const a = await indexAt(git, store, repository.root, from);
-    const b = await indexAt(git, store, repository.root, to);
+    const a = await indexAt(git, store, semanticCache, repository.root, from);
+    const b = await indexAt(git, store, semanticCache, repository.root, to);
     json(diffSnapshots(a.snapshot, b.snapshot));
     process.exit(0);
   }
   if (command === "impact") {
-    const { repository, git, store } = await context();
+    const { repository, git, store, semanticCache } = await context();
     const commit = process.argv[3] ?? await git.getHead();
     const ids = process.argv.slice(4);
     if (!ids.length) throw new Error("Usage: gctg impact <commit> <nodeId> [nodeId...]");
-    const result = await indexAt(git, store, repository.root, commit);
+    const result = await indexAt(git, store, semanticCache, repository.root, commit);
     json(new ImpactQueryService(store).analyze(result.snapshot, { changedNodeIds: ids }));
     process.exit(0);
   }
   if (command === "tests") {
-    const { repository, git, store } = await context();
+    const { repository, git, store, semanticCache } = await context();
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, repository.root, commit);
+    const result = await indexAt(git, store, semanticCache, repository.root, commit);
     json(result.snapshot.nodes.filter(node => ["TestProject", "TestFile", "TestCase"].includes(node.type)));
     process.exit(0);
   }

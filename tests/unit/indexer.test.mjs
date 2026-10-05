@@ -24,3 +24,37 @@ test("indexer persists and reuses exact commit snapshots", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+
+test("indexer reuses semantic cache across commits with identical source", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-cache-"));
+  try {
+    const git = {
+      async getCommit(hash) { return { hash, parents: [], author: "a", committer: "c", timestamp: "2026-01-01T00:00:00Z", message: hash }; },
+      async listFilesAtCommit() { return ["package.json", "src/a.ts"]; },
+      async readFileAtCommit(commit, path) {
+        if (path === "package.json") return JSON.stringify({ name: "repo" });
+        return "export function a() { return 1; }";
+      }
+    };
+    class CountingAnalyzer extends TypeScriptSemanticAnalyzer {
+      calls = 0;
+      analyzeProject(input, commit) {
+        this.calls++;
+        return super.analyzeProject(input, commit);
+      }
+    }
+    const analyzer = new CountingAnalyzer();
+    const cache = new (await import("../../dist/index.js")).JsonSemanticCache(join(root, "cache"));
+    const store = new JsonGraphStore(join(root, "graph"));
+    const indexer = new RepositoryIndexer(git, analyzer, store, cache);
+    const first = await indexer.index({ repository: "repo", commit: "a", configuration: {}, analyzerVersion: "cache-test" });
+    const second = await indexer.index({ repository: "repo", commit: "b", configuration: {}, analyzerVersion: "cache-test" });
+    assert.equal(first.reused, false);
+    assert.equal(second.reused, false);
+    assert.equal(analyzer.calls, 1);
+    assert.ok(second.snapshot.edges.every(edge => edge.sourceCommit === "b"));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
