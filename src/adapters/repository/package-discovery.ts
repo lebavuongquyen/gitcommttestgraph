@@ -6,7 +6,7 @@ import type { RepositoryLayout, RepositoryPackage } from "../../domain/repositor
 
 export async function discoverPackages(root: string): Promise<RepositoryLayout> {
   const rootManifest = await readJson(join(root, "package.json"));
-  const manager = detectManager(root);
+  const manager = await detectManager(root);
   const workspacePatterns = workspacePatternsFromManifest(rootManifest);
   const packages: RepositoryPackage[] = [];
   if (rootManifest) packages.push(toPackage(root, "package.json", rootManifest, manager));
@@ -47,39 +47,20 @@ function toPackage(root: string, manifestPath: string, data: Record<string, unkn
   };
 }
 
-function detectManager(root: string): PackageManager {
-  return root.includes("pnpm-workspace") ? PackageManager.PNPM : PackageManager.NPM;
-}
-
-function workspacePatternsFromManifest(data: Record<string, unknown> | null): string[] {
-  const workspaces = data?.workspaces;
-  if (Array.isArray(workspaces)) return workspaces.filter((x): x is string => typeof x === "string");
-  if (workspaces && typeof workspaces === "object" && Array.isArray((workspaces as any).packages)) return (workspaces as any).packages.filter((x: unknown): x is string => typeof x === "string");
-  return ["apps/*", "packages/*"];
-}
-
-async function expandWorkspace(root: string, pattern: string): Promise<string[]> {
-  const normalized = pattern.replaceAll("\\", "/");
-  if (!normalized.endsWith("/*")) return [join(root, normalized, "package.json")];
-  const parent = join(root, normalized.slice(0, -2));
-  try {
-    const { readdir } = await import("node:fs/promises");
-    const entries = await readdir(parent, { withFileTypes: true });
-    return entries.filter(e => e.isDirectory()).map(e => join(parent, e.name, "package.json"));
-  } catch {
-    return [];
+async function detectManager(root: string): Promise<PackageManager> {
+  for (const [file, manager] of [
+    ["pnpm-workspace.yaml", PackageManager.PNPM],
+    ["pnpm-lock.yaml", PackageManager.PNPM],
+    ["yarn.lock", PackageManager.YARN],
+    ["bun.lockb", PackageManager.BUN],
+    ["bun.lock", PackageManager.BUN],
+    ["package-lock.json", PackageManager.NPM]
+  ] as const) {
+    try {
+      await import("node:fs/promises").then(fs => fs.access(join(root, file)));
+      return manager;
+    } catch {}
   }
+  return PackageManager.NPM;
 }
 
-async function readJson(path: string): Promise<Record<string, unknown> | null> {
-  try {
-    return JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
-  } catch {
-    return null;
-  }
-}
-
-function record(value: unknown): Record<string, string> {
-  if (!value || typeof value !== "object") return {};
-  return Object.fromEntries(Object.entries(value).filter(([, v]) => typeof v === "string")) as Record<string, string>;
-}
