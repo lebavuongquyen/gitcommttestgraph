@@ -7,7 +7,15 @@ import { SymbolKind } from "../../../domain/symbol/model.js";
 import type { SourceAnalysis, SourceFileInput } from "../../../application/ports/source-analyzer.js";
 
 export class TypeScriptProjectAnalyzer {
-  analyze(files: readonly SourceFileInput[], commit: string): SourceAnalysis {
+  analyzeProject(input: { readonly files: readonly SourceFileInput[]; readonly pathAliases?: Readonly<Record<string, readonly string[]>>; readonly baseUrl?: string; readonly packageRoots?: Readonly<Record<string, string>> }, commit: string): SourceAnalysis {
+    return this.analyzeFiles(input.files, commit, input.pathAliases, input.baseUrl, input.packageRoots);
+  }
+
+  analyze(input: SourceFileInput, commit: string): SourceAnalysis {
+    return this.analyzeFiles([input], commit);
+  }
+
+  private analyzeFiles(files: readonly SourceFileInput[], commit: string, pathAliases?: Readonly<Record<string, readonly string[]>>, baseUrl?: string, packageRoots?: Readonly<Record<string, string>>): SourceAnalysis {
     const normalized = files.map(file => ({ ...file, path: file.path.replaceAll("\\", "/") }));
     const fileNames = normalized.map(file => file.path);
     const compilerOptions: ts.CompilerOptions = {
@@ -93,7 +101,7 @@ export class TypeScriptProjectAnalyzer {
       };
       for (const statement of source.statements) {
         if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
-          const targetPath = resolveImportPath(file.path, statement.moduleSpecifier.text, fileNodes, input.pathAliases, input.packageRoots);
+          const targetPath = resolveImportPath(file.path, statement.moduleSpecifier.text, fileNodes, pathAliases, packageRoots);
           const targetFile = targetPath ? fileNodes.get(targetPath) : undefined;
           if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, statement), line(source, statement), "path-resolved-import"));
         }
