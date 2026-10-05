@@ -87,6 +87,13 @@ export class TypeScriptProjectAnalyzer {
         }
         ts.forEachChild(node, visit);
       };
+      for (const statement of source.statements) {
+        if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
+          const targetPath = resolveImportPath(file.path, statement.moduleSpecifier.text, fileNodes);
+          const targetFile = targetPath ? fileNodes.get(targetPath) : undefined;
+          if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, statement), line(source, statement), "path-resolved-import"));
+        }
+      }
       ts.forEachChild(source, visit);
     }
     return { nodes, edges };
