@@ -33,13 +33,14 @@ export class ImpactEngine {
         results.set(current.id, { nodeId: current.id, level: current.level, confidence: current.confidence, path: current.path, evidence: current.evidence });
       }
       for (const edge of reverse.get(current.id) ?? []) {
-        if (edge.source === current.id && !isReverseDependency(edge.type)) continue;
-        const next = edge.source;
+        const forward = edge.type === EdgeType.CONFIGURES && edge.source === current.id;
+        if (!forward && edge.source === current.id && !isReverseDependency(edge.type)) continue;
+        const next = forward ? edge.target : edge.source;
         if (seen.has(next)) continue;
         queue.push({
           id: next,
           path: [...current.path, { nodeId: next, relation: edge.type }],
-          level: edge.type === EdgeType.CONFIGURES ? ImpactLevel.CONFIG : ImpactLevel.DOWNSTREAM,
+          level: forward ? ImpactLevel.CONFIG : edge.type === EdgeType.DEPENDS_ON ? ImpactLevel.DIRECT_DEPENDENCY : edge.type === EdgeType.TESTS ? ImpactLevel.INTEGRATION : ImpactLevel.DOWNSTREAM,
           confidence: minConfidence(current.confidence, edge.confidence),
           evidence: [...current.evidence, ...edge.evidence]
         });
