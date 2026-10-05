@@ -14,6 +14,8 @@ export interface WorkflowExecutionResult {
 export interface WorkflowStepResult {
   readonly stepId: string;
   readonly status: "PASSED" | "FAILED" | "BLOCKED" | "SKIPPED" | "NO_COMMAND";
+  readonly testCaseIds: readonly string[];
+  readonly affectedSymbolIds: readonly string[];
   readonly command?: ExecutionCommand;
   readonly exitCode?: number;
   readonly stdout?: string;

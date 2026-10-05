@@ -22,7 +22,7 @@ export class ExecutionPlanRunner implements WorkflowRunner {
 
     for (const step of plan.steps.slice(results.length)) {
       const now = new Date().toISOString();
-      results.push({ stepId: step.id, status: "SKIPPED", startedAt: now, finishedAt: now });
+      results.push(this.baseResult(step, "SKIPPED", now, now));
     }
 
     const finishedAt = new Date().toISOString();
@@ -41,33 +41,38 @@ export class ExecutionPlanRunner implements WorkflowRunner {
   private async executeStep(step: ExecutionStep, completed: Map<string, WorkflowStepResult["status"]>): Promise<WorkflowStepResult> {
     const startedAt = new Date().toISOString();
     if (step.status !== "RUNNABLE" || !step.command) {
-      return { stepId: step.id, status: step.status === "IMPACTED_NO_COMMAND" ? "NO_COMMAND" : "BLOCKED", startedAt, finishedAt: new Date().toISOString() };
+      return this.baseResult(step, step.status === "IMPACTED_NO_COMMAND" ? "NO_COMMAND" : "BLOCKED", startedAt, new Date().toISOString());
     }
     if (step.dependsOn.some(id => completed.get(id) !== "PASSED")) {
-      return { stepId: step.id, status: "BLOCKED", command: step.command, startedAt, finishedAt: new Date().toISOString() };
+      return { ...this.baseResult(step, "BLOCKED", startedAt, new Date().toISOString()), command: step.command };
     }
     try {
       const process = await this.executor.run(step.command);
       return {
-        stepId: step.id,
-        status: process.exitCode === 0 ? "PASSED" : "FAILED",
+        ...this.baseResult(step, process.exitCode === 0 ? "PASSED" : "FAILED", startedAt, new Date().toISOString()),
         command: step.command,
         exitCode: process.exitCode,
         stdout: process.stdout,
-        stderr: process.stderr,
-        startedAt,
-        finishedAt: new Date().toISOString()
+        stderr: process.stderr
       };
     } catch (error) {
       return {
-        stepId: step.id,
-        status: "FAILED",
+        ...this.baseResult(step, "FAILED", startedAt, new Date().toISOString()),
         command: step.command,
         exitCode: -1,
-        stderr: error instanceof Error ? error.message : String(error),
-        startedAt,
-        finishedAt: new Date().toISOString()
+        stderr: error instanceof Error ? error.message : String(error)
       };
     }
+  }
+
+  private baseResult(step: ExecutionStep, status: WorkflowStepResult["status"], startedAt: string, finishedAt: string): WorkflowStepResult {
+    return {
+      stepId: step.id,
+      status,
+      testCaseIds: [...step.affectedTestCaseIds],
+      affectedSymbolIds: [...step.affectedSymbolIds],
+      startedAt,
+      finishedAt
+    };
   }
 }
