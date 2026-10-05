@@ -61,12 +61,12 @@ export class TypeScriptProjectAnalyzer {
         if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
           const resolved = checker.getSymbolAtLocation(node.moduleSpecifier);
           const target = resolved?.declarations?.[0];
-          const targetFile = target ? fileNodes.get(target.getSourceFile().fileName.replaceAll("\\", "/")) : undefined;
+          const targetFile = target ? fileNodes.get(resolveFileName(target.getSourceFile().fileName.replaceAll("\\", "/"), fileNodes)) : undefined;
           if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "typescript-resolved-import"));
         }
         if (ts.isCallExpression(node)) {
           const target = checker.getSymbolAtLocation(node.expression);
-          const targetId = target ? symbols.get(target) : undefined;
+          const targetId = target ? symbolIdFor(target, checker, symbols) : undefined;
           if (targetId) edges.push(edgeNearest(node, EdgeType.CALLS, targetId, fileId, commit, source, "typescript-typechecker-call"));
         }
         if (ts.isClassDeclaration(node) && node.heritageClauses) {
@@ -108,3 +108,21 @@ function declarationNameNode(node: ts.Node): ts.Node { if (ts.isVariableDeclarat
 function declarationName(node: ts.Node): string | null { const n = declarationNameNode(node); return ts.isIdentifier(n) ? n.text : null; }
 function symbolKind(node: ts.Node): SymbolKind { if (ts.isFunctionDeclaration(node)) return SymbolKind.FUNCTION; if (ts.isClassDeclaration(node)) return SymbolKind.CLASS; if (ts.isInterfaceDeclaration(node)) return SymbolKind.INTERFACE; if (ts.isTypeAliasDeclaration(node)) return SymbolKind.TYPE; if (ts.isEnumDeclaration(node)) return SymbolKind.ENUM; if (ts.isVariableDeclaration(node)) return SymbolKind.VARIABLE; if (ts.isMethodDeclaration(node)) return SymbolKind.METHOD; return SymbolKind.OTHER; }
 function hasExportModifier(node: ts.Node): boolean { return !!(ts.canHaveModifiers(node) && ts.getModifiers(node)?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)); }
+
+function symbolIdFor(symbol: ts.Symbol, checker: ts.TypeChecker, symbols: Map<ts.Symbol, string>): string | undefined {
+  const direct = symbols.get(symbol);
+  if (direct) return direct;
+  if (symbol.flags & ts.SymbolFlags.Alias) {
+    try { return symbols.get(checker.getAliasedSymbol(symbol)); } catch { return undefined; }
+  }
+  return undefined;
+}
+
+function resolveFileName(path: string, files: Map<string, string>): string {
+  if (files.has(path)) return path;
+  const candidates = path.endsWith(".js")
+    ? [path.slice(0, -3) + ".ts", path.slice(0, -3) + ".tsx", path.slice(0, -3) + ".js", path.slice(0, -3) + ".jsx"]
+    : [path];
+  for (const candidate of candidates) if (files.has(candidate)) return candidate;
+  return path;
+}
