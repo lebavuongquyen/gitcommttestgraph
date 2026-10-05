@@ -11,7 +11,7 @@ Deterministic semantic Git repository graph and change-impact engine for TypeScr
 - Test projects, files and cases are first-class graph nodes.
 - Configuration, fixture and schema artifacts are modeled separately.
 - AI is optional and outside the core graph engine.
-- Static test-gap analysis identifies symbols without direct or dependency-based test evidence; it is not runtime code coverage.
+- Static test-gap analysis identifies testable symbols without direct or dependency-based test evidence and reports generic-script-only areas as unknown; it is not runtime code coverage.
 - Test execution is opt-in and uses structured process arguments without a shell.
 - Semantic incremental indexing reanalyzes changed files plus reverse semantic dependents and reuses unaffected symbol subgraphs.
 
