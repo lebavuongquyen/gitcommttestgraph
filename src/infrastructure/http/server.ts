@@ -1,61 +1,206 @@
 import { createServer } from "node:http";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, RepositoryIndexer, ImpactQueryService, diffSnapshots } from "../../index.js";
+import {
+  discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
+  RepositoryIndexer, IncrementalRepositoryIndexer, ImpactQueryService, ImpactEngine, TestGapAnalyzer,
+  TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, configurationFingerprint, IndexLock,
+  JsonTestResultStore
+} from "../../index.js";
+import { renderGui } from "../../gui/app.js";
+
+const configuration = {};
+const analyzerVersion = "0.4.0";
 
 export async function startServer(root: string, port: number): Promise<void> {
   const repository = await discoverRepository(root);
   const git = new CliGitRepository(repository.root);
   const store = new JsonGraphStore(repository.root + "/.gctg/graph");
-  const indexer = new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store);
-  const analyzerVersion = "0.3.0";
-  const configuration = {};
-  const index = async (commit: string) => indexer.index({ repository: repository.root, commit, configuration, analyzerVersion });
+  const cache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
+  const fullIndexer = new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store, cache);
+  const indexAt = async (commit: string) => {
+    const incremental = new IncrementalRepositoryIndexer(
+      git,
+      fullIndexer,
+      (repo, hash, version, fingerprint) => store.getSnapshot(repo, hash, version, fingerprint)
+    );
+    const release = await new IndexLock(repository.root + "/.gctg/index.lock").acquire();
+    try {
+      return await incremental.index({
+        repository: repository.root,
+        commit,
+        configuration,
+        analyzerVersion
+      });
+    } finally {
+      await release();
+    }
+  };
+
+  const changedSymbols = async (commit: string, snapshot: Awaited<ReturnType<typeof indexAt>>["snapshot"]) => {
+    const info = await git.getCommit(commit);
+    if (!info.parents?.length) return snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
+    const parent = await indexAt(info.parents[0]!);
+    const diff = diffSnapshots(parent.snapshot, snapshot);
+    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
+    return snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
+  };
+
+  const buildChangeContext = async (commit: string) => {
+    const indexed = await indexAt(commit);
+    const symbolIds = await changedSymbols(commit, indexed.snapshot);
+    const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: symbolIds });
+    const testImpact = new TestImpactAnalyzer().analyze(indexed.snapshot, {
+      changedSymbolIds: symbolIds,
+      coverageLinks: gaps.coverageLinks
+    });
+    const affected = new ImpactEngine().analyze(indexed.snapshot, {
+      changedNodeIds: symbolIds,
+      targetTypes: ["Symbol"]
+    }).map(item => item.nodeId);
+    const info = await git.getCommit(commit);
+    const diff = info.parents?.length
+      ? diffSnapshots((await indexAt(info.parents[0]!)).snapshot, indexed.snapshot)
+      : undefined;
+    return { indexed, info, symbolIds, gaps, testImpact, affected, diff };
+  };
+
+  const send = (response: import("node:http").ServerResponse, status: number, value: unknown) => {
+    response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
+    response.end(JSON.stringify(value));
+  };
 
   const server = createServer(async (request, response) => {
-    const send = (status: number, value: unknown) => {
-      response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
-      response.end(JSON.stringify(value));
-    };
     try {
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
       if (url.pathname === "/") {
-        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-        response.end(`<!doctype html><html><head><meta charset="utf-8"><title>Git Commit Test Graph</title><style>body{font-family:system-ui;margin:24px}button{margin:4px}pre{white-space:pre-wrap;background:#f4f4f4;padding:12px}#graph{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}.node{border:1px solid #bbb;border-radius:6px;padding:8px}</style></head><body><h1>Git Commit Test Graph</h1><button onclick="loadGraph()">Load Graph</button><button onclick="loadTests()">Load Tests</button><div id="graph"></div><pre id="raw"></pre><script>async function get(p){const r=await fetch(p);return r.json()}async function loadGraph(){const s=await get("/api/graph");document.getElementById("raw").textContent=JSON.stringify(s,null,2);document.getElementById("graph").innerHTML=s.nodes.map(n=>"<div class=node><b>"+n.type+"</b><br>"+n.id.slice(0,16)+"<br>"+(n.attributes.path||n.attributes.name||"")+"</div>").join("")}async function loadTests(){const s=await get("/api/tests");document.getElementById("raw").textContent=JSON.stringify(s,null,2)}</script></body></html>`);
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
+        response.end(renderGui());
         return;
       }
-      if (url.pathname === "/api/status") return send(200, { root: repository.root, head: await git.getHead(), workspaceFiles: repository.workspaceFiles });
-      if (url.pathname === "/api/commits") return send(200, await git.listCommits(Number(url.searchParams.get("limit") ?? 20)));
+      if (url.pathname === "/api/status") {
+        send(response, 200, { root: repository.root, head: await git.getHead(), workspaceFiles: repository.workspaceFiles });
+        return;
+      }
+      if (url.pathname === "/api/commits") {
+        send(response, 200, await git.listCommits(Number(url.searchParams.get("limit") ?? 20)));
+        return;
+      }
+      if (url.pathname === "/api/overview") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const c = await buildChangeContext(commit);
+        send(response, 200, {
+          repository: c.indexed.snapshot.repository,
+          commit,
+          subject: c.info.message.split("\\n")[0],
+          changedFiles: c.diff ? c.diff.addedNodes.length + c.diff.removedNodes.length + c.diff.changedNodes.length : 0,
+          changedSymbols: c.symbolIds.length,
+          affectedSymbols: c.affected.length,
+          impactedTestCases: c.testImpact.impactedTestCases
+        });
+        return;
+      }
+      if (url.pathname === "/api/graph-view") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const c = await buildChangeContext(commit);
+        const interesting = new Set([
+          ...c.symbolIds,
+          ...c.affected,
+          ...c.testImpact.impacts.flatMap(item => [item.testProjectId, item.testFileId, item.testCaseId])
+        ]);
+        const nodes = c.indexed.snapshot.nodes.filter(node =>
+          interesting.has(node.id) ||
+          (node.type === "TestProject" && c.testImpact.impacts.some(item => item.testProjectId === node.id))
+        ).map(node => ({
+          ...node,
+          attributes: {
+            ...node.attributes,
+            ...(c.symbolIds.includes(node.id) ? { changed: true } : {}),
+            ...(c.affected.includes(node.id) ? { affected: true } : {})
+          }
+        }));
+        const ids = new Set(nodes.map(node => node.id));
+        const edges = c.indexed.snapshot.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target));
+        send(response, 200, { schemaVersion: "1.0.0", repository: c.indexed.snapshot.repository, commit, nodes, edges });
+        return;
+      }
+      if (url.pathname === "/api/node") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const nodeId = url.searchParams.get("nodeId");
+        if (!nodeId) return send(response, 400, { error: "Missing nodeId" });
+        const indexed = await indexAt(commit);
+        const node = indexed.snapshot.nodes.find(candidate => candidate.id === nodeId);
+        if (!node) return send(response, 404, { error: "Node not found" });
+        const incoming = indexed.snapshot.edges.filter(edge => edge.target === nodeId);
+        const outgoing = indexed.snapshot.edges.filter(edge => edge.source === nodeId);
+        send(response, 200, { node, incoming, outgoing });
+        return;
+      }
+      if (url.pathname === "/api/test-impact") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const c = await buildChangeContext(commit);
+        send(response, 200, c.testImpact);
+        return;
+      }
+      if (url.pathname === "/api/test-gaps") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const c = await buildChangeContext(commit);
+        send(response, 200, c.gaps);
+        return;
+      }
+      if (url.pathname === "/api/execution-plan") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const c = await buildChangeContext(commit);
+        send(response, 200, buildExecutionPlan({
+          repository: c.indexed.snapshot.repository,
+          commit,
+          nodes: c.indexed.snapshot.nodes,
+          edges: c.indexed.snapshot.edges,
+          impacts: c.testImpact.impacts
+        }));
+        return;
+      }
+      if (url.pathname === "/api/execution-feedback") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const resultStore = new JsonTestResultStore(repository.root + "/.gctg/results/feedback");
+        send(response, 200, await resultStore.get("latest:" + repository.root + ":" + commit) ?? { found: false, commit });
+        return;
+      }
       if (url.pathname === "/api/graph") {
         const commit = url.searchParams.get("commit") ?? await git.getHead();
-        const result = await index(commit);
+        const indexed = await indexAt(commit);
         const type = url.searchParams.get("type");
-        return send(200, type ? result.snapshot.nodes.filter(node => node.type === type) : result.snapshot);
+        send(response, 200, type ? indexed.snapshot.nodes.filter(node => node.type === type) : indexed.snapshot);
+        return;
       }
       if (url.pathname === "/api/tests") {
         const commit = url.searchParams.get("commit") ?? await git.getHead();
-        const result = await index(commit);
-        return send(200, result.snapshot.nodes.filter(node => ["TestProject", "TestFile", "TestCase"].includes(node.type)));
+        const indexed = await indexAt(commit);
+        send(response, 200, indexed.snapshot.nodes.filter(node => ["TestProject", "TestFile", "TestCase"].includes(node.type)));
+        return;
       }
       if (url.pathname === "/api/diff") {
         const from = url.searchParams.get("from");
         const to = url.searchParams.get("to") ?? await git.getHead();
-        if (!from) return send(400, { error: "Missing from commit" });
-        const [a, b] = await Promise.all([index(from), index(to)]);
-        return send(200, diffSnapshots(a.snapshot, b.snapshot));
+        if (!from) return send(response, 400, { error: "Missing from commit" });
+        const [a, b] = await Promise.all([indexAt(from), indexAt(to)]);
+        send(response, 200, diffSnapshots(a.snapshot, b.snapshot));
+        return;
       }
       if (url.pathname === "/api/impact") {
         const commit = url.searchParams.get("commit") ?? await git.getHead();
         const ids = url.searchParams.getAll("nodeId");
-        if (!ids.length) return send(400, { error: "Missing nodeId" });
-        const result = await index(commit);
-        return send(200, new ImpactQueryService(store).analyze(result.snapshot, { changedNodeIds: ids }));
+        if (!ids.length) return send(response, 400, { error: "Missing nodeId" });
+        const indexed = await indexAt(commit);
+        send(response, 200, new ImpactQueryService(store).analyze(indexed.snapshot, { changedNodeIds: ids }));
+        return;
       }
-      return send(404, { error: "Not found" });
+      send(response, 404, { error: "Not found" });
     } catch (error) {
-      return send(500, { error: error instanceof Error ? error.message : String(error) });
+      send(response, 500, { error: error instanceof Error ? error.message : String(error) });
     }
   });
+
   await new Promise<void>((resolve, reject) => {
     server.once("error", reject);
-    server.listen(port, "127.0.0.1", () => resolve());
+    server.listen(port, "127.0.0.1", resolve);
   });
 }

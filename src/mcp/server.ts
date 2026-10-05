@@ -8,8 +8,10 @@ import {
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, AgentTaskService
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
+import type { NodeType } from "../domain/graph/model.js";
+import { GCTG_VERSION } from "../version.js";
 
-const serverVersion = "0.3.8";
+const serverVersion = GCTG_VERSION;
 const configuration = {};
 const agentTasks = new AgentTaskService();
 
@@ -49,9 +51,8 @@ async function analyzeAgentChange(root: string, input: {
   const parentCommit = commitInfo.parents?.[0];
   let changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
   let diff;
-  let previous;
   if (parentCommit) {
-    previous = await indexAt(ctx, parentCommit);
+    const previous = await indexAt(ctx, parentCommit);
     diff = diffSnapshots(previous.snapshot, indexed.snapshot);
     const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
     changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
@@ -116,7 +117,7 @@ export function createGctgMcpServer(root: string) {
   }, async ({ commit, nodeIds, targetTypes }) => {
     const ctx = await context(root);
     const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
-    const request = targetTypes ? { changedNodeIds: nodeIds, targetTypes: targetTypes as never } : { changedNodeIds: nodeIds };
+    const request = targetTypes ? { changedNodeIds: nodeIds, targetTypes: targetTypes as NodeType[] } : { changedNodeIds: nodeIds };
     return result(new ImpactEngine().analyze(indexed.snapshot, request));
   });
 
@@ -163,7 +164,7 @@ export function createGctgMcpServer(root: string) {
       changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
     }
     const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds });
-    const impact = new ImpactEngine().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds, targetTypes: ["Symbol"] as never });
+    const impact = new ImpactEngine().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds, targetTypes: ["Symbol"] as NodeType[] });
     const testImpact = new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds, coverageLinks: gaps.coverageLinks });
     const plan = buildExecutionPlan({ repository: indexed.snapshot.repository, commit: indexed.snapshot.commit, nodes: indexed.snapshot.nodes, edges: indexed.snapshot.edges, impacts: testImpact.impacts });
     const feedbackStore = new JsonTestResultStore(ctx.repository.root + "/.gctg/results");

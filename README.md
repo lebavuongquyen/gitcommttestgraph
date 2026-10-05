@@ -1,6 +1,6 @@
 # Git Commit Test Graph
 
-Deterministic semantic Git repository graph and change-impact engine for TypeScript and JavaScript repositories.
+Deterministic semantic Git repository graph, test graph, change-impact engine and GUI-first software-engineering workbench.
 
 ## Principles
 
@@ -11,11 +11,11 @@ Deterministic semantic Git repository graph and change-impact engine for TypeScr
 - Test projects, files and cases are first-class graph nodes.
 - Configuration, fixture and schema artifacts are modeled separately.
 - AI is optional and outside the core graph engine.
-- Static test-gap analysis identifies testable symbols without direct or dependency-based test evidence and reports generic-script-only areas as unknown; it is not runtime code coverage.
-- Test-impact analysis maps changed and affected symbols to TestCases, TestFiles, TestProjects and resolved runnable commands.
-- Workflow projection emits a deterministic JSON graph for Git → Code → Test → Command visualizations and downstream workflow tooling.
-- Test execution is opt-in and uses structured process arguments without a shell.
-- Semantic incremental indexing reanalyzes changed files plus reverse semantic dependents and reuses unaffected symbol subgraphs.
+- Static test-gap analysis is not runtime code coverage.
+- Test-impact analysis maps changed symbols to impacted tests and runnable commands.
+- Workflow and execution-plan projections remain deterministic.
+- GUI is an adapter over application/query capabilities; it does not own domain logic.
+- MCP is an adapter over the same application capabilities; it does not own feature logic.
 
 ## CLI
 
@@ -37,35 +37,65 @@ gctg run <executable> [args...]
 gctg serve [port]
 ```
 
-## Supported source
+## GUI
 
-TypeScript, TSX, JavaScript, JSX, MJS and CJS.
+Run `gctg serve [port]` and open the local address printed by the CLI.
 
-Semantic relationships include imports, exports, calls, inheritance, implementation and workspace package dependencies when deterministically resolvable.
+The GUI provides:
+- Repository status and recent commit explorer.
+- Historical commit selection.
+- Focused Git → Code → Test graph.
+- Changed versus affected symbol visualization.
+- Node inspector with incoming/outgoing edges.
+- Static test-impact visibility.
+- Query endpoints prepared for test gaps, execution plans and runtime feedback.
 
-## Test adapters
+The graph canvas intentionally shows the change-impact neighborhood instead of every node in a large repository. This keeps the UI useful for repositories with thousands of graph nodes.
 
-Vitest, Jest, Node test, Playwright and generic package scripts.
+## Architecture
 
-## Persistence
+```
+Git Repository
+      |
+      v
+Semantic Graph
+      |
+      +--> Impact / Test Analysis
+      |
+      +--> GUI HTTP Query Boundary
+      |
+      +--> MCP Adapter
+      |
+      +--> CLI Adapter
+```
 
-Snapshots are stored under `.gctg/graph`. Semantic artifacts are content-addressed under `.gctg/cache/semantic` using source-content hashes plus analyzer and resolution fingerprints, allowing identical source graphs to be reused across different commits. Snapshot reuse is exact for the repository, commit, analyzer version and configuration fingerprint. Semantic incremental indexing uses the parent graph as a dependency index, analyzes only impacted source paths, reuses unaffected semantic nodes and edges, and is verified against a clean full-index graph in the test suite. CLI indexing uses an atomic repository lock with timeout and stale-lock recovery so concurrent indexers cannot corrupt the same repository index.
+Feature development order is:
+
+```
+Feature
+  ↓
+Application / Domain implementation
+  ↓
+Tests + acceptance
+  ↓
+GUI representation
+  ↓
+MCP exposure
+  ↓
+CLI / automation when needed
+```
 
 ## MCP Agent Server
 
-The package also exposes an MCP server for software-engineering agents.
+The package exposes an MCP server for software-engineering agents. MCP is intentionally kept as an adapter boundary. The agent task protocol provides explicit policy, evidence, uncertainty, execution approval and runtime decision semantics.
 
-The server exposes read-only repository, graph, impact, test-impact, execution-plan and execution-feedback tools, plus a historical graph resource. The high-level change-intelligence tool bundles changed symbols, semantic impact, test impact, execution plan and prior runtime feedback into one agent-oriented response.
-
-run_execution_plan is the only side-effecting MCP tool. It uses the existing structured process runner and persists runtime feedback separately from graph truth.
-
-For local MCP hosts, configure the command: gctg-mcp
+For local MCP hosts, configure the command: `gctg-mcp`.
 
 The MCP server uses stdio. Protocol traffic is written to stdout; diagnostics are written to stderr.
 
-## HTTP API
+## Persistence
 
-`gctg serve` exposes local JSON endpoints for status, commits, graph, tests, diff and impact.
+Snapshots are stored under `.gctg/graph`. Semantic artifacts are content-addressed under `.gctg/cache/semantic`. CLI and server indexing use an atomic repository lock.
 
 ## Development
 
@@ -74,6 +104,11 @@ npm install
 npm run typecheck
 npm run build
 npm test
+npm run check
 ```
 
 Node.js 20 or newer is required.
+
+## Release discipline
+
+Every publish must ship complete documentation and a changelog entry. See `docs/releases/0.4.0.md` for the required release checklist.
