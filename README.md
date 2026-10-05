@@ -116,4 +116,4 @@ Node.js 20 or newer is required.
 
 ## Release discipline
 
-Every publish must ship complete documentation and a changelog entry. See `docs/releases/0.4.0.md` for the required release checklist.
+Every publish must ship a complete feature or maintenance change, complete documentation and a changelog entry. Versioning follows `docs/VERSIONING.md`. The release gate is mandatory; a minor release must not represent a partial feature.
