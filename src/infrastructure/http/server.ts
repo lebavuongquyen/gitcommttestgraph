@@ -17,6 +17,11 @@ export async function startServer(root: string, port: number): Promise<void> {
     };
     try {
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
+      if (url.pathname === "/") {
+        response.writeHead(200, { "content-type": "text/html; charset=utf-8" });
+        response.end(`<!doctype html><html><head><meta charset="utf-8"><title>Git Commit Test Graph</title><style>body{font-family:system-ui;margin:24px}button{margin:4px}pre{white-space:pre-wrap;background:#f4f4f4;padding:12px}#graph{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:8px}.node{border:1px solid #bbb;border-radius:6px;padding:8px}</style></head><body><h1>Git Commit Test Graph</h1><button onclick="loadGraph()">Load Graph</button><button onclick="loadTests()">Load Tests</button><div id="graph"></div><pre id="raw"></pre><script>async function get(p){const r=await fetch(p);return r.json()}async function loadGraph(){const s=await get("/api/graph");document.getElementById("raw").textContent=JSON.stringify(s,null,2);document.getElementById("graph").innerHTML=s.nodes.map(n=>"<div class=node><b>"+n.type+"</b><br>"+n.id.slice(0,16)+"<br>"+(n.attributes.path||n.attributes.name||"")+"</div>").join("")}async function loadTests(){const s=await get("/api/tests");document.getElementById("raw").textContent=JSON.stringify(s,null,2)}</script></body></html>`);
+        return;
+      }
       if (url.pathname === "/api/status") return send(200, { root: repository.root, head: await git.getHead(), workspaceFiles: repository.workspaceFiles });
       if (url.pathname === "/api/commits") return send(200, await git.listCommits(Number(url.searchParams.get("limit") ?? 20)));
       if (url.pathname === "/api/graph") {
