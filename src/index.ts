@@ -54,3 +54,7 @@ export * from "./infrastructure/persistence/json-semantic-cache.js";
 
 export * from './domain/impact/test-impact.js';
 export * from './application/impact/test-impact-analyzer.js';
+
+export * from "./domain/workflow/execution-plan.js";
+export * from "./application/workflow/execution-plan-builder.js";
+export * from "./application/workflow/execution-plan-export.js";
