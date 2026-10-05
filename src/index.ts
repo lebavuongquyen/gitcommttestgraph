@@ -43,3 +43,4 @@ export * from "./application/indexing/tsconfig-aliases.js";
 export * from "./domain/errors.js";
 
 export * from "./application/tests/execution-service.js";
+export * from "./infrastructure/persistence/json-test-result-store.js";
