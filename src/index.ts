@@ -1,5 +1,5 @@
-export * from "./domain/evidence/model.js";
 export * from "./domain/git/model.js";
+export * from "./domain/evidence/model.js";
 export * from "./domain/graph/model.js";
 export * from "./domain/graph/ids.js";
 export * from "./domain/graph/snapshot.js";
@@ -46,8 +46,7 @@ export * from "./application/tests/execution-service.js";
 export * from "./infrastructure/persistence/json-test-result-store.js";
 export * from "./infrastructure/persistence/index-lock.js";
 export * from "./infrastructure/persistence/json-semantic-cache.js";
-export * from './domain/impact/test-impact.js';
-export * from './application/impact/test-impact-analyzer.js';
+export * from "./domain/impact/test-impact.js";`r`nexport * from "./application/impact/test-impact-analyzer.js";
 export * from "./domain/workflow/execution-plan.js";
 export * from "./application/workflow/execution-plan-builder.js";
 export * from "./application/workflow/execution-plan-export.js";
