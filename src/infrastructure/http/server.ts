@@ -11,12 +11,12 @@ export async function startServer(root: string, port: number): Promise<void> {
   const index = async (commit: string) => indexer.index({ repository: repository.root, commit, configuration, analyzerVersion });
 
   const server = createServer(async (request, response) => {
+    const send = (status: number, value: unknown) => {
+      response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
+      response.end(JSON.stringify(value));
+    };
     try {
       const url = new URL(request.url ?? "/", "http://127.0.0.1");
-      const send = (status: number, value: unknown) => {
-        response.writeHead(status, { "content-type": "application/json; charset=utf-8" });
-        response.end(JSON.stringify(value));
-      };
       if (url.pathname === "/api/status") return send(200, { root: repository.root, head: await git.getHead(), workspaceFiles: repository.workspaceFiles });
       if (url.pathname === "/api/commits") return send(200, await git.listCommits(Number(url.searchParams.get("limit") ?? 20)));
       if (url.pathname === "/api/graph") {
