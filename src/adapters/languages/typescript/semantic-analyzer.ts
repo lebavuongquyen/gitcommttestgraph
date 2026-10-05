@@ -18,7 +18,14 @@ export class TypeScriptSemanticAnalyzer implements SemanticSourceAnalyzer {
       if (!analysis) continue;
       for (const edge of analysis.edges.filter(edge => edge.type === EdgeType.IMPORTS)) {
         const specifier = String(edge.evidence[0]?.text ?? "");
-        const resolved = resolver.resolve({ specifier, importer: file.path, extensions: [".ts",".tsx",".js",".jsx",".mjs",".cjs"], files, pathAliases: input.pathAliases, baseUrl: input.baseUrl });
+        const resolved = resolver.resolve({
+          specifier,
+          importer: file.path,
+          extensions: [".ts", ".tsx", ".js", ".jsx", ".mjs", ".cjs"],
+          files,
+          ...(input.pathAliases ? { pathAliases: input.pathAliases } : {}),
+          ...(input.baseUrl ? { baseUrl: input.baseUrl } : {})
+        });
         if (!resolved.target) continue;
         const targetFile = nodes.find(node => node.type === NodeType.FILE && node.attributes.path === resolved.target);
         if (!targetFile) continue;
