@@ -2,6 +2,10 @@ import type { Commit, CommitDiff, ChangedPath } from "../../domain/git/model.js"
 
 export interface GitRepositoryPort {
   getHead(): Promise<string>;
+  getCurrentBranch(): Promise<string>;
+  listBranches(): Promise<readonly import("../../domain/git/model.js").BranchRef[]>;
+  getMergeBase(base: string, head: string): Promise<string>;
+  getCommitsBetween(base: string, head: string): Promise<readonly string[]>;
   getCommit(hash: string): Promise<Commit>;
   getChangedPaths(hash: string): Promise<readonly ChangedPath[]>;
   getDiff(fromCommit: string, toCommit: string): Promise<CommitDiff>;

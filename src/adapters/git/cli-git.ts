@@ -1,6 +1,6 @@
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import type { ChangedPath, Commit, CommitDiff } from "../../domain/git/model.js";
+import type { BranchRef, ChangedPath, Commit, CommitDiff } from "../../domain/git/model.js";
 import type { GitRepositoryPort } from "../../application/ports/git.js";
 import { GitOperationError, InvalidCommitError } from "../../domain/errors.js";
 
@@ -11,6 +11,28 @@ export class CliGitRepository implements GitRepositoryPort {
 
   async getHead(): Promise<string> {
     return (await this.run(["rev-parse", "HEAD"])).trim();
+  }
+
+  async getCurrentBranch(): Promise<string> {
+    return (await this.run(["branch", "--show-current"])).trim();
+  }
+
+  async listBranches(): Promise<readonly BranchRef[]> {
+    const output = await this.run(["for-each-ref", "--format=%(refname:short)|%(objectname)|%(HEAD)|%(upstream:short)", "refs/heads", "refs/remotes"]);
+    return output.split("\n").filter(Boolean).map(line => {
+      const [name, commit, head, upstream] = line.split("|");
+      const remote = name?.startsWith("origin/") ? "origin" : undefined;
+      return { name: name ?? "", commit: commit ?? "", current: head === "*", ...(remote ? { remote } : {}), ...(upstream ? { remote: upstream.split("/")[0] } : {}) };
+    });
+  }
+
+  async getMergeBase(base: string, head: string): Promise<string> {
+    return (await this.run(["merge-base", base, head])).trim();
+  }
+
+  async getCommitsBetween(base: string, head: string): Promise<readonly string[]> {
+    const output = await this.run(["rev-list", "--reverse", `${base}..${head}`]);
+    return output.split("\n").map(x => x.trim()).filter(Boolean);
   }
 
   async listCommits(limit = 50): Promise<readonly Commit[]> {

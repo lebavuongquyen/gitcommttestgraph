@@ -18,3 +18,10 @@ export interface CommitDiff {
   readonly toCommit: string;
   readonly paths: readonly ChangedPath[];
 }
+
+export interface BranchRef {
+  readonly name: string;
+  readonly commit: string;
+  readonly current: boolean;
+  readonly remote?: string;
+}
