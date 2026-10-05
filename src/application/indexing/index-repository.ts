@@ -80,13 +80,24 @@ export class RepositoryIndexer {
       const manifest = JSON.parse(await this.git.readFileAtCommit(options.commit, pkg.manifestPath)) as Record<string, unknown>;
       const scripts = manifest.scripts && typeof manifest.scripts === "object" ? Object.fromEntries(Object.entries(manifest.scripts).filter(([, value]) => typeof value === "string")) as Record<string, string> : {};
       const packageFiles = files.filter(path => isInsidePackage(normalize(path), pkg.rootPath));
-      const testAdapter = testRegistry.all()[0];
+      const testAdapter = testRegistry.all().find(adapter => true);
       if (testAdapter) {
         const tg = await buildTestGraph(testAdapter, { files: packageFiles, packageId: pkg.id, root: pkg.rootPath, commit: options.commit, packageScripts: scripts, dependencies: pkg.dependencies, readFile: path => this.git.readFileAtCommit(options.commit, path) });
         nodes.push(...tg.nodes);
         edges.push(...tg.edges);
         const project = tg.nodes.find(node => node.type === NodeType.TEST_PROJECT);
         if (project) edges.push(makeEdge(pkg.id, EdgeType.CONTAINS, project.id, options.commit, pkg.manifestPath, "package-test-project"));
+      }
+    }
+    const testNodeIds = new Set(nodes.filter(n => n.type === NodeType.TEST_FILE).map(n => n.id));
+    for (const testFileNode of nodes.filter(n => n.type === NodeType.TEST_FILE)) {
+      const fileId = String(testFileNode.attributes.fileId);
+      for (const edge of analysis.edges) {
+        if (edge.source === fileId && (edge.type === EdgeType.IMPORTS || edge.type === EdgeType.CALLS)) {
+          const target = edge.target;
+          const targetNode = nodes.find(n => n.id === target);
+          if (targetNode?.type === NodeType.FILE || targetNode?.type === NodeType.SYMBOL) edges.push(makeEdge(testFileNode.id, EdgeType.TESTS, target, options.commit, String(testFileNode.attributes.path), "test-dependency")); 
+        }
       }
     }
     const packageById = new Map(packageInfo.packages.map(pkg => [pkg.id, pkg]));
