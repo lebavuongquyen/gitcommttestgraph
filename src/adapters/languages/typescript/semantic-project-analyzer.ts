@@ -36,7 +36,7 @@ export class TypeScriptProjectAnalyzer {
     const fileNodes = new Map<string, string>();
 
     for (const file of normalized) {
-      const fileId = stableId("file", file.path, file.content);
+      const fileId = stableId("file", file.path);
       fileNodes.set(file.path, fileId);
       nodes.push({ id: fileId, type: NodeType.FILE, attributes: { path: file.path, packageId: file.packageId ?? null, contentHash: stableId("content", file.content), language: "typescript" } });
     }
@@ -62,6 +62,16 @@ export class TypeScriptProjectAnalyzer {
             nodes.push({ id, type: NodeType.SYMBOL, attributes: { fileId, kind: symbolKind(node), name, exported: hasExportModifier(node), startLine: start, endLine: end } });
             edges.push(edge(fileId, EdgeType.CONTAINS, id, commit, file.path, start, end, "ast-declaration"));
           }
+        }
+        if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
+          const targetPath = resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);
+          const targetFile = targetPath ? fileNodes.get(targetPath) : undefined;
+          if (targetFile) edges.push(edge(fileId, EdgeType.EXPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "path-resolved-reexport"));
+        }
+        if (ts.isExportAssignment(node)) {
+          const target = checker.getSymbolAtLocation(node.expression);
+          const targetId = target ? symbolIdFor(target, checker, symbols) : undefined;
+          if (targetId) edges.push(edge(fileId, EdgeType.EXPORTS, targetId, commit, file.path, line(source, node), line(source, node), "typescript-typechecker-export"));
         }
         if (ts.isCallExpression(node)) {
           const target = checker.getSymbolAtLocation(node.expression);
