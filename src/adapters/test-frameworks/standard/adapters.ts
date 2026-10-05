@@ -9,8 +9,7 @@ abstract class AstTestAdapter implements TestFrameworkAdapter {
 
   async detect(context: TestDetectionContext) {
     const detected = this.markers.some(marker => marker in context.dependencies) ||
-      Object.keys(context.packageScripts).some(name => /test/i.test(name)) ||
-      context.files.some(file => this.patterns.some(pattern => pattern.test(file)));
+      context.files.some(file => this.patterns.some(pattern => pattern.test(file)) && /(?:vitest|jest|playwright|cypress)/i.test(file));
     return { detected, confidence: detected ? "HIGH" as const : "LOW" as const };
   }
 
