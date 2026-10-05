@@ -158,7 +158,7 @@ function isInsidePackage(path: string, rootPath: string): boolean {
 }
 
 function isSource(path: string): boolean {
-  if (/(^|\\|\\/)(node_modules|\.git|dist|build|coverage|\.next)(\\|\\/)/.test(path)) return false;
+  if (/(^|\/)(node_modules|\.git|dist|build|coverage|\.next)(\/)/.test(path)) return false;
   return /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path);
 }
 
