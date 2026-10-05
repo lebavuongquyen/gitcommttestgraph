@@ -24,3 +24,5 @@ export * from "./application/tests/test-registry.js";
 export * from "./application/queries/graph-query-service.js";
 export * from "./adapters/test-frameworks/generic-script/adapter.js";
 export * from "./adapters/package-managers/manager.js";
+export * from "./infrastructure/process/command-runner.js";
+export * from "./application/queries/impact-query-service.js";
