@@ -56,7 +56,10 @@ function isSymbolDeclaration(node: ts.Node): boolean {
 }
 
 function declarationName(node: ts.Node): string | null {
-  if (ts.isVariableStatement(node)) const declaration = node.declarationList.declarations[0];\n  return node.declarationList.declarations.length === 1 && declaration && ts.isIdentifier(declaration.name) ? declaration.name.text : null;
+  if (ts.isVariableStatement(node)) {
+    const declaration = node.declarationList.declarations[0];
+    return node.declarationList.declarations.length === 1 && declaration && ts.isIdentifier(declaration.name) ? declaration.name.text : null;
+  }
   const named = node as ts.Declaration & { name?: ts.Node };
   return named.name && ts.isIdentifier(named.name) ? named.name.text : null;
 }
