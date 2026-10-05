@@ -3,6 +3,7 @@ import { EdgeType, NodeType, type GraphNode, type GraphEdge } from "../../domain
 import { stableId, edgeId } from "../../domain/graph/ids.js";
 import { Confidence } from "../../domain/evidence/model.js";
 import { PackageManager } from "../../domain/package/model.js";
+import { classifyFile, FileKind } from "../../domain/repository/file-classification.js";
 import type { GitRepositoryPort } from "../ports/git.js";
 import type { GraphStore } from "../ports/graph-store.js";
 import type { SemanticSourceAnalyzer, SourceFileInput } from "../ports/source-analyzer.js";
@@ -41,7 +42,10 @@ export class RepositoryIndexer {
       attributes: { root: options.repository, vcs: "git" }
     }];
     const edges: GraphEdge[] = [];
+    const classified = new Map(files.map(path => [normalize(path), classifyFile(path)]));
     const sourceInputs: SourceFileInput[] = [];
+    let testFileCount = 0;
+    let configFileCount = 0;
 
     for (const pkg of packageInfo.packages) {
       nodes.push({ id: pkg.id, type: NodeType.PACKAGE, attributes: { name: pkg.name, rootPath: pkg.rootPath, manifestPath: pkg.manifestPath, manager: pkg.manager } });
@@ -54,6 +58,9 @@ export class RepositoryIndexer {
     }
 
     for (const path of files) {
+      const kind = classified.get(normalize(path));
+      if (kind === FileKind.TEST) testFileCount++;
+      if ([FileKind.CONFIG, FileKind.LANGUAGE_CONFIG, FileKind.BUILD_CONFIG, FileKind.TEST_CONFIG, FileKind.RUNTIME_CONFIG, FileKind.WORKSPACE_CONFIG].includes(kind!)) configFileCount++;
       if (!isSource(path)) continue;
       const content = await this.git.readFileAtCommit(options.commit, path);
       const pkg = packageInfo.packages.find(item => isInsidePackage(path, item.rootPath));
@@ -77,7 +84,7 @@ export class RepositoryIndexer {
       configuration: options.configuration,
       nodes,
       edges,
-      metadata: { packageCount: packageById.size, sourceFileCount: sourceInputs.length }
+      metadata: { packageCount: packageById.size, sourceFileCount: sourceInputs.length, testFileCount, configFileCount, classifiedFileCount: classified.size }
     });
     await this.store.saveSnapshot(snapshot);
     return { snapshot, reused: false };
