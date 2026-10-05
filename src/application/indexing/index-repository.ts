@@ -92,7 +92,7 @@ export class RepositoryIndexer {
       const packageFiles = files.filter(path => isInsidePackage(normalize(path), pkg.rootPath));
       const testAdapters = testRegistry.all();
       for (const testAdapter of testAdapters) {
-        const tg = await buildTestGraph(testAdapter, { files: packageFiles, packageId: pkg.id, root: pkg.rootPath, commit: options.commit, packageScripts: scripts, dependencies: pkg.dependencies, readFile: path => this.git.readFileAtCommit(options.commit, path) });
+        const tg = await buildTestGraph(testAdapter, { files: packageFiles, packageId: pkg.id, root: pkg.rootPath, commit: options.commit, packageScripts: scripts, dependencies: pkg.dependencies, readFile: path => this.git.readFileAtCommit(options.commit, path), commandResolverId: pkg.manager });
         nodes.push(...tg.nodes);
         edges.push(...tg.edges);
         const project = tg.nodes.find(node => node.type === NodeType.TEST_PROJECT);
