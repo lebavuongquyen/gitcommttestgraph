@@ -42,6 +42,7 @@ export class RepositoryIndexer {
     if (cached) return { snapshot: cached, reused: true };
 
     const files = await this.git.listFilesAtCommit(options.commit);
+    const commitInfo = await this.git.getCommit(options.commit);
     const packageInfo = await discoverPackagesAtCommit(this.git, files, options.commit);
     const nodes: GraphNode[] = [{
       id: stableId("repository", options.repository),
@@ -49,6 +50,9 @@ export class RepositoryIndexer {
       attributes: { root: options.repository, vcs: "git" }
     }];
     const edges: GraphEdge[] = [];
+    const commitNodeId = stableId("commit", commitInfo.hash);
+    nodes.push({ id: commitNodeId, type: NodeType.COMMIT, attributes: { hash: commitInfo.hash, parents: commitInfo.parents, author: commitInfo.author, committer: commitInfo.committer, timestamp: commitInfo.timestamp, message: commitInfo.message } });
+    edges.push(makeEdge(nodes[0]!.id, EdgeType.CONTAINS, commitNodeId, options.commit, "", "repository-commit"));
     const classified = new Map(files.map(path => [normalize(path), classifyFile(path)]));
     const sourceInputs: SourceFileInput[] = [];
     const pathAliases = await discoverPathAliases(this.git, files, options.commit);
