@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { GraphNode, GraphSnapshot } from "../../domain/graph/model.js";
 import type { GraphQueryRequest, GraphQueryResult, GraphStore } from "../../application/ports/graph-store.js";
+import { IndexCorruptError } from "../../domain/errors.js";
 
 export class JsonGraphStore implements GraphStore {
   constructor(private readonly directory: string) {}
@@ -15,7 +16,9 @@ export class JsonGraphStore implements GraphStore {
   async getSnapshot(repository: string, commit: string, analyzerVersion: string, configurationFingerprint: string): Promise<GraphSnapshot | null> {
     try {
       return JSON.parse(await readFile(this.pathFor(repository, commit, analyzerVersion, configurationFingerprint), "utf8")) as GraphSnapshot;
-    } catch {
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return null;
+      if (error instanceof SyntaxError) throw new IndexCorruptError(`Invalid graph snapshot for ${commit}`);
       return null;
     }
   }
