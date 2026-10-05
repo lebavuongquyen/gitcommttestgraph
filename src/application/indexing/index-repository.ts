@@ -7,6 +7,7 @@ import { classifyFile, FileKind } from "../../domain/repository/file-classificat
 import { buildTestGraph } from "../tests/test-graph-builder.js";
 import { TestRegistry } from "../tests/test-registry.js";
 import { GenericScriptTestAdapter } from "../../adapters/test-frameworks/generic-script/adapter.js";
+import { buildClassifiedFileGraph } from "./classified-file-graph.js";
 import { VitestAdapter, JestAdapter, NodeTestAdapter, PlaywrightAdapter } from "../../adapters/test-frameworks/standard/adapters.js";
 import type { GitRepositoryPort } from "../ports/git.js";
 import type { GraphStore } from "../ports/graph-store.js";
@@ -76,6 +77,10 @@ export class RepositoryIndexer {
       const pkg = packageInfo.packages.find(item => isInsidePackage(path, item.rootPath));
       sourceInputs.push({ path, content, ...(pkg ? { packageId: pkg.id } : {}) });
     }
+
+    const classifiedGraph = buildClassifiedFileGraph({ files, packages: packageInfo.packages, commit: options.commit });
+    nodes.push(...classifiedGraph.nodes);
+    edges.push(...classifiedGraph.edges);
 
     const analysis = this.analyzer.analyzeProject({ files: sourceInputs }, options.commit);
     nodes.push(...analysis.nodes);
