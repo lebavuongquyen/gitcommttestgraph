@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { discoverRepository, CliGitRepository, TypeScriptSemanticAnalyzer, JsonGraphStore, RepositoryIndexer, GraphQueryService, ImpactQueryService, diffSnapshots, configurationFingerprint, runProcess } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, RepositoryIndexer, GraphQueryService, ImpactQueryService, diffSnapshots, configurationFingerprint, runProcess } from "../dist/index.js";
 
 const command = process.argv[2] ?? "help";
 const root = process.cwd();
@@ -14,7 +14,7 @@ async function context() {
   return { repository, git, store };
 }
 async function indexAt(git, store, repository, commit) {
-  return new RepositoryIndexer(git, new TypeScriptSemanticAnalyzer(), store).index({
+  return new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store).index({
     repository, commit, configuration, analyzerVersion
   });
 }
