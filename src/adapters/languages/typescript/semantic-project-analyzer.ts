@@ -104,7 +104,7 @@ function scriptKind(path: string): ts.ScriptKind {
   return ts.ScriptKind.TS;
 }
 function isDeclaration(node: ts.Node): boolean { return ts.isFunctionDeclaration(node) || ts.isClassDeclaration(node) || ts.isInterfaceDeclaration(node) || ts.isTypeAliasDeclaration(node) || ts.isEnumDeclaration(node) || ts.isVariableDeclaration(node) || ts.isMethodDeclaration(node); }
-function declarationNameNode(node: ts.Node): ts.Node { return ts.isVariableDeclaration(node) ? node.name : (node as ts.Declaration).name!; }
+function declarationNameNode(node: ts.Node): ts.Node { if (ts.isVariableDeclaration(node)) return node.name; const named = node as ts.NamedDeclaration; return named.name!; }
 function declarationName(node: ts.Node): string | null { const n = declarationNameNode(node); return ts.isIdentifier(n) ? n.text : null; }
 function symbolKind(node: ts.Node): SymbolKind { if (ts.isFunctionDeclaration(node)) return SymbolKind.FUNCTION; if (ts.isClassDeclaration(node)) return SymbolKind.CLASS; if (ts.isInterfaceDeclaration(node)) return SymbolKind.INTERFACE; if (ts.isTypeAliasDeclaration(node)) return SymbolKind.TYPE; if (ts.isEnumDeclaration(node)) return SymbolKind.ENUM; if (ts.isVariableDeclaration(node)) return SymbolKind.VARIABLE; if (ts.isMethodDeclaration(node)) return SymbolKind.METHOD; return SymbolKind.OTHER; }
 function hasExportModifier(node: ts.Node): boolean { return !!(ts.canHaveModifiers(node) && ts.getModifiers(node)?.some(m => m.kind === ts.SyntaxKind.ExportKeyword)); }
