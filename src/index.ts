@@ -55,3 +55,5 @@ export * from "./domain/workflow/execution-result.js";
 export * from "./application/workflow/execution-plan-runner.js";
 export * from "./domain/workflow/execution-feedback.js";
 export * from "./application/workflow/execution-feedback-builder.js";
+export * from "./domain/agent/index.js";
+export * from "./application/agent/agent-task-service.js";

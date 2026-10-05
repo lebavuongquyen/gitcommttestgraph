@@ -1,10 +1,17 @@
 import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer, buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner, buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots } from "../index.js";
+import {
+  discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
+  RepositoryIndexer, IncrementalRepositoryIndexer, ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer,
+  buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
+  buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, AgentTaskService
+} from "../index.js";
+import type { AgentTaskPolicy } from "../domain/agent/model.js";
 
 const serverVersion = "0.3.8";
 const configuration = {};
+const agentTasks = new AgentTaskService();
 
 async function context(root: string) {
   const repository = await discoverRepository(root);
@@ -27,6 +34,39 @@ async function indexAt(ctx: Awaited<ReturnType<typeof context>>, commit: string)
 
 function result(value: unknown) {
   return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }], structuredContent: value };
+}
+
+async function analyzeAgentChange(root: string, input: {
+  taskId: string;
+  goal: string;
+  commit?: string;
+  policy: AgentTaskPolicy;
+}) {
+  const ctx = await context(root);
+  const target = input.commit ?? await ctx.git.getHead();
+  const indexed = await indexAt(ctx, target);
+  const commitInfo = await ctx.git.getCommit(target);
+  const parentCommit = commitInfo.parents?.[0];
+  let changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
+  let diff;
+  let previous;
+  if (parentCommit) {
+    previous = await indexAt(ctx, parentCommit);
+    diff = diffSnapshots(previous.snapshot, indexed.snapshot);
+    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
+    changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
+  }
+  return agentTasks.analyze({
+    taskId: input.taskId,
+    goal: input.goal,
+    repository: indexed.snapshot.repository,
+    commit: target,
+    ...(parentCommit ? { parentCommit } : {}),
+    current: indexed.snapshot,
+    ...(diff ? { diff } : {}),
+    changedSymbolIds,
+    policy: input.policy
+  });
 }
 
 export function createGctgMcpServer(root: string) {
@@ -123,7 +163,7 @@ export function createGctgMcpServer(root: string) {
       changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
     }
     const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds });
-    const impact = new ImpactEngine().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds, targetTypes: ["Symbol"] });
+    const impact = new ImpactEngine().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds, targetTypes: ["Symbol"] as never });
     const testImpact = new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds, coverageLinks: gaps.coverageLinks });
     const plan = buildExecutionPlan({ repository: indexed.snapshot.repository, commit: indexed.snapshot.commit, nodes: indexed.snapshot.nodes, edges: indexed.snapshot.edges, impacts: testImpact.impacts });
     const feedbackStore = new JsonTestResultStore(ctx.repository.root + "/.gctg/results");
@@ -159,6 +199,48 @@ export function createGctgMcpServer(root: string) {
     await results.save(feedback.executionId, { execution, feedback });
     await results.save(`latest:${ctx.repository.root}:${target}`, { execution, feedback });
     return result({ execution, feedback });
+  });
+
+  server.registerTool("agent_analyze_change", {
+    title: "Analyze Agent Change Task",
+    description: "Create a deterministic agent task for a Git commit. Read-only. Returns decision, evidence, uncertainty, test gaps, test impact and execution plan. Runtime execution is never performed by this tool.",
+    inputSchema: {
+      taskId: z.string().min(1).optional(),
+      goal: z.string().min(1).default("Determine whether the change is safe to merge."),
+      commit: z.string().optional(),
+      allowExecution: z.boolean().default(false),
+      requireAllImpactedTests: z.boolean().default(true),
+      failOnUnknown: z.boolean().default(false),
+      failOnNoCommand: z.boolean().default(false),
+      maxExecutionSteps: z.number().int().min(1).max(100).default(20)
+    }
+  }, async ({ taskId, goal, commit, allowExecution, requireAllImpactedTests, failOnUnknown, failOnNoCommand, maxExecutionSteps }) => {
+    const target = commit ?? "HEAD";
+    const id = taskId ?? `agent:${target}:${Date.now()}`;
+    return result(await analyzeAgentChange(root, {
+      taskId: id,
+      goal,
+      ...(commit ? { commit } : {}),
+      policy: { allowExecution, requireAllImpactedTests, failOnUnknown, failOnNoCommand, maxExecutionSteps }
+    }));
+  });
+
+  server.registerTool("agent_execute_task", {
+    title: "Execute Agent Task",
+    description: "Execute a previously analyzed agent task. Requires allowExecution=true in the task policy. This is an explicit side-effecting approval boundary.",
+    inputSchema: { taskId: z.string().min(1) }
+  }, async ({ taskId }) => {
+    return result(await agentTasks.execute(taskId, { run: runProcess }));
+  });
+
+  server.registerTool("agent_task_result", {
+    title: "Get Agent Task Result",
+    description: "Read the current agent task state and decision. Read-only.",
+    inputSchema: { taskId: z.string().min(1) }
+  }, async ({ taskId }) => {
+    const task = agentTasks.get(taskId);
+    if (!task) return result({ found: false, taskId });
+    return result(task);
   });
 
   server.registerResource("graph-snapshot", "gctg://graph/{commit}", {
