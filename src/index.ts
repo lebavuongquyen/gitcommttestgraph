@@ -39,3 +39,5 @@ export * from "./infrastructure/http/server.js";
 
 export * from "./adapters/test-frameworks/standard/adapters.js";
 export * from "./application/indexing/tsconfig-aliases.js";
+
+export * from "./domain/errors.js";
