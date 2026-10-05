@@ -23,8 +23,7 @@ export function buildDataReferenceGraph(input: DataReferenceInput): { nodes: Gra
     if (sourceKind !== FileKind.TEST && sourceKind !== FileKind.SOURCE) continue;
     for (const target of targets) {
       const base = target.path.split("/").pop() ?? target.path;
-      const stem = base.replace(/.[^.]+$/, "");
-      if (!content.includes(base) && !content.includes(stem)) continue;
+      if (!content.includes(base) && !content.includes(target.path)) continue;
       const type = target.kind === FileKind.FIXTURE ? EdgeType.USES_FIXTURE : EdgeType.USES_SCHEMA;
       edges.push({ id: edgeId(stableId("file", sourcePath), type, stableId("file", target.path), input.commit), source: stableId("file", sourcePath), target: stableId("file", target.path), type, confidence: Confidence.MEDIUM, evidence: [{ kind: "text-reference", filePath: sourcePath }], sourceCommit: input.commit });
     }
