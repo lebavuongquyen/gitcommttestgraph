@@ -1,4 +1,3 @@
-import { runProcess } from "../../infrastructure/process/command-runner.js";
 import type { ExecutionPlan, ExecutionStep } from "../../domain/workflow/execution-plan.js";
 import type { WorkflowExecutionResult, WorkflowRunner, WorkflowStepResult } from "../../domain/workflow/execution-result.js";
 
@@ -6,14 +5,8 @@ export interface ProcessExecutor {
   run(command: { readonly executable: string; readonly args: readonly string[]; readonly cwd: string }): Promise<{ readonly exitCode: number; readonly stdout: string; readonly stderr: string }>;
 }
 
-export class DefaultProcessExecutor implements ProcessExecutor {
-  async run(command: { readonly executable: string; readonly args: readonly string[]; readonly cwd: string }) {
-    return runProcess(command);
-  }
-}
-
 export class ExecutionPlanRunner implements WorkflowRunner {
-  constructor(private readonly executor: ProcessExecutor = new DefaultProcessExecutor()) {}
+  constructor(private readonly executor: ProcessExecutor) {}
 
   async execute(plan: ExecutionPlan): Promise<WorkflowExecutionResult> {
     const startedAt = new Date().toISOString();

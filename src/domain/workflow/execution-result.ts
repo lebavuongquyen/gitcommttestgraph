@@ -1,4 +1,4 @@
-import type { ExecutionCommand, ExecutionPlan, ExecutionStepStatus } from "../../domain/workflow/execution-plan.js";
+import type { ExecutionCommand, ExecutionPlan, ExecutionStepStatus } from "./execution-plan.js";
 
 export interface WorkflowExecutionResult {
   readonly schemaVersion: 1;
