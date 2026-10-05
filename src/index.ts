@@ -49,3 +49,6 @@ export * from "./application/tests/execution-service.js";
 export * from "./infrastructure/persistence/json-test-result-store.js";
 export * from "./infrastructure/persistence/index-lock.js";
 export * from "./infrastructure/persistence/json-semantic-cache.js";
+
+export * from './domain/impact/test-impact.js';
+export * from './application/impact/test-impact-analyzer.js';

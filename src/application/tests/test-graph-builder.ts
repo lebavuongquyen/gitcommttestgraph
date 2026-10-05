@@ -1,7 +1,7 @@
 import { EdgeType, NodeType, type GraphEdge, type GraphNode } from "../../domain/graph/model.js";
 import { Confidence } from "../../domain/evidence/model.js";
 import { edgeId, stableId } from "../../domain/graph/ids.js";
-import type { TestFrameworkAdapter, TestDetectionContext, TestProjectContext } from "./test-registry.js";
+import type { TestFrameworkAdapter, TestProjectContext } from "./test-registry.js";
 
 export interface TestGraphInput {
   readonly files: readonly string[];
@@ -28,18 +28,6 @@ export async function buildTestGraph(
 
   const rootPath = input.root;
   const projectId = stableId("test-project", adapter.id, input.packageId ?? rootPath);
-  const projectNode: GraphNode = {
-    id: projectId,
-    type: NodeType.TEST_PROJECT,
-    attributes: {
-      framework: adapter.id,
-      rootPath,
-      ...(input.packageId ? { packageId: input.packageId } : {}),
-      commandResolverId: input.commandResolverId ?? (input.packageScripts.test ? "npm" : "unknown")
-    }
-  };
-  const nodes: GraphNode[] = [projectNode];
-  const edges: GraphEdge[] = [];
   const project = {
     id: projectId,
     ...(input.packageId ? { packageId: input.packageId } : {}),
@@ -56,6 +44,21 @@ export async function buildTestGraph(
     project,
     readFile: input.readFile
   };
+  const testCommand = await adapter.resolveCommand({ ...context, request: "project" });
+
+  const projectNode: GraphNode = {
+    id: projectId,
+    type: NodeType.TEST_PROJECT,
+    attributes: {
+      framework: adapter.id,
+      rootPath,
+      ...(input.packageId ? { packageId: input.packageId } : {}),
+      commandResolverId: project.commandResolverId,
+      testCommand
+    }
+  };
+  const nodes: GraphNode[] = [projectNode];
+  const edges: GraphEdge[] = [];
   const testFiles = await adapter.discoverTests(context);
   for (const path of testFiles) {
     const fileId = stableId("file", path);
