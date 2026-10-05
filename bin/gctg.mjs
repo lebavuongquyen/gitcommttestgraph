@@ -80,6 +80,25 @@ try {
     json(new ImpactQueryService(store).analyze(result.snapshot, { changedNodeIds: ids }));
     process.exit(0);
   }
+  if (command === "test-gaps") {
+    const { repository, git, store, semanticCache } = await context();
+    const commit = process.argv[3] ?? await git.getHead();
+    const packageId = process.argv.includes("--package") ? process.argv[process.argv.indexOf("--package") + 1] : undefined;
+    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const currentNodeIds = new Set(result.snapshot.nodes.map(node => node.id));
+    let changedNodeIds = [];
+    const commitInfo = await git.getCommit(commit);
+    if (commitInfo.parents?.length) {
+      const parent = await indexAt(git, store, semanticCache, repository.root, commitInfo.parents[0]);
+      const diff = diffSnapshots(parent.snapshot, result.snapshot);
+      changedNodeIds = [...new Set([...diff.addedNodes, ...diff.changedNodes])].filter(id => currentNodeIds.has(id));
+    }
+    const packageNode = packageId ? result.snapshot.nodes.find(node => node.type === "Package" && (node.id === packageId || node.attributes.name === packageId)) : undefined;
+    const analysisPackageId = packageNode?.id ?? packageId;
+    const analysis = new (await import("../dist/application/impact/test-gap-analyzer.js")).TestGapAnalyzer().analyze(result.snapshot, { changedNodeIds, packageId: analysisPackageId });
+    json(analysis);
+    process.exit(0);
+  }
   if (command === "tests") {
     const { repository, git, store, semanticCache } = await context();
     const commit = process.argv[3] ?? await git.getHead();

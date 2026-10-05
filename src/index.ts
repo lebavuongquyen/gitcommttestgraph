@@ -4,6 +4,8 @@ export * from "./domain/graph/model.js";
 export * from "./domain/graph/ids.js";
 export * from "./domain/graph/snapshot.js";
 export * from "./domain/impact/model.js";
+export * from "./domain/impact/test-gap.js";
+export * from "./application/impact/test-gap-analyzer.js";
 export * from "./domain/package/model.js";
 export * from "./domain/repository/model.js";
 export * from "./domain/symbol/model.js";
