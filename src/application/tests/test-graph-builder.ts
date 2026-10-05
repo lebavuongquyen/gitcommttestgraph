@@ -11,6 +11,7 @@ export interface TestGraphInput {
   readonly packageScripts: Readonly<Record<string, string>>;
   readonly dependencies: Readonly<Record<string, string>>;
   readonly readFile: (path: string) => Promise<string>;
+  readonly commandResolverId?: string;
 }
 
 export async function buildTestGraph(
@@ -25,8 +26,8 @@ export async function buildTestGraph(
   });
   if (!detection.detected) return { nodes: [], edges: [] };
 
-  const rootPath = input.packageId ?? input.root;
-  const projectId = stableId("test-project", adapter.id, rootPath);
+  const rootPath = input.root;
+  const projectId = stableId("test-project", adapter.id, input.packageId ?? rootPath);
   const projectNode: GraphNode = {
     id: projectId,
     type: NodeType.TEST_PROJECT,
@@ -34,7 +35,7 @@ export async function buildTestGraph(
       framework: adapter.id,
       rootPath,
       ...(input.packageId ? { packageId: input.packageId } : {}),
-      commandResolverId: input.packageScripts.test ? "package-manager" : "unknown"
+      commandResolverId: input.commandResolverId ?? (input.packageScripts.test ? "npm" : "unknown")
     }
   };
   const nodes: GraphNode[] = [projectNode];
@@ -45,7 +46,7 @@ export async function buildTestGraph(
     framework: adapter.id,
     rootPath,
     configurationFiles: [],
-    commandResolverId: input.packageScripts.test ? "package-manager" : "unknown"
+    commandResolverId: input.commandResolverId ?? (input.packageScripts.test ? "npm" : "unknown")
   };
   const context: TestProjectContext = {
     root: input.root,
