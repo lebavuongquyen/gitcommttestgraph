@@ -12,7 +12,12 @@ export class GenericScriptTestAdapter implements TestFrameworkAdapter {
   }
 
   async discoverTests(context: TestProjectContext): Promise<readonly string[]> {
-    return context.files.filter(path => /(^|[/\\])test[-_].*\.(mjs|cjs|js|ts|tsx)$|(^|[/\\]).*\.test\.(mjs|cjs|js|ts|tsx)$|(^|[/\\]).*\.spec\.(mjs|cjs|js|ts|tsx)$/.test(path));
+    return context.files.filter(path => {
+      const normalized = path.replaceAll("\\", "/");
+      if (!/\.(mjs|cjs|js|ts|tsx)$/.test(normalized)) return false;
+      if (/(^|\/)(tests?|__tests__|spec)(\/|$)/i.test(normalized)) return true;
+      return /(^|\/)scripts\/test[-_].*\.(mjs|cjs|js|ts|tsx)$/i.test(normalized);
+    });
   }
 
   async extractCases(context: TestProjectContext, testFile: string) {

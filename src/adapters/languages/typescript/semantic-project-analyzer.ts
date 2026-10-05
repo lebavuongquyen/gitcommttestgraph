@@ -7,15 +7,15 @@ import { SymbolKind } from "../../../domain/symbol/model.js";
 import type { SourceAnalysis, SourceFileInput } from "../../../application/ports/source-analyzer.js";
 
 export class TypeScriptProjectAnalyzer {
-  analyzeProject(input: { readonly files: readonly SourceFileInput[]; readonly pathAliases?: Readonly<Record<string, readonly string[]>>; readonly baseUrl?: string; readonly packageRoots?: Readonly<Record<string, string>> }, commit: string): SourceAnalysis {
-    return this.analyzeFiles(input.files, commit, input.pathAliases, input.baseUrl, input.packageRoots);
+  analyzeProject(input: { readonly files: readonly SourceFileInput[]; readonly pathAliases?: Readonly<Record<string, readonly string[]>>; readonly baseUrl?: string; readonly packageRoots?: Readonly<Record<string, string>>; readonly packageEntrypoints?: Readonly<Record<string, string>> }, commit: string): SourceAnalysis {
+    return this.analyzeFiles(input.files, commit, input.pathAliases, input.baseUrl, input.packageRoots, input.packageEntrypoints);
   }
 
   analyze(input: SourceFileInput | readonly SourceFileInput[], commit: string): SourceAnalysis {
     return this.analyzeFiles(Array.isArray(input) ? input : [input], commit);
   }
 
-  private analyzeFiles(files: readonly SourceFileInput[], commit: string, pathAliases?: Readonly<Record<string, readonly string[]>>, baseUrl?: string, packageRoots?: Readonly<Record<string, string>>): SourceAnalysis {
+  private analyzeFiles(files: readonly SourceFileInput[], commit: string, pathAliases?: Readonly<Record<string, readonly string[]>>, baseUrl?: string, packageRoots?: Readonly<Record<string, string>>, packageEntrypoints?: Readonly<Record<string, string>>): SourceAnalysis {
     const normalized = files.map(file => ({ ...file, path: file.path.replaceAll("\\", "/") }));
     const fileNames = normalized.map(file => file.path);
     const compilerOptions: ts.CompilerOptions = {
@@ -95,7 +95,7 @@ export class TypeScriptProjectAnalyzer {
           }
         }
         if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
-          const targetPath = resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);
+          const targetPath = resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes, pathAliases, packageRoots, packageEntrypoints);
           const targetFile = targetPath ? fileNodes.get(targetPath) : undefined;
           if (targetFile) edges.push(edge(fileId, EdgeType.EXPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "path-resolved-reexport"));
         }
@@ -105,6 +105,12 @@ export class TypeScriptProjectAnalyzer {
           if (targetId) edges.push(edge(fileId, EdgeType.EXPORTS, targetId, commit, file.path, line(source, node), line(source, node), "typescript-typechecker-export"));
         }
         if (ts.isCallExpression(node)) {
+          const dynamicArgument = node.arguments.length === 1 ? node.arguments[0] : undefined;
+          if (node.expression.kind === ts.SyntaxKind.ImportKeyword && dynamicArgument && ts.isStringLiteral(dynamicArgument)) {
+            const targetPath = resolveImportPath(file.path, dynamicArgument.text, fileNodes, pathAliases, packageRoots, packageEntrypoints);
+            const targetFile = targetPath ? fileNodes.get(targetPath) : undefined;
+            if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "path-resolved-dynamic-import"));
+          }
           const target = checker.getSymbolAtLocation(node.expression);
           const targetId = target ? symbolIdFor(target, checker, symbols) : undefined;
           const fallbackTargetId = ts.isIdentifier(node.expression) && (symbolsByName.get(node.expression.text)?.length === 1) ? symbolsByName.get(node.expression.text)?.[0] : undefined;
@@ -124,7 +130,7 @@ export class TypeScriptProjectAnalyzer {
       };
       for (const statement of source.statements) {
         if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
-          const targetPath = resolveImportPath(file.path, statement.moduleSpecifier.text, fileNodes, pathAliases, packageRoots);
+          const targetPath = resolveImportPath(file.path, statement.moduleSpecifier.text, fileNodes, pathAliases, packageRoots, packageEntrypoints);
           const targetFile = targetPath ? fileNodes.get(targetPath) : undefined;
           if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, statement), line(source, statement), "path-resolved-import"));
         }
@@ -175,14 +181,17 @@ function resolveFileName(path: string, files: Map<string, string>): string {
   return path;
 }
 
-function resolveImportPath(importer: string, specifier: string, files: Map<string, string>, aliases?: Readonly<Record<string, readonly string[]>>, packageRoots?: Readonly<Record<string, string>>): string | undefined {
+function resolveImportPath(importer: string, specifier: string, files: Map<string, string>, aliases?: Readonly<Record<string, readonly string[]>>, packageRoots?: Readonly<Record<string, string>>, packageEntrypoints?: Readonly<Record<string, string>>): string | undefined {
   if (!specifier.startsWith(".")) {
     const alias = resolveAlias(specifier, aliases);
     if (alias) return resolveCandidate(alias, files);
     const packageName = Object.keys(packageRoots ?? {}).sort((a, b) => b.length - a.length).find(name => specifier === name || specifier.startsWith(name + "/"));
     if (packageName) {
+      const packageRoot = normalizePath(packageRoots![packageName]!);
       const suffix = specifier.slice(packageName.length).replace(/^\//, "");
-      return resolveCandidate(posix.join(packageRoots![packageName]!, suffix), files);
+      if (!suffix && packageEntrypoints?.[packageName]) return resolveCandidate(packageEntrypoints[packageName]!, files);
+      const packageTarget = suffix ? posix.join(packageRoot, suffix) : packageRoot;
+      return resolveCandidate(packageTarget, files);
     }
     return undefined;
   }
@@ -203,8 +212,12 @@ function resolveAlias(specifier: string, aliases?: Readonly<Record<string, reado
   return undefined;
 }
 function resolveCandidate(base: string, files: Map<string, string>): string | undefined {
-  const normalized = posix.normalize(base).replace(/^\.\//, "");
+  const normalized = normalizePath(base);
   const candidates = [normalized, normalized + ".ts", normalized + ".tsx", normalized + ".js", normalized + ".jsx", normalized + ".mjs", normalized + ".cjs", posix.join(normalized, "index.ts"), posix.join(normalized, "index.tsx"), posix.join(normalized, "index.js")];
   for (const candidate of candidates) if (files.has(candidate)) return candidate;
   return undefined;
+}
+
+function normalizePath(path: string): string {
+  return posix.normalize(path.replaceAll("\\", "/")).replace(/^\.\//, "");
 }

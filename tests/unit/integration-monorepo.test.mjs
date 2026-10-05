@@ -44,8 +44,11 @@ test("repository integration builds workspace and semantic impact without cross-
     assert.ok(web && api && shared);
     assert.equal(shared.attributes.rootPath, "packages/shared");
     assert.ok(snapshot.edges.some(edge => edge.source === web.id && edge.target === shared.id && edge.type === EdgeType.DEPENDS_ON));
-    assert.equal(snapshot.edges.some(edge => edge.source === web.id && edge.target === api.id && edge.type === EdgeType.DEPENDS_ON), false);
     const pageFile = snapshot.nodes.find(node => node.type === NodeType.FILE && node.attributes.path === "apps/web/src/page.ts");
+    const sharedFile = snapshot.nodes.find(node => node.type === NodeType.FILE && node.attributes.path === "packages/shared/src/index.ts");
+    assert.ok(sharedFile);
+    assert.ok(snapshot.edges.some(edge => edge.type === EdgeType.IMPORTS && edge.source === pageFile?.id && edge.target === sharedFile.id));
+    assert.equal(snapshot.edges.some(edge => edge.source === web.id && edge.target === api.id && edge.type === EdgeType.DEPENDS_ON), false);
     const apiFile = snapshot.nodes.find(node => node.type === NodeType.FILE && node.attributes.path === "apps/api/src/controller.ts");
     assert.ok(pageFile && apiFile);
     assert.equal(snapshot.edges.some(edge => edge.source === pageFile.id && edge.target === apiFile.id && (edge.type === EdgeType.IMPORTS || edge.type === EdgeType.CALLS)), false);

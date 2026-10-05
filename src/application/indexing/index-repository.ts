@@ -1,3 +1,4 @@
+import { posix } from "node:path";
 import { createSnapshot } from "../../domain/graph/snapshot.js";
 import { EdgeType, NodeType, type GraphNode, type GraphEdge } from "../../domain/graph/model.js";
 import { stableId, edgeId } from "../../domain/graph/ids.js";
@@ -57,6 +58,7 @@ export class RepositoryIndexer {
     const sourceInputs: SourceFileInput[] = [];
     const pathAliases = await discoverPathAliases(this.git, files, options.commit);
     const packageRoots = Object.fromEntries(packageInfo.packages.map(pkg => [pkg.name, pkg.rootPath]));
+    const packageEntrypoints = await discoverPackageEntrypoints(this.git, packageInfo.packages, options.commit);
     const testRegistry = new TestRegistry();
     testRegistry.register(new PlaywrightAdapter());
     testRegistry.register(new VitestAdapter());
@@ -90,7 +92,7 @@ export class RepositoryIndexer {
     nodes.push(...classifiedGraph.nodes);
     edges.push(...classifiedGraph.edges);
 
-    const analysis = this.analyzer.analyzeProject({ files: sourceInputs, pathAliases, packageRoots }, options.commit);
+    const analysis = this.analyzer.analyzeProject({ files: sourceInputs, pathAliases, packageRoots, packageEntrypoints }, options.commit);
     const dataInputs = new Map<string, string>();
     for (const input of sourceInputs) dataInputs.set(normalize(input.path), input.content);
     const dataGraph = buildDataReferenceGraph({ files, contents: dataInputs, commit: options.commit });
@@ -218,6 +220,40 @@ function isInsidePackage(path: string, rootPath: string): boolean {
 function isSource(path: string): boolean {
   if (/(^|\/)(node_modules|\.git|dist|build|coverage|\.next)(\/)/.test(path)) return false;
   return /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path);
+}
+
+async function discoverPackageEntrypoints(git: GitRepositoryPort, packages: readonly IndexedPackage[], commit: string): Promise<Record<string, string>> {
+  const result: Record<string, string> = {};
+  for (const pkg of packages) {
+    try {
+      const manifest = JSON.parse(await git.readFileAtCommit(commit, pkg.manifestPath)) as Record<string, unknown>;
+      const exportsValue = manifest.exports;
+      const target = typeof exportsValue === "string"
+        ? exportsValue
+        : exportsValue && typeof exportsValue === "object"
+          ? exportTarget((exportsValue as Record<string, unknown>)["."])
+          : undefined;
+      if (target) result[pkg.name] = normalize(joinPath(pkg.rootPath, target));
+      else if (typeof manifest.module === "string") result[pkg.name] = normalize(joinPath(pkg.rootPath, manifest.module));
+      else if (typeof manifest.main === "string") result[pkg.name] = normalize(joinPath(pkg.rootPath, manifest.main));
+    } catch {}
+  }
+  return result;
+}
+
+function exportTarget(value: unknown): string | undefined {
+  if (typeof value === "string") return value;
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as Record<string, unknown>;
+  for (const key of ["import", "require", "default", "node", "browser"]) {
+    const candidate = exportTarget(record[key]);
+    if (candidate) return candidate;
+  }
+  return undefined;
+}
+
+function joinPath(root: string, target: string): string {
+  return posix.normalize(posix.join(root, target));
 }
 
 function normalize(path: string): string { return path.replaceAll("\\", "/"); }

@@ -24,5 +24,6 @@ export interface SourceProjectInput {
   readonly pathAliases?: Readonly<Record<string, readonly string[]>>;
   readonly baseUrl?: string;
   readonly packageRoots?: Readonly<Record<string, string>>;
+  readonly packageEntrypoints?: Readonly<Record<string, string>>;
 }
 
