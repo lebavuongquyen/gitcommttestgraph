@@ -1,4 +1,5 @@
 import ts from "typescript";
+import { posix } from "node:path";
 import { stableId, edgeId } from "../../../domain/graph/ids.js";
 import { Confidence } from "../../../domain/evidence/model.js";
 import { EdgeType, NodeType, type GraphEdge, type GraphNode } from "../../../domain/graph/model.js";
@@ -61,7 +62,8 @@ export class TypeScriptProjectAnalyzer {
         if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
           const resolved = checker.getSymbolAtLocation(node.moduleSpecifier);
           const target = resolved?.declarations?.[0];
-          const targetFile = target ? fileNodes.get(resolveFileName(target.getSourceFile().fileName.replaceAll("\\", "/"), fileNodes)) : undefined;
+          const targetPath = target ? target.getSourceFile().fileName.replaceAll("\\", "/") : resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);
+          const targetFile = targetPath ? fileNodes.get(resolveFileName(targetPath, fileNodes)) : undefined;
           if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "typescript-resolved-import"));
         }
         if (ts.isCallExpression(node)) {
@@ -125,4 +127,13 @@ function resolveFileName(path: string, files: Map<string, string>): string {
     : [path];
   for (const candidate of candidates) if (files.has(candidate)) return candidate;
   return path;
+}
+
+function resolveImportPath(importer: string, specifier: string, files: Map<string, string>): string | undefined {
+  if (!specifier.startsWith(".")) return undefined;
+  const base = posix.normalize(posix.join(posix.dirname(importer), specifier));
+  for (const candidate of [base, base + ".ts", base + ".tsx", base + ".js", base + ".jsx", posix.join(base, "index.ts"), posix.join(base, "index.tsx"), posix.join(base, "index.js")]) {
+    if (files.has(candidate)) return candidate;
+  }
+  return undefined;
 }
