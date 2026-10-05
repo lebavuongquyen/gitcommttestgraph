@@ -64,3 +64,38 @@ async function detectManager(root: string): Promise<PackageManager> {
   return PackageManager.NPM;
 }
 
+
+function workspacePatternsFromManifest(data: Record<string, unknown> | null): string[] {
+  const workspaces = data?.workspaces;
+  if (Array.isArray(workspaces)) return workspaces.filter((x): x is string => typeof x === "string");
+  if (workspaces && typeof workspaces === "object" && Array.isArray((workspaces as any).packages)) {
+    return (workspaces as any).packages.filter((x: unknown): x is string => typeof x === "string");
+  }
+  return ["apps/*", "packages/*"];
+}
+
+async function expandWorkspace(root: string, pattern: string): Promise<string[]> {
+  const normalized = pattern.replaceAll("\\", "/");
+  if (!normalized.endsWith("/*")) return [join(root, normalized, "package.json")];
+  const parent = join(root, normalized.slice(0, -2));
+  try {
+    const { readdir } = await import("node:fs/promises");
+    const entries = await readdir(parent, { withFileTypes: true });
+    return entries.filter(e => e.isDirectory()).map(e => join(parent, e.name, "package.json"));
+  } catch {
+    return [];
+  }
+}
+
+async function readJson(path: string): Promise<Record<string, unknown> | null> {
+  try {
+    return JSON.parse(await readFile(path, "utf8")) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function record(value: unknown): Record<string, string> {
+  if (!value || typeof value !== "object") return {};
+  return Object.fromEntries(Object.entries(value).filter(([, v]) => typeof v === "string")) as Record<string, string>;
+}
