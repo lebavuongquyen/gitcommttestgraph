@@ -21,6 +21,8 @@ test("graph store writes atomically and rejects malformed snapshots", async () =
   try {
     await store.saveSnapshot(snapshot);
     assert.deepEqual(await store.getSnapshot("repo", "abc", "test", "fp"), snapshot);
+    const listed = await store.query({ nodeType: "Repository" });
+    assert.deepEqual(listed.nodes.map(node => node.id), ["n"]);
     const path = join(root, Buffer.from("repo").toString("base64url"), "test", "fp", "bad.json");
     await writeFile(path, JSON.stringify({ ...snapshot, edges: [{ id: "e", source: "missing", target: "n", type: "CONTAINS", sourceCommit: "abc", evidence: [] }] }));
     await assert.rejects(() => store.getSnapshot("repo", "bad", "test", "fp"), /Invalid graph snapshot/);

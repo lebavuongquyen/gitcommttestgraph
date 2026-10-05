@@ -4,7 +4,17 @@ import type { GraphNode, GraphSnapshot } from "../../domain/graph/model.js";
 import type { GraphQueryRequest, GraphQueryResult, GraphStore } from "../../application/ports/graph-store.js";
 import { IndexCorruptError } from "../../domain/errors.js";
 
+interface SnapshotManifestEntry {
+  readonly repository: string;
+  readonly commit: string;
+  readonly analyzerVersion: string;
+  readonly configurationFingerprint: string;
+  readonly path: string;
+}
+
 export class JsonGraphStore implements GraphStore {
+  private manifestPromise?: Promise<SnapshotManifestEntry[]>;
+
   constructor(private readonly directory: string) {}
 
   async saveSnapshot(snapshot: GraphSnapshot): Promise<void> {
@@ -14,6 +24,10 @@ export class JsonGraphStore implements GraphStore {
     const temp = path + "." + process.pid + "." + Date.now() + ".tmp";
     await writeFile(temp, JSON.stringify(snapshot), "utf8");
     await rename(temp, path);
+    const entries = await this.readManifest();
+    const filtered = entries.filter(entry => entry.path !== path);
+    filtered.push({ repository: snapshot.repository, commit: snapshot.commit, analyzerVersion: snapshot.analyzerVersion, configurationFingerprint: snapshot.configurationFingerprint, path });
+    await this.writeManifest(filtered.sort((a, b) => a.path.localeCompare(b.path)));
   }
 
   async getSnapshot(repository: string, commit: string, analyzerVersion: string, configurationFingerprint: string): Promise<GraphSnapshot | null> {
@@ -30,25 +44,22 @@ export class JsonGraphStore implements GraphStore {
   }
 
   async getNode(id: string): Promise<GraphNode | null> {
-    let found: GraphNode | null = null;
-    await walk(this.directory, async path => {
-      if (!path.endsWith(".json")) return;
+    for (const entry of await this.readManifest()) {
       try {
-        const snapshot = JSON.parse(await readFile(path, "utf8")) as unknown;
+        const snapshot = JSON.parse(await readFile(entry.path, "utf8")) as unknown;
         validateSnapshot(snapshot);
         const node = snapshot.nodes.find(item => item.id === id);
-        if (node) found = node;
+        if (node) return node;
       } catch {}
-    });
-    return found;
+    }
+    return null;
   }
 
   async query(request: GraphQueryRequest): Promise<GraphQueryResult> {
     const nodes = new Map<string, GraphNode>();
-    await walk(this.directory, async path => {
-      if (!path.endsWith(".json")) return;
+    for (const entry of await this.readManifest()) {
       try {
-        const snapshot = JSON.parse(await readFile(path, "utf8")) as unknown;
+        const snapshot = JSON.parse(await readFile(entry.path, "utf8")) as unknown;
         validateSnapshot(snapshot);
         for (const node of snapshot.nodes) {
           if (request.nodeType && node.type !== request.nodeType) continue;
@@ -57,13 +68,31 @@ export class JsonGraphStore implements GraphStore {
           nodes.set(node.id, node);
         }
       } catch {}
-    });
+    }
     return { nodes: [...nodes.values()].sort((a, b) => a.id.localeCompare(b.id)) };
   }
 
   private pathFor(repository: string, commit: string, analyzerVersion: string, fingerprint: string): string {
     const repositoryKey = Buffer.from(repository).toString("base64url");
     return join(this.directory, repositoryKey, analyzerVersion, fingerprint, commit + ".json");
+  }
+
+  private async readManifest(): Promise<SnapshotManifestEntry[]> {
+    if (!this.manifestPromise) {
+      this.manifestPromise = readFile(join(this.directory, "manifest.json"), "utf8")
+        .then(raw => JSON.parse(raw) as SnapshotManifestEntry[])
+        .catch(() => []);
+    }
+    return this.manifestPromise;
+  }
+
+  private async writeManifest(entries: SnapshotManifestEntry[]): Promise<void> {
+    const path = join(this.directory, "manifest.json");
+    await mkdir(this.directory, { recursive: true });
+    const temp = path + "." + process.pid + "." + Date.now() + ".tmp";
+    await writeFile(temp, JSON.stringify(entries), "utf8");
+    await rename(temp, path);
+    this.manifestPromise = Promise.resolve(entries);
   }
 }
 
