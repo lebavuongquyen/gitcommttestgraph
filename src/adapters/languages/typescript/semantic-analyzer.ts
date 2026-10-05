@@ -76,5 +76,5 @@ function symbolKind(node: ts.Node): SymbolKind {
 }
 
 function hasExportModifier(node: ts.Node): boolean {
-  return !!ts.getModifiers(node)?.some((m: ts.ModifierLike) => m.kind === ts.SyntaxKind.ExportKeyword);
+  return !!ts.canHaveModifiers(node) && ts.getModifiers(node)?.some((m: ts.ModifierLike) => m.kind === ts.SyntaxKind.ExportKeyword);
 }
