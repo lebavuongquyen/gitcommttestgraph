@@ -42,11 +42,34 @@ export class TypeScriptProjectAnalyzer {
     const symbols = new Map<ts.Symbol, string>();
     const symbolsByName = new Map<string, string[]>();
     const fileNodes = new Map<string, string>();
+    const registeredSymbols = new Set<string>();
 
     for (const file of normalized) {
       const fileId = stableId("file", file.path);
       fileNodes.set(file.path, fileId);
       nodes.push({ id: fileId, type: NodeType.FILE, attributes: { path: file.path, packageId: file.packageId ?? null, contentHash: stableId("content", file.content), language: "typescript" } });
+    }
+
+    for (const file of normalized) {
+      const source = program.getSourceFile(file.path);
+      if (!source) continue;
+      const register = (node: ts.Node) => {
+        if (isDeclaration(node)) {
+          const symbol = checker.getSymbolAtLocation(declarationNameNode(node));
+          const name = declarationName(node);
+          if (symbol && name) {
+            const start = line(source, node);
+            const end = source.getLineAndCharacterOfPosition(node.end).line + 1;
+            const id = stableId("symbol", file.path, name, String(start), String(end));
+            symbols.set(symbol, id);
+            const named = symbolsByName.get(name) ?? [];
+            if (!named.includes(id)) named.push(id);
+            symbolsByName.set(name, named);
+          }
+        }
+        ts.forEachChild(node, register);
+      };
+      ts.forEachChild(source, register);
     }
 
     for (const file of normalized) {
@@ -64,11 +87,11 @@ export class TypeScriptProjectAnalyzer {
             const end = source.getLineAndCharacterOfPosition(node.end).line + 1;
             const id = stableId("symbol", file.path, name, String(start), String(end));
             symbols.set(symbol, id);
-            const named = symbolsByName.get(name) ?? [];
-            named.push(id);
-            symbolsByName.set(name, named);
-            nodes.push({ id, type: NodeType.SYMBOL, attributes: { fileId, kind: symbolKind(node), name, exported: hasExportModifier(node), startLine: start, endLine: end } });
-            edges.push(edge(fileId, EdgeType.CONTAINS, id, commit, file.path, start, end, "ast-declaration"));
+            if (!registeredSymbols.has(id)) {
+              registeredSymbols.add(id);
+              nodes.push({ id, type: NodeType.SYMBOL, attributes: { fileId, kind: symbolKind(node), name, exported: hasExportModifier(node), startLine: start, endLine: end } });
+              edges.push(edge(fileId, EdgeType.CONTAINS, id, commit, file.path, start, end, "ast-declaration"));
+            }
           }
         }
         if (ts.isExportDeclaration(node) && node.moduleSpecifier && ts.isStringLiteral(node.moduleSpecifier)) {
