@@ -22,6 +22,7 @@ export interface TestDetectionResult {
 
 export interface TestProjectContext extends TestDetectionContext {
   readonly project: TestProject;
+  readonly readFile?: (path: string) => Promise<string>;
 }
 
 export interface TestCommandContext extends TestProjectContext {
