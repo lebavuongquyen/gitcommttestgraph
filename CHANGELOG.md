@@ -2,6 +2,26 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.6.0] - 2026-10-06
+
+### Added
+- Branch Intelligence ChangeSet model with deterministic merge-base and branch commit range.
+- Branch review engine producing decision, risk, reasons and uncertainty.
+- Aggregated changed-symbol, downstream-impact, test-gap, test-impact and execution-plan analysis for branches.
+- GUI branch base/head selectors and Branch Intelligence review cockpit.
+- HTTP endpoints for branch listing and branch review.
+- MCP tools `branches` and `branch_review`.
+- CLI commands `branches` and `branch-review`.
+
+### Changed
+- Git repository port now exposes branch metadata and ancestry operations.
+- GUI, MCP and CLI reuse the same branch application/domain services.
+
+### Quality
+- Added branch ancestry, ChangeSet and review tests.
+- Full typecheck, build and 44-test suite pass.
+- Branch Intelligence is released as a complete capability rather than a partial feature slice.
+
 ## [0.5.0] - 2026-10-05
 
 ### Added

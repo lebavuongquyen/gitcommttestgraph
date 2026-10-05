@@ -5,7 +5,8 @@ import {
   discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer,
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
-  buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, AgentTaskService
+  buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, AgentTaskService,
+  BranchChangeSetService, BranchReviewService
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
@@ -93,6 +94,43 @@ export function createGctgMcpServer(root: string) {
   }, async ({ limit }) => {
     const ctx = await context(root);
     return result(await ctx.git.listCommits(limit));
+  });
+
+  server.registerTool("branches", {
+    title: "List Branches",
+    description: "List local and remote Git branches with current-branch metadata. Read-only.",
+    inputSchema: {}
+  }, async () => {
+    const ctx = await context(root);
+    return result({ current: await ctx.git.getCurrentBranch(), branches: await ctx.git.listBranches() });
+  });
+
+  server.registerTool("branch_review", {
+    title: "Review Branch",
+    description: "Analyze a branch against a base branch and return merge-readiness, risk, changed symbols, downstream impact, test gaps, impacted tests and execution plan. Read-only.",
+    inputSchema: {
+      base: z.string().min(1),
+      head: z.string().min(1).optional()
+    }
+  }, async ({ base, head }) => {
+    const ctx = await context(root);
+    const changeSet = await new BranchChangeSetService(ctx.git).build({
+      repository: ctx.repository.root,
+      base,
+      ...(head ? { head } : {})
+    });
+    const indexed = await indexAt(ctx, changeSet.head);
+    const baseIndexed = await indexAt(ctx, changeSet.mergeBase);
+    const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
+    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
+    const changedSymbolIds = indexed.snapshot.nodes
+      .filter(node => node.type === "Symbol" && changedIds.has(node.id))
+      .map(node => node.id);
+    return result(new BranchReviewService().analyze({
+      changeSet,
+      current: indexed.snapshot,
+      changedSymbolIds
+    }));
   });
 
   server.registerTool("graph_query", {

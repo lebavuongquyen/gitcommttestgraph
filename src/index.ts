@@ -1,4 +1,6 @@
 export * from "./domain/git/model.js";
+export * from "./domain/change-set.js";
+export * from "./domain/review/model.js";
 export * from "./domain/evidence/model.js";
 export * from "./domain/graph/model.js";
 export * from "./domain/graph/ids.js";
@@ -57,4 +59,6 @@ export * from "./domain/workflow/execution-feedback.js";
 export * from "./application/workflow/execution-feedback-builder.js";
 export * from "./domain/agent/index.js";
 export * from "./application/agent/agent-task-service.js";
+export * from "./application/change/branch-change-set-service.js";
+export * from "./application/review/branch-review-service.js";
 export * from "./version.js";

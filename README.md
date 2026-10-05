@@ -22,6 +22,8 @@ Deterministic semantic Git repository graph, test graph, change-impact engine an
 ```text
 gctg status
 gctg commits [limit]
+gctg branches
+gctg branch-review <base> [head]
 gctg index [commit]
 gctg graph [commit] [nodeType]
 gctg diff <fromCommit> <toCommit>
@@ -51,16 +53,20 @@ The GUI provides:
 - Visual execution-plan panel showing impacted test commands and dependency order.
 - Explicit "Run impacted tests" action with persisted runtime feedback.
 - Per-step execution status and last-run result visibility.
+- Branch base/head selectors and Branch Intelligence review cockpit.
+- Branch merge-base, commit range, changed-symbol, affected-symbol and review-risk visibility.
 - Query endpoints for test gaps, execution plans and runtime feedback.
 
 The graph canvas intentionally shows the change-impact neighborhood instead of every node in a large repository. This keeps the UI useful for repositories with thousands of graph nodes.
 
-The execution panel uses the same deterministic execution-plan and runtime-feedback capabilities exposed by MCP as execution_plan, run_execution_plan and execution_feedback. GUI and MCP therefore share the application/domain behavior rather than duplicating it.
+The execution panel uses the same deterministic execution-plan and runtime-feedback capabilities exposed by MCP as execution_plan, run_execution_plan and execution_feedback. Branch review uses the same BranchChangeSetService and BranchReviewService exposed through MCP as branches and branch_review. GUI and MCP therefore share application/domain behavior rather than duplicating it.
 
 ## Architecture
 
 ```
 Git Repository
+      |
+      +--> Branch ChangeSet / Review
       |
       v
 Semantic Graph
@@ -88,6 +94,8 @@ GUI representation
 MCP exposure
   ↓
 CLI / automation when needed
+  ↓
+Complete feature release
 ```
 
 ## MCP Agent Server

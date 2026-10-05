@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 </style>
 </head>
 <body>
-<header><div class="brand">Git Commit Test Graph</div><select id="commit"></select><button id="refresh">Refresh</button><span class="spacer"></span><span id="status" class="status">Loading…</span></header>
+<header><div class="brand">Git Commit Test Graph</div><select id="commit"></select><select id="baseBranch"></select><select id="headBranch"></select><button id="reviewBranch" class="primary">Review branch</button><button id="refresh">Refresh</button><span class="spacer"></span><span id="status" class="status">Loading…</span></header>
 <main>
 <aside><div class="panel"><h3>Recent commits</h3><div id="commits"></div></div></aside>
 <section class="canvas">
@@ -45,20 +45,31 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 </section>
 <section class="inspector"><div class="panel">
 <h3>Inspector</h3><div id="inspector" class="empty">Select a node.</div>
+<div class="section"><div class="section-head"><h3>Branch review</h3></div><div id="branchReview" class="empty">Select a base/head branch and review.</div></div>
 <div class="section"><div class="section-head"><h3>Test impact</h3></div><div id="tests" class="empty">Select a commit to inspect impacted tests.</div></div>
 <div class="section"><div class="section-head"><h3>Execution</h3><button id="runPlan" class="primary">Run impacted tests</button></div><div id="execution" class="empty">Loading execution plan…</div></div>
 </div></section>
 </main>
 <script>
-const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,running:false};
+const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,running:false,branches:[],review:null};
 const $=id=>document.getElementById(id);
 async function api(path,options){const r=await fetch(path,options);if(!r.ok)throw new Error(await r.text());return r.json();}
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function commandText(command){return command?.executable?command.executable+" "+(command.args||[]).join(" "):"No command";}
 async function load(){
   const status=await api("/api/status"); $("status").textContent=status.root+" · "+status.head.slice(0,8);
-  const commits=await api("/api/commits?limit=30"); renderCommits(commits);
+  const [commits,branches]=await Promise.all([api("/api/commits?limit=30"),api("/api/branches")]); renderCommits(commits); renderBranches(branches);
   const selected=state.commit||status.head; state.commit=selected; $("commit").value=selected; await loadCommit(selected);
+}
+function renderBranches(data){
+  state.branches=data.branches||[];
+  const locals=state.branches.filter(b=>!b.name.includes("/"));
+  const current=data.current;
+  const head=current||locals[0]?.name||"";
+  const base=locals.find(b=>b.name==="main")?.name||locals.find(b=>b.name!==head)?.name||head;
+  $("baseBranch").innerHTML=locals.map(b=>'<option value="'+esc(b.name)+'">Base · '+esc(b.name)+'</option>').join("");
+  $("headBranch").innerHTML=locals.map(b=>'<option value="'+esc(b.name)+'">Head · '+esc(b.name)+'</option>').join("");
+  $("baseBranch").value=base; $("headBranch").value=head;
 }
 function renderCommits(items){
   $("commit").innerHTML=items.map(c=>'<option value="'+esc(c.hash)+'">'+esc(c.hash.slice(0,8)+" · "+c.subject)+'</option>').join("");
@@ -77,6 +88,18 @@ async function loadCommit(commit){
   state.graph=graph;state.plan=plan;state.feedback=feedback;
   renderOverview(overview);renderGraph(graph);renderTests(tests);renderExecution(plan,feedback);
   $("status").textContent=overview.repository+" · "+commit.slice(0,8);
+}
+async function reviewBranch(){
+  const base=$("baseBranch").value, head=$("headBranch").value;
+  if(!base||!head)return;
+  $("status").textContent="Reviewing "+head+" against "+base+"…";
+  try{state.review=await api("/api/branch-review?base="+encodeURIComponent(base)+"&head="+encodeURIComponent(head)); renderBranchReview(state.review); $("status").textContent=state.review.decision+" · "+head+" ← "+base;}
+  catch(e){$("status").textContent=e.message;$("branchReview").innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
+}
+function renderBranchReview(r){
+  if(!r){$("branchReview").innerHTML='<div class="empty">Select a base/head branch and review.</div>';return;}
+  const c=r.changeSet;
+  $("branchReview").innerHTML='<div class="card"><div class="tag">'+esc(r.decision)+'</div><div class="tag">Risk · '+esc(r.risk)+'</div><div class="metric"><span>Branch</span><b>'+esc(c.head)+'</b></div><div class="metric"><span>Base</span><b>'+esc(c.base)+'</b></div><div class="metric"><span>Commits</span><b>'+c.commits.length+'</b></div><div class="metric"><span>Changed symbols</span><b>'+r.changedSymbolIds.length+'</b></div><div class="metric"><span>Affected symbols</span><b>'+r.affectedSymbolIds.length+'</b></div><div class="metric"><span>Impacted tests</span><b>'+r.testImpact.impactedTestCases+'</b></div></div>'+(r.reasons||[]).map(x=>'<div class="card">'+esc(x)+'</div>').join("")+(r.uncertainty||[]).map(x=>'<div class="card small">Uncertainty · '+esc(x)+'</div>').join("");
 }
 function renderOverview(o){
   $("inspector").innerHTML='<div class="card"><div class="metric"><span>Commit</span><b>'+esc(o.commit.slice(0,8))+'</b></div><div class="metric"><span>Files</span><b>'+o.changedFiles+'</b></div><div class="metric"><span>Changed symbols</span><b>'+o.changedSymbols+'</b></div><div class="metric"><span>Affected symbols</span><b>'+o.affectedSymbols+'</b></div><div class="metric"><span>Impacted tests</span><b>'+o.impactedTestCases+'</b></div></div><div class="card"><div class="small">'+esc(o.subject)+'</div></div>';
@@ -124,6 +147,7 @@ async function runPlan(){
   finally{state.running=false;if($("runPlan"))$("runPlan").disabled=false;}
 }
 $("commit").onchange=e=>{state.commit=e.target.value;loadCommit(state.commit);};
+$("reviewBranch").onclick=reviewBranch;
 $("refresh").onclick=()=>load();
 $("runPlan").onclick=runPlan;
 $("zoomIn").onclick=()=>{state.scale=Math.min(2,state.scale+.1);renderGraph(state.graph);};

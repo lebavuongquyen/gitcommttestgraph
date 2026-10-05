@@ -3,7 +3,8 @@ import {
   discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactQueryService, ImpactEngine, TestGapAnalyzer,
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, configurationFingerprint, IndexLock,
-  JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback
+  JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
+  BranchChangeSetService, BranchReviewService
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
@@ -64,6 +65,23 @@ export async function startServer(root: string, port: number): Promise<void> {
     return { indexed, info, symbolIds, gaps, testImpact, affected, diff };
   };
 
+  const buildBranchReview = async (base: string, head?: string) => {
+    const branchService = new BranchChangeSetService(git);
+    const changeSet = await branchService.build({ repository: repository.root, base, ...(head ? { head } : {}) });
+    const indexed = await indexAt(changeSet.head);
+    const baseIndexed = await indexAt(changeSet.mergeBase);
+    const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
+    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
+    const changedSymbolIds = indexed.snapshot.nodes
+      .filter(node => node.type === "Symbol" && changedIds.has(node.id))
+      .map(node => node.id);
+    return new BranchReviewService().analyze({
+      changeSet,
+      current: indexed.snapshot,
+      changedSymbolIds
+    });
+  };
+
   const send = (response: import("node:http").ServerResponse, status: number, value: unknown) => {
     response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     response.end(JSON.stringify(value));
@@ -83,6 +101,20 @@ export async function startServer(root: string, port: number): Promise<void> {
       }
       if (url.pathname === "/api/commits") {
         send(response, 200, await git.listCommits(Number(url.searchParams.get("limit") ?? 20)));
+        return;
+      }
+      if (url.pathname === "/api/branches") {
+        send(response, 200, {
+          current: await git.getCurrentBranch(),
+          branches: await git.listBranches()
+        });
+        return;
+      }
+      if (url.pathname === "/api/branch-review") {
+        const base = url.searchParams.get("base");
+        if (!base) return send(response, 400, { error: "Missing base branch" });
+        const head = url.searchParams.get("head") ?? undefined;
+        send(response, 200, await buildBranchReview(base, head));
         return;
       }
       if (url.pathname === "/api/overview") {

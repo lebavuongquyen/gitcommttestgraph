@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
@@ -131,6 +131,25 @@ try {
     json(new TestImpactAnalyzer().analyze(result.snapshot, { changedSymbolIds, coverageLinks: gapAnalysis.coverageLinks }));
     process.exit(0);
   }
+  if (command === "branches") {
+    const { git } = await context();
+    json({ current: await git.getCurrentBranch(), branches: await git.listBranches() });
+    process.exit(0);
+  }
+  if (command === "branch-review") {
+    const { repository, git, store, semanticCache } = await context();
+    const base = process.argv[3];
+    const head = process.argv[4] ?? await git.getCurrentBranch();
+    if (!base) throw new Error("Usage: gctg branch-review <base> [head]");
+    const changeSet = await new BranchChangeSetService(git).build({ repository: repository.root, base, head });
+    const result = await indexAt(git, store, semanticCache, repository.root, changeSet.head);
+    const baseResult = await indexAt(git, store, semanticCache, repository.root, changeSet.mergeBase);
+    const diff = diffSnapshots(baseResult.snapshot, result.snapshot);
+    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
+    const changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
+    json(new BranchReviewService().analyze({ changeSet, current: result.snapshot, changedSymbolIds }));
+    process.exit(0);
+  }
   if (command === "workflow") {
     const { repository, git, store, semanticCache } = await context();
     const commit = process.argv[3] ?? await git.getHead();
@@ -240,7 +259,7 @@ try {
     console.log("gctg server listening on http://127.0.0.1:" + port);
     await new Promise(() => {});
   }
-  console.log("Usage: gctg [--version] | status | commits [limit] | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] | serve [port]");
+  console.log("Usage: gctg [--version] | status | commits [limit] | branches | branch-review <base> [head] | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] | serve [port]");
   process.exit(command === "help" ? 0 : 2);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
