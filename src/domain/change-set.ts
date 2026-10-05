@@ -1,5 +1,11 @@
 import type { BranchRef, ChangedPath } from "./git/model.js";
 
+export interface CommitChangeEvidence {
+  readonly commit: string;
+  readonly subject: string;
+  readonly changedPaths: readonly ChangedPath[];
+}
+
 export interface ChangeSet {
   readonly repository: string;
   readonly source: "COMMIT" | "BRANCH" | "PULL_REQUEST";
@@ -9,6 +15,7 @@ export interface ChangeSet {
   readonly branch?: BranchRef;
   readonly commits: readonly string[];
   readonly changedPaths: readonly ChangedPath[];
+  readonly commitEvidence: readonly CommitChangeEvidence[];
 }
 
 export interface BranchChangeSet extends ChangeSet {

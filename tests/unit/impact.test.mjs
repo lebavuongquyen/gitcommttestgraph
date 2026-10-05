@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createSnapshot, EdgeType, NodeType, Confidence, ImpactEngine, diffSnapshots } from "../../dist/index.js";
+import { createSnapshot, EdgeType, NodeType, Confidence, ImpactEngine, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff } from "../../dist/index.js";
 
 const node=(id,type)=>({id,type,attributes:{}});
 
@@ -26,4 +26,25 @@ test("graph diff distinguishes semantic node changes", () => {
   const d=diffSnapshots(a,b);
   assert.deepEqual(d.addedNodes,["y"]);
   assert.deepEqual(d.changedNodes,["x"]);
+});
+
+test("graph diff detects semantic edge changes as changed symbols", () => {
+  const a=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"a",configuration:{},nodes:[node("a",NodeType.SYMBOL),node("b",NodeType.SYMBOL),node("c",NodeType.SYMBOL)],edges:[
+    {id:"old",source:"a",target:"b",type:EdgeType.CALLS,confidence:Confidence.EXACT,evidence:[],sourceCommit:"a"}
+  ]});
+  const b=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"b",configuration:{},nodes:[node("a",NodeType.SYMBOL),node("b",NodeType.SYMBOL),node("c",NodeType.SYMBOL)],edges:[
+    {id:"new",source:"a",target:"c",type:EdgeType.CALLS,confidence:Confidence.EXACT,evidence:[],sourceCommit:"b"}
+  ]});
+  const d=diffSnapshots(a,b);
+  assert.deepEqual(d.addedEdges,["new"]);
+  assert.deepEqual(d.removedEdges,["old"]);
+  assert.deepEqual(changedSymbolIdsFromDiff(a,b,d),["a","b","c"]);
+});
+
+test("graph diff preserves removed symbols for branch review", () => {
+  const a=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"a",configuration:{},nodes:[node("removed",NodeType.SYMBOL),node("file",NodeType.FILE)],edges:[]});
+  const b=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"b",configuration:{},nodes:[node("file",NodeType.FILE)],edges:[]});
+  const d=diffSnapshots(a,b);
+  assert.deepEqual(d.removedNodes,["removed"]);
+  assert.deepEqual(removedSymbolIdsFromDiff(a,d),["removed"]);
 });

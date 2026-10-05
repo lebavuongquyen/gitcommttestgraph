@@ -2,7 +2,7 @@ import { createServer } from "node:http";
 import {
   discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactQueryService, ImpactEngine, TestGapAnalyzer,
-  TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, configurationFingerprint, IndexLock,
+  TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
   BranchChangeSetService, BranchReviewService
 } from "../../index.js";
@@ -42,8 +42,7 @@ export async function startServer(root: string, port: number): Promise<void> {
     if (!info.parents?.length) return snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
     const parent = await indexAt(info.parents[0]!);
     const diff = diffSnapshots(parent.snapshot, snapshot);
-    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
-    return snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
+    return changedSymbolIdsFromDiff(parent.snapshot, snapshot, diff);
   };
 
   const buildChangeContext = async (commit: string) => {
@@ -71,14 +70,13 @@ export async function startServer(root: string, port: number): Promise<void> {
     const indexed = await indexAt(changeSet.head);
     const baseIndexed = await indexAt(changeSet.mergeBase);
     const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
-    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
-    const changedSymbolIds = indexed.snapshot.nodes
-      .filter(node => node.type === "Symbol" && changedIds.has(node.id))
-      .map(node => node.id);
+    const changedSymbolIds = changedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
+    const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, diff);
     return new BranchReviewService().analyze({
       changeSet,
       current: indexed.snapshot,
-      changedSymbolIds
+      changedSymbolIds,
+      removedSymbolIds
     });
   };
 

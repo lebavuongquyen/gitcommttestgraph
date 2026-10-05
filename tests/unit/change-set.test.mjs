@@ -7,6 +7,8 @@ test("branch change set normalizes ancestry and changed paths", async () => {
     getCurrentBranch: async () => "feature/test",
     getMergeBase: async () => "base123",
     getCommitsBetween: async () => ["commit1", "commit2"],
+    getCommit: async hash => ({ hash, parents: [], author: "test", committer: "test", timestamp: "2026-01-01T00:00:00Z", message: hash + " subject" }),
+    getChangedPaths: async hash => [{ path: "src/" + hash + ".ts", status: "modified" }],
     getDiff: async () => ({
       fromCommit: "base123",
       toCommit: "head123",
@@ -29,6 +31,10 @@ test("branch change set normalizes ancestry and changed paths", async () => {
     mergeBase: "base123",
     branch: { name: "feature/test", commit: "head123", current: true },
     commits: ["commit1", "commit2"],
-    changedPaths: [{ path: "src/app.ts", status: "modified" }]
+    changedPaths: [{ path: "src/app.ts", status: "modified" }],
+    commitEvidence: [
+      { commit: "commit1", subject: "commit1 subject", changedPaths: [{ path: "src/commit1.ts", status: "modified" }] },
+      { commit: "commit2", subject: "commit2 subject", changedPaths: [{ path: "src/commit2.ts", status: "modified" }] }
+    ]
   });
 });

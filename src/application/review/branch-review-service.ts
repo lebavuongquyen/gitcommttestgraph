@@ -10,6 +10,7 @@ export interface BranchReviewInput {
   readonly changeSet: BranchChangeSet;
   readonly current: GraphSnapshot;
   readonly changedSymbolIds: readonly string[];
+  readonly removedSymbolIds?: readonly string[];
 }
 
 export class BranchReviewService {
@@ -19,6 +20,7 @@ export class BranchReviewService {
 
   analyze(input: BranchReviewInput): BranchReview {
     const changedSymbolIds = [...new Set(input.changedSymbolIds)].sort();
+    const removedSymbolIds = [...new Set(input.removedSymbolIds ?? [])].sort();
     const testGaps = this.gaps.analyze(input.current, { changedNodeIds: changedSymbolIds });
     const testImpact = this.tests.analyze(input.current, {
       changedSymbolIds,
@@ -28,6 +30,7 @@ export class BranchReviewService {
       changedNodeIds: changedSymbolIds,
       targetTypes: ["Symbol"]
     }).map(item => item.nodeId).filter(id => !changedSymbolIds.includes(id));
+
     const executionPlan = buildExecutionPlan({
       repository: input.current.repository,
       commit: input.current.commit,
@@ -43,7 +46,11 @@ export class BranchReviewService {
     const blocked = executionPlan.steps.filter(step => step.status === "BLOCKED");
     const runnable = executionPlan.steps.filter(step => step.status === "RUNNABLE");
 
-    if (!changedSymbolIds.length) uncertainty.push("No changed symbols were resolved from the branch graph diff.");
+    if (!changedSymbolIds.length && !removedSymbolIds.length) uncertainty.push("No changed or removed symbols were resolved from the branch graph diff.");
+    if (removedSymbolIds.length) {
+      reasons.push(removedSymbolIds.length + " symbols were removed and require review of their downstream consumers.");
+      uncertainty.push("Removed symbols are absent from the head graph and cannot be directly test-mapped.");
+    }
     if (highGaps.length) reasons.push(highGaps.length + " changed symbols have HIGH test gaps.");
     if (testGaps.unknown > 0) uncertainty.push(testGaps.unknown + " testable areas have UNKNOWN coverage.");
     if (noCommand.length) reasons.push(noCommand.length + " impacted test projects have no runnable command.");
@@ -58,15 +65,19 @@ export class BranchReviewService {
       decision = "BLOCKED";
       risk = "UNKNOWN";
       reasons.push("The branch contains no commits ahead of its base.");
-    } else if (!changedSymbolIds.length) {
+    } else if (!changedSymbolIds.length && !removedSymbolIds.length) {
       decision = "INCONCLUSIVE";
       risk = "UNKNOWN";
-    } else if (highGaps.length || noCommand.length) {
+    } else if (removedSymbolIds.length || highGaps.length || noCommand.length) {
       decision = "HIGH_RISK";
       risk = "HIGH";
     } else if (testGaps.unknown > 0 || blocked.length || uncertainty.length) {
       decision = "NEEDS_REVIEW";
       risk = "MEDIUM";
+    } else if (affectedSymbolIds.length > Math.max(10, changedSymbolIds.length * 10)) {
+      decision = "NEEDS_REVIEW";
+      risk = "MEDIUM";
+      reasons.push("Downstream impact exceeds the branch review threshold.");
     }
 
     return {
@@ -77,6 +88,7 @@ export class BranchReviewService {
       uncertainty,
       changeSet: input.changeSet,
       changedSymbolIds,
+      removedSymbolIds,
       affectedSymbolIds: [...new Set(affectedSymbolIds)].sort(),
       testGaps,
       testImpact,

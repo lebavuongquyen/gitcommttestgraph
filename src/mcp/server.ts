@@ -5,7 +5,7 @@ import {
   discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer,
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
-  buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, AgentTaskService,
+  buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
   BranchChangeSetService, BranchReviewService
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
@@ -50,13 +50,12 @@ async function analyzeAgentChange(root: string, input: {
   const indexed = await indexAt(ctx, target);
   const commitInfo = await ctx.git.getCommit(target);
   const parentCommit = commitInfo.parents?.[0];
-  let changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
+  let changedSymbolIds: readonly string[] = indexed.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
   let diff;
   if (parentCommit) {
     const previous = await indexAt(ctx, parentCommit);
     diff = diffSnapshots(previous.snapshot, indexed.snapshot);
-    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
-    changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
+    changedSymbolIds = changedSymbolIdsFromDiff(previous.snapshot, indexed.snapshot, diff);
   }
   return agentTasks.analyze({
     taskId: input.taskId,
@@ -122,10 +121,8 @@ export function createGctgMcpServer(root: string) {
     const indexed = await indexAt(ctx, changeSet.head);
     const baseIndexed = await indexAt(ctx, changeSet.mergeBase);
     const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
-    const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
-    const changedSymbolIds = indexed.snapshot.nodes
-      .filter(node => node.type === "Symbol" && changedIds.has(node.id))
-      .map(node => node.id);
+    const changedSymbolIds = changedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
+    const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, diff);
     return result(new BranchReviewService().analyze({
       changeSet,
       current: indexed.snapshot,
