@@ -1,4 +1,4 @@
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { GraphNode, GraphSnapshot } from "../../domain/graph/model.js";
 import type { GraphQueryRequest, GraphQueryResult, GraphStore } from "../../application/ports/graph-store.js";
@@ -32,4 +32,15 @@ export class JsonGraphStore implements GraphStore {
     const repositoryKey = Buffer.from(repository).toString("base64url");
     return join(this.directory, repositoryKey, analyzerVersion, fingerprint, `${commit}.json`);
   }
+}
+
+
+async function walk(root: string, visit: (path: string) => Promise<void>): Promise<void> {
+  try {
+    for (const entry of await readdir(root, { withFileTypes: true })) {
+      const path = join(root, entry.name);
+      if (entry.isDirectory()) await walk(path, visit);
+      else await visit(path);
+    }
+  } catch {}
 }
