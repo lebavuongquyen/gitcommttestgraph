@@ -1,6 +1,6 @@
 import { EdgeType, NodeType, type GraphEdge, type GraphNode, type GraphSnapshot } from "../../domain/graph/model.js";
 import type { Evidence } from "../../domain/evidence/model.js";
-import type { TestGap, TestGapSeverity, TestCoverageKind, TestGapSummary } from "../../domain/impact/test-gap.js";
+import type { TestGap, TestGapSeverity, TestCoverageKind, TestGapSummary, TestCoverageLink } from "../../domain/impact/test-gap.js";
 
 export interface TestGapRequest {
   readonly changedNodeIds?: readonly string[];
@@ -11,7 +11,10 @@ type Coverage = {
   kind: TestCoverageKind;
   evidence: readonly Evidence[];
   testFiles: Set<string>;
+  testCases: Set<string>;
 };
+
+type TestCaseRange = { id: string; startLine: number; endLine: number; title: string };
 
 const TESTABLE_KINDS = new Set(["function", "class", "method"]);
 const TRAVERSAL_EDGES: ReadonlySet<GraphEdge["type"]> = new Set([EdgeType.CALLS, EdgeType.IMPORTS, EdgeType.EXPORTS]);
@@ -20,7 +23,6 @@ export class TestGapAnalyzer {
   analyze(snapshot: GraphSnapshot, request: TestGapRequest = {}): TestGapSummary {
     const nodes = new Map(snapshot.nodes.map(node => [node.id, node]));
     const testFiles = snapshot.nodes.filter(node => node.type === NodeType.TEST_FILE);
-    const testSourceIds = new Set(testFiles.map(node => String(node.attributes.fileId)));
     const genericScriptPackages = new Set(
       snapshot.nodes
         .filter(node => node.type === NodeType.TEST_PROJECT && node.attributes.framework === "generic-script")
@@ -32,7 +34,15 @@ export class TestGapAnalyzer {
 
     for (const testFile of testFiles) {
       const sourceId = String(testFile.attributes.fileId);
-      walkFromTestFile(sourceId, String(testFile.attributes.path ?? ""), outgoing, nodes, coverage);
+      const cases = snapshot.nodes
+        .filter(node => node.type === NodeType.TEST_CASE && node.attributes.testFileId === testFile.id)
+        .map(node => ({
+          id: node.id,
+          startLine: Number(node.attributes.startLine ?? 0),
+          endLine: Number(node.attributes.endLine ?? Number.MAX_SAFE_INTEGER),
+          title: String(node.attributes.title ?? node.id)
+        }));
+      walkFromTestFile(sourceId, String(testFile.attributes.path ?? ""), cases, outgoing, nodes, coverage);
     }
 
     const symbolNodes = snapshot.nodes
@@ -43,6 +53,19 @@ export class TestGapAnalyzer {
         const fileNode = nodes.get(String(symbol.attributes.fileId));
         return fileNode?.attributes.packageId === request.packageId;
       });
+
+    const coverageLinks: TestCoverageLink[] = [];
+    for (const [symbolId, item] of coverage) {
+      for (const testCaseId of item.testCases) {
+        coverageLinks.push({
+          testCaseId,
+          symbolId,
+          coverage: item.kind === "DIRECT" ? "DIRECT" : "INDIRECT",
+          evidence: item.evidence
+        });
+      }
+    }
+    coverageLinks.sort((a, b) => a.testCaseId.localeCompare(b.testCaseId) || a.symbolId.localeCompare(b.symbolId));
 
     const gaps: TestGap[] = [];
     let tested = 0;
@@ -63,7 +86,6 @@ export class TestGapAnalyzer {
         indirectlyTested++;
         continue;
       }
-
       if (packageId && genericScriptPackages.has(packageId)) {
         unknown++;
         continue;
@@ -85,20 +107,14 @@ export class TestGapAnalyzer {
 
     gaps.sort((a, b) => severityRank(b.severity) - severityRank(a.severity) || a.filePath.localeCompare(b.filePath) || a.symbolName.localeCompare(b.symbolName));
 
-    return {
-      symbols: symbolNodes.length,
-      tested,
-      indirectlyTested,
-      untested: gaps.length,
-      unknown,
-      gaps
-    };
+    return { symbols: symbolNodes.length, tested, indirectlyTested, untested: gaps.length, unknown, coverageLinks, gaps };
   }
 }
 
 function walkFromTestFile(
   start: string,
   testPath: string,
+  cases: readonly TestCaseRange[],
   outgoing: Map<string, GraphEdge[]>,
   nodes: Map<string, GraphNode>,
   coverage: Map<string, Coverage>
@@ -115,25 +131,30 @@ function walkFromTestFile(
     const node = nodes.get(current.id);
     if (node?.type === NodeType.SYMBOL && current.id !== start) {
       const kind: TestCoverageKind = current.depth === 1 ? "DIRECT" : "INDIRECT";
+      const relatedCases = new Set(
+        current.evidence.flatMap(evidence => {
+          const line = evidence.startLine ?? evidence.endLine;
+          if (line == null) return [];
+          return cases.filter(testCase => line >= testCase.startLine && line <= testCase.endLine).map(testCase => testCase.id);
+        })
+      );
       const existing = coverage.get(current.id);
       if (!existing || (existing.kind === "INDIRECT" && kind === "DIRECT")) {
         coverage.set(current.id, {
           kind,
           evidence: current.evidence,
-          testFiles: new Set([testPath])
+          testFiles: new Set([testPath]),
+          testCases: relatedCases
         });
       } else {
         existing.testFiles.add(testPath);
+        for (const testCase of relatedCases) existing.testCases.add(testCase);
       }
     }
 
     for (const edge of outgoing.get(current.id) ?? []) {
       if (!TRAVERSAL_EDGES.has(edge.type) || !nodes.has(edge.target)) continue;
-      queue.push({
-        id: edge.target,
-        depth: current.depth + 1,
-        evidence: [...current.evidence, ...edge.evidence]
-      });
+      queue.push({ id: edge.target, depth: current.depth + 1, evidence: [...current.evidence, ...edge.evidence] });
     }
   }
 }
@@ -155,10 +176,9 @@ function isDependencyEdge(type: GraphEdge["type"]): boolean {
 function scoreSeverity(symbol: GraphNode, fanIn: number, changed: boolean): TestGapSeverity {
   const exported = symbol.attributes.exported === true;
   const kind = String(symbol.attributes.kind ?? "").toLowerCase();
-
   if (changed && TESTABLE_KINDS.has(kind)) return "HIGH";
-  if (exported && TESTABLE_KINDS.has(kind) && fanIn >= 2) return "HIGH";
-  if (exported && TESTABLE_KINDS.has(kind)) return "MEDIUM";
+  if (exported && fanIn >= 2) return "HIGH";
+  if (exported) return "MEDIUM";
   if (fanIn >= 1) return "MEDIUM";
   return "LOW";
 }
