@@ -4,6 +4,9 @@ import { stableId, edgeId } from "../../domain/graph/ids.js";
 import { Confidence } from "../../domain/evidence/model.js";
 import { PackageManager } from "../../domain/package/model.js";
 import { classifyFile, FileKind } from "../../domain/repository/file-classification.js";
+import { buildTestGraph } from "../tests/test-graph-builder.js";
+import { TestRegistry } from "../tests/test-registry.js";
+import { GenericScriptTestAdapter } from "../../adapters/test-frameworks/generic-script/adapter.js";
 import type { GitRepositoryPort } from "../ports/git.js";
 import type { GraphStore } from "../ports/graph-store.js";
 import type { SemanticSourceAnalyzer, SourceFileInput } from "../ports/source-analyzer.js";
@@ -44,6 +47,8 @@ export class RepositoryIndexer {
     const edges: GraphEdge[] = [];
     const classified = new Map(files.map(path => [normalize(path), classifyFile(path)]));
     const sourceInputs: SourceFileInput[] = [];
+    const testRegistry = new TestRegistry();
+    testRegistry.register(new GenericScriptTestAdapter());
     let testFileCount = 0;
     let configFileCount = 0;
 
@@ -71,6 +76,19 @@ export class RepositoryIndexer {
     nodes.push(...analysis.nodes);
     edges.push(...analysis.edges);
 
+    for (const pkg of packageInfo.packages) {
+      const manifest = JSON.parse(await this.git.readFileAtCommit(options.commit, pkg.manifestPath)) as Record<string, unknown>;
+      const scripts = manifest.scripts && typeof manifest.scripts === "object" ? Object.fromEntries(Object.entries(manifest.scripts).filter(([, value]) => typeof value === "string")) as Record<string, string> : {};
+      const packageFiles = files.filter(path => isInsidePackage(normalize(path), pkg.rootPath));
+      const testAdapter = testRegistry.all()[0];
+      if (testAdapter) {
+        const tg = await buildTestGraph(testAdapter, { files: packageFiles, packageId: pkg.id, root: pkg.rootPath, commit: options.commit, packageScripts: scripts, dependencies: pkg.dependencies, readFile: path => this.git.readFileAtCommit(options.commit, path) });
+        nodes.push(...tg.nodes);
+        edges.push(...tg.edges);
+        const project = tg.nodes.find(node => node.type === NodeType.TEST_PROJECT);
+        if (project) edges.push(makeEdge(pkg.id, EdgeType.CONTAINS, project.id, options.commit, pkg.manifestPath, "package-test-project"));
+      }
+    }
     const packageById = new Map(packageInfo.packages.map(pkg => [pkg.id, pkg]));
     for (const node of analysis.nodes.filter(node => node.type === NodeType.FILE)) {
       const packageId = typeof node.attributes.packageId === "string" ? node.attributes.packageId : undefined;
