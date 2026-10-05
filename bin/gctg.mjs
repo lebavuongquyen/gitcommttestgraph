@@ -3,7 +3,7 @@ import { discoverRepository, CliGitRepository, TypeScriptSemanticAnalyzer, JsonG
 
 const command = process.argv[2] ?? "help";
 const root = process.cwd();
-const analyzerVersion = "0.2.0";
+const analyzerVersion = "0.3.0";
 const configuration = {};
 const json = value => console.log(JSON.stringify(value, null, 2));
 
