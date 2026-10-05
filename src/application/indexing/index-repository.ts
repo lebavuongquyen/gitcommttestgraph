@@ -7,6 +7,7 @@ import { classifyFile, FileKind } from "../../domain/repository/file-classificat
 import { buildTestGraph } from "../tests/test-graph-builder.js";
 import { TestRegistry } from "../tests/test-registry.js";
 import { GenericScriptTestAdapter } from "../../adapters/test-frameworks/generic-script/adapter.js";
+import { VitestAdapter, JestAdapter, NodeTestAdapter, PlaywrightAdapter } from "../../adapters/test-frameworks/standard/adapters.js";
 import type { GitRepositoryPort } from "../ports/git.js";
 import type { GraphStore } from "../ports/graph-store.js";
 import type { SemanticSourceAnalyzer, SourceFileInput } from "../ports/source-analyzer.js";
@@ -48,6 +49,10 @@ export class RepositoryIndexer {
     const classified = new Map(files.map(path => [normalize(path), classifyFile(path)]));
     const sourceInputs: SourceFileInput[] = [];
     const testRegistry = new TestRegistry();
+    testRegistry.register(new PlaywrightAdapter());
+    testRegistry.register(new VitestAdapter());
+    testRegistry.register(new JestAdapter());
+    testRegistry.register(new NodeTestAdapter());
     testRegistry.register(new GenericScriptTestAdapter());
     let testFileCount = 0;
     let configFileCount = 0;
@@ -80,8 +85,8 @@ export class RepositoryIndexer {
       const manifest = JSON.parse(await this.git.readFileAtCommit(options.commit, pkg.manifestPath)) as Record<string, unknown>;
       const scripts = manifest.scripts && typeof manifest.scripts === "object" ? Object.fromEntries(Object.entries(manifest.scripts).filter(([, value]) => typeof value === "string")) as Record<string, string> : {};
       const packageFiles = files.filter(path => isInsidePackage(normalize(path), pkg.rootPath));
-      const testAdapter = testRegistry.all().find(adapter => true);
-      if (testAdapter) {
+      const testAdapters = testRegistry.all();
+      for (const testAdapter of testAdapters) {
         const tg = await buildTestGraph(testAdapter, { files: packageFiles, packageId: pkg.id, root: pkg.rootPath, commit: options.commit, packageScripts: scripts, dependencies: pkg.dependencies, readFile: path => this.git.readFileAtCommit(options.commit, path) });
         nodes.push(...tg.nodes);
         edges.push(...tg.edges);
@@ -89,7 +94,6 @@ export class RepositoryIndexer {
         if (project) edges.push(makeEdge(pkg.id, EdgeType.CONTAINS, project.id, options.commit, pkg.manifestPath, "package-test-project"));
       }
     }
-    const testNodeIds = new Set(nodes.filter(n => n.type === NodeType.TEST_FILE).map(n => n.id));
     for (const testFileNode of nodes.filter(n => n.type === NodeType.TEST_FILE)) {
       const fileId = String(testFileNode.attributes.fileId);
       for (const edge of analysis.edges) {
