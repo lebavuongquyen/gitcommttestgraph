@@ -21,11 +21,33 @@ export class JsonGraphStore implements GraphStore {
   }
 
   async getNode(id: string): Promise<GraphNode | null> {
-    return null;
+    let found: GraphNode | null = null;
+    await walk(this.directory, async path => {
+      if (!path.endsWith(".json")) return;
+      try {
+        const snapshot = JSON.parse(await readFile(path, "utf8")) as GraphSnapshot;
+        const node = snapshot.nodes.find(item => item.id === id);
+        if (node) found = node;
+      } catch {}
+    });
+    return found;
   }
 
   async query(request: GraphQueryRequest): Promise<GraphQueryResult> {
-    return { nodes: [] };
+    const nodes = new Map<string, GraphNode>();
+    await walk(this.directory, async path => {
+      if (!path.endsWith(".json")) return;
+      try {
+        const snapshot = JSON.parse(await readFile(path, "utf8")) as GraphSnapshot;
+        for (const node of snapshot.nodes) {
+          if (request.nodeType && node.type !== request.nodeType) continue;
+          if (request.packageId && node.attributes.packageId !== request.packageId) continue;
+          if (request.filePath && node.attributes.path !== request.filePath) continue;
+          nodes.set(node.id, node);
+        }
+      } catch {}
+    });
+    return { nodes: [...nodes.values()].sort((a, b) => a.id.localeCompare(b.id)) };
   }
 
   private pathFor(repository: string, commit: string, analyzerVersion: string, fingerprint: string): string {
