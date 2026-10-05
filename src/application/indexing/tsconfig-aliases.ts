@@ -6,6 +6,12 @@ export async function discoverPathAliases(git: GitRepositoryPort, files: readonl
     try {
       const raw = await git.readFileAtCommit(commit, path);
       const data = JSON.parse(raw.replace(/\/\/.*$/gm, "").replace(/,\s*([}\]])/g, "$1")) as Record<string, unknown>;
+      if (path.endsWith("package.json")) {
+        const name = typeof data.name === "string" ? data.name : undefined;
+        if (name && typeof data.exports === "string") result[name] = [joinManifest(path, data.exports)];
+        if (name && data.exports && typeof data.exports === "object") addExports(result, name, path, data.exports as Record<string, unknown>);
+        continue;
+      }
       const options = data.compilerOptions;
       if (!options || typeof options !== "object") continue;
       const paths = (options as Record<string, unknown>).paths;
@@ -21,3 +27,6 @@ export async function discoverPathAliases(git: GitRepositoryPort, files: readonl
   return result;
 }
 function normalize(path: string): string { return path.replaceAll("\\", "/").replace(/^\.\//, ""); }
+
+function joinManifest(path: string, target: string): string { const dir = path.includes("/") ? path.slice(0, path.lastIndexOf("/")) : "."; return normalize(dir === "." ? target : dir + "/" + target); }
+function addExports(result: Record<string, readonly string[]>, name: string, manifest: string, value: Record<string, unknown>): void { for (const [key, target] of Object.entries(value)) { if (typeof target === "string") result[name + (key === "." ? "" : key.replace(/^\./, ""))] = [joinManifest(manifest, target)]; } }
