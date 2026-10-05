@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { JsonGraphStore } from "../../dist/index.js";
+import { JsonGraphStore, IndexLock } from "../../dist/index.js";
 import { mkdtemp, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -24,6 +24,28 @@ test("graph store writes atomically and rejects malformed snapshots", async () =
     const path = join(root, Buffer.from("repo").toString("base64url"), "test", "fp", "bad.json");
     await writeFile(path, JSON.stringify({ ...snapshot, edges: [{ id: "e", source: "missing", target: "n", type: "CONTAINS", sourceCommit: "abc", evidence: [] }] }));
     await assert.rejects(() => store.getSnapshot("repo", "bad", "test", "fp"), /Invalid graph snapshot/);
+  } finally {
+    const { rm } = await import("node:fs/promises");
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+
+test("index lock serializes concurrent writers and recovers stale locks", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-lock-"));
+  const lockPath = join(root, "index.lock");
+  try {
+    const first = new IndexLock(lockPath, { timeoutMs: 200, retryDelayMs: 20, staleAfterMs: 10_000 });
+    const release = await first.acquire();
+    const secondPromise = new IndexLock(lockPath, { timeoutMs: 60, retryDelayMs: 10, staleAfterMs: 10_000 }).acquire();
+    await assert.rejects(() => secondPromise, /Timed out waiting for index lock/);
+    await release();
+    const secondRelease = await new IndexLock(lockPath, { timeoutMs: 200 }).acquire();
+    await secondRelease();
+
+    await writeFile(lockPath, JSON.stringify({ pid: 1, createdAt: new Date(Date.now() - 60_000).toISOString() }));
+    const staleRelease = await new IndexLock(lockPath, { staleAfterMs: 10, timeoutMs: 200 }).acquire();
+    await staleRelease();
   } finally {
     const { rm } = await import("node:fs/promises");
     await rm(root, { recursive: true, force: true });
