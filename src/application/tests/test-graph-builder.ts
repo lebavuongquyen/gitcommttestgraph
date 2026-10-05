@@ -63,7 +63,7 @@ export async function buildTestGraph(
     nodes.push({
       id: testFileId,
       type: NodeType.TEST_FILE,
-      attributes: { fileId, path, testProjectId: projectId }
+      attributes: { fileId, path, testProjectId: projectId, ...(input.packageId ? { packageId: input.packageId } : {}) }
     });
     edges.push(makeEdge(projectId, EdgeType.CONTAINS, testFileId, input.commit, path, "test-project-file"));
     const cases = await adapter.extractCases(context, path);
