@@ -20,3 +20,7 @@ export * from "./infrastructure/persistence/json-graph-store.js";
 export * from "./application/indexing/index-repository.js";
 export * from "./application/impact/impact-engine.js";
 export * from "./application/analysis/graph-diff.js";
+export * from "./application/tests/test-registry.js";
+export * from "./application/queries/graph-query-service.js";
+export * from "./adapters/test-frameworks/generic-script/adapter.js";
+export * from "./adapters/package-managers/manager.js";
