@@ -11,9 +11,7 @@ export class TypeScriptProjectAnalyzer {
     return this.analyzeFiles(input.files, commit, input.pathAliases, input.baseUrl, input.packageRoots);
   }
 
-  analyze(input: SourceFileInput, commit: string): SourceAnalysis {
-    return this.analyzeFiles([input], commit);
-  }
+  analyze(input: SourceFileInput | readonly SourceFileInput[], commit: string): SourceAnalysis {`r`n    return this.analyzeFiles(Array.isArray(input) ? input : [input], commit);`r`n  }
 
   private analyzeFiles(files: readonly SourceFileInput[], commit: string, pathAliases?: Readonly<Record<string, readonly string[]>>, baseUrl?: string, packageRoots?: Readonly<Record<string, string>>): SourceAnalysis {
     const normalized = files.map(file => ({ ...file, path: file.path.replaceAll("\\", "/") }));
