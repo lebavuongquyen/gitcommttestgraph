@@ -5,8 +5,8 @@ export class TypeScriptModuleResolver {
   resolve(request: ModuleResolutionRequest): ModuleResolutionResult {
     const compilerOptions: ts.CompilerOptions = {
       moduleResolution: ts.ModuleResolutionKind.Bundler,
-      baseUrl: request.baseUrl,
-      paths: request.pathAliases as ts.MapLike<string[]>
+      ...(request.baseUrl ? { baseUrl: request.baseUrl } : {}),
+      ...(request.pathAliases ? { paths: request.pathAliases as ts.MapLike<string[]> } : {})
     };
     const host: ts.ModuleResolutionHost = {
       fileExists: file => request.files.has(normalize(file)),
