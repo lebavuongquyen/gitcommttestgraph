@@ -60,13 +60,15 @@ export class TypeScriptProjectAnalyzer {
           }
         }
         if (ts.isImportDeclaration(node) && ts.isStringLiteral(node.moduleSpecifier)) {
-          const fallbackPath = resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);\n          const fallbackFile = fallbackPath ? fileNodes.get(fallbackPath) : undefined;\n          if (fallbackFile) edges.push(edge(fileId, EdgeType.IMPORTS, fallbackFile, commit, file.path, line(source, node), line(source, node), "path-resolved-import"));\n          const resolved = checker.getSymbolAtLocation(node.moduleSpecifier);
+          const fallbackPath = resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);
+          const fallbackFile = fallbackPath ? fileNodes.get(fallbackPath) : undefined;
+          if (fallbackFile) edges.push(edge(fileId, EdgeType.IMPORTS, fallbackFile, commit, file.path, line(source, node), line(source, node), "path-resolved-import"));
+          const resolved = checker.getSymbolAtLocation(node.moduleSpecifier);
           const target = resolved?.declarations?.[0];
           const targetPath = target ? target.getSourceFile().fileName.replaceAll("\\", "/") : undefined;
-          const fallbackPath = resolveImportPath(file.path, node.moduleSpecifier.text, fileNodes);
           const resolvedTargetPath = targetPath && fileNodes.has(targetPath) ? targetPath : fallbackPath;
           const targetFile = resolvedTargetPath ? fileNodes.get(resolveFileName(resolvedTargetPath, fileNodes)) : undefined;
-          if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "typescript-resolved-import"));
+          if (targetFile && targetFile !== fallbackFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, node), line(source, node), "typescript-resolved-import"));
         }
         if (ts.isCallExpression(node)) {
           const target = checker.getSymbolAtLocation(node.expression);
