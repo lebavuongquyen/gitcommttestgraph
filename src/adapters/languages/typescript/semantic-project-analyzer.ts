@@ -93,7 +93,7 @@ export class TypeScriptProjectAnalyzer {
       };
       for (const statement of source.statements) {
         if (ts.isImportDeclaration(statement) && ts.isStringLiteral(statement.moduleSpecifier)) {
-          const targetPath = resolveImportPath(file.path, statement.moduleSpecifier.text, fileNodes);
+          const targetPath = resolveImportPath(file.path, statement.moduleSpecifier.text, fileNodes, input.pathAliases, input.packageRoots);
           const targetFile = targetPath ? fileNodes.get(targetPath) : undefined;
           if (targetFile) edges.push(edge(fileId, EdgeType.IMPORTS, targetFile, commit, file.path, line(source, statement), line(source, statement), "path-resolved-import"));
         }
@@ -144,12 +144,36 @@ function resolveFileName(path: string, files: Map<string, string>): string {
   return path;
 }
 
-function resolveImportPath(importer: string, specifier: string, files: Map<string, string>): string | undefined {
-  if (!specifier.startsWith(".")) return undefined;
+function resolveImportPath(importer: string, specifier: string, files: Map<string, string>, aliases?: Readonly<Record<string, readonly string[]>>, packageRoots?: Readonly<Record<string, string>>): string | undefined {
+  if (!specifier.startsWith(".")) {
+    const alias = resolveAlias(specifier, aliases);
+    if (alias) return resolveCandidate(alias, files);
+    const packageName = Object.keys(packageRoots ?? {}).sort((a, b) => b.length - a.length).find(name => specifier === name || specifier.startsWith(name + "/"));
+    if (packageName) {
+      const suffix = specifier.slice(packageName.length).replace(/^\//, "");
+      return resolveCandidate(posix.join(packageRoots![packageName]!, suffix), files);
+    }
+    return undefined;
+  }
   const rawBase = posix.normalize(posix.join(posix.dirname(importer), specifier));
   const base = rawBase.replace(/\.(?:m|c)?js$/i, "").replace(/\.tsx?$/i, "");
-  for (const candidate of [base, base + ".ts", base + ".tsx", base + ".js", base + ".jsx", posix.join(base, "index.ts"), posix.join(base, "index.tsx"), posix.join(base, "index.js")]) {
-    if (files.has(candidate)) return candidate;
+  return resolveCandidate(base, files);
+}
+function resolveAlias(specifier: string, aliases?: Readonly<Record<string, readonly string[]>>): string | undefined {
+  if (!aliases) return undefined;
+  for (const [pattern, targets] of Object.entries(aliases)) {
+    const prefix = pattern.endsWith("/*") ? pattern.slice(0, -2) : pattern;
+    if (specifier !== prefix && !specifier.startsWith(prefix + "/")) continue;
+    const suffix = specifier.slice(prefix.length).replace(/^\//, "");
+    const target = targets[0];
+    if (!target) continue;
+    return target.includes("*") ? target.replace("*", suffix) : target;
   }
+  return undefined;
+}
+function resolveCandidate(base: string, files: Map<string, string>): string | undefined {
+  const normalized = posix.normalize(base).replace(/^\.\//, "");
+  const candidates = [normalized, normalized + ".ts", normalized + ".tsx", normalized + ".js", normalized + ".jsx", normalized + ".mjs", normalized + ".cjs", posix.join(normalized, "index.ts"), posix.join(normalized, "index.tsx"), posix.join(normalized, "index.js")];
+  for (const candidate of candidates) if (files.has(candidate)) return candidate;
   return undefined;
 }
