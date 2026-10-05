@@ -142,7 +142,8 @@ function resolveFileName(path: string, files: Map<string, string>): string {
 
 function resolveImportPath(importer: string, specifier: string, files: Map<string, string>): string | undefined {
   if (!specifier.startsWith(".")) return undefined;
-  const base = posix.normalize(posix.join(posix.dirname(importer), specifier));
+  const rawBase = posix.normalize(posix.join(posix.dirname(importer), specifier));
+  const base = rawBase.replace(/\.(?:m|c)?js$/i, "").replace(/\.tsx?$/i, "");
   for (const candidate of [base, base + ".ts", base + ".tsx", base + ".js", base + ".jsx", posix.join(base, "index.ts"), posix.join(base, "index.tsx"), posix.join(base, "index.js")]) {
     if (files.has(candidate)) return candidate;
   }
