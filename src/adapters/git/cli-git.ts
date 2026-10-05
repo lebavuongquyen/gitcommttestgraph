@@ -9,7 +9,7 @@ export class CliGitRepository implements GitRepositoryPort {
   constructor(private readonly root: string) {}
 
   async getHead(): Promise<string> {
-    return this.run(["rev-parse", "HEAD"]);
+    return (await this.run(["rev-parse", "HEAD"])).trim();
   }
 
   async getCommit(hash: string): Promise<Commit> {
