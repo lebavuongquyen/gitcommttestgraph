@@ -1,0 +1,28 @@
+{
+  "name": "git-commit-test-graph",
+  "version": "0.2.0",
+  "description": "Deterministic semantic Git repository graph and change-impact engine",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "gctg": "./bin/gctg.mjs"
+  },
+  "files": ["dist", "bin"],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "node --test",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/lebavuongquyen/gitcommttestgraph.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "typescript": "^5.9.2"
+  }
+}
