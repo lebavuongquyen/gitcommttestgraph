@@ -148,8 +148,8 @@ export class RepositoryIndexer {
       repository: options.repository,
       commit: options.commit,
       configuration: options.configuration,
-      nodes,
-      edges,
+      nodes: dedupeNodes(nodes),
+      edges: dedupeEdges(edges),
       metadata: {
         packageCount: packageById.size,
         sourceFileCount: sourceInputs.length,

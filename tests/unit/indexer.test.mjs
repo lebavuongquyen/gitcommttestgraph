@@ -26,6 +26,28 @@ test("indexer persists and reuses exact commit snapshots", async () => {
 });
 
 
+test("indexer deduplicates classified data nodes", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-dedupe-"));
+  try {
+    const git = {
+      async getCommit(hash) { return { hash, parents: [], author: "a", committer: "c", timestamp: "2026-01-01T00:00:00Z", message: "test" }; },
+      async listFilesAtCommit() { return ["package.json", "src/a.ts", "fixtures/fixture.json", "fixtures/fixture.schema.json"]; },
+      async readFileAtCommit(commit, path) {
+        if (path === "package.json") return JSON.stringify({ name: "repo" });
+        if (path.endsWith("fixture.json")) return JSON.stringify({ value: 1 });
+        if (path.endsWith("fixture.schema.json")) return JSON.stringify({ type: "object" });
+        return "export function a() { return 1; }";
+      }
+    };
+    const snapshot = (await new RepositoryIndexer(git, new TypeScriptSemanticAnalyzer(), new JsonGraphStore(root)).index({ repository: "repo", commit: "abc", configuration: {}, analyzerVersion: "dedupe-test" })).snapshot;
+    assert.equal(new Set(snapshot.nodes.map(node => node.id)).size, snapshot.nodes.length);
+    assert.equal(snapshot.nodes.filter(node => node.attributes.path === "fixtures/fixture.json").length, 1);
+    assert.equal(snapshot.nodes.filter(node => node.attributes.path === "fixtures/fixture.schema.json").length, 1);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("indexer reuses semantic cache across commits with identical source", async () => {
   const root = await mkdtemp(join(tmpdir(), "gctg-cache-"));
   try {
