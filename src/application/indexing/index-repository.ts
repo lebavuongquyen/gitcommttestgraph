@@ -60,7 +60,7 @@ export class RepositoryIndexer {
     for (const path of files) {
       const kind = classified.get(normalize(path));
       if (kind === FileKind.TEST) testFileCount++;
-      if ([FileKind.CONFIG, FileKind.LANGUAGE_CONFIG, FileKind.BUILD_CONFIG, FileKind.TEST_CONFIG, FileKind.RUNTIME_CONFIG, FileKind.WORKSPACE_CONFIG].includes(kind!)) configFileCount++;
+      if (kind === FileKind.CONFIG || kind === FileKind.LANGUAGE_CONFIG || kind === FileKind.BUILD_CONFIG || kind === FileKind.TEST_CONFIG || kind === FileKind.RUNTIME_CONFIG || kind === FileKind.WORKSPACE_CONFIG) configFileCount++;
       if (!isSource(path)) continue;
       const content = await this.git.readFileAtCommit(options.commit, path);
       const pkg = packageInfo.packages.find(item => isInsidePackage(path, item.rootPath));
