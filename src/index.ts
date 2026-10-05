@@ -18,3 +18,5 @@ export * from "./adapters/repository/package-discovery.js";
 export * from "./adapters/languages/typescript/semantic-analyzer.js";
 export * from "./infrastructure/persistence/json-graph-store.js";
 export * from "./application/indexing/index-repository.js";
+export * from "./application/impact/impact-engine.js";
+export * from "./application/analysis/graph-diff.js";
