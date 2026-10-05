@@ -31,3 +31,5 @@ export * from "./domain/graph/resolution.js";
 export * from "./adapters/languages/typescript/module-resolver.js";
 export * from "./adapters/languages/typescript/semantic-project-analyzer.js";
 export * from "./adapters/package-managers/workspace-dependencies.js";
+export * from "./application/indexing/classified-file-graph.js";
+export * from "./application/tests/test-graph-builder.js";
