@@ -2,6 +2,23 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.5.0] - 2026-10-05
+
+### Added
+- GUI execution panel for deterministic impacted-test plans.
+- Explicit GUI action to run impacted tests after user confirmation.
+- Persisted execution feedback and per-step runtime status in the GUI.
+- HTTP execution endpoint backed by the same execution-plan runner used by MCP.
+
+### Changed
+- GUI now visualizes the execution boundary from static impact analysis through runtime feedback.
+- Analyzer version is derived from the package version instead of a duplicated hard-coded value.
+- GUI execution reuses the existing MCP/application execution semantics instead of introducing GUI-only test execution logic.
+
+### Quality
+- Added GUI acceptance assertions for execution-plan loading and explicit execution controls.
+- Full typecheck, build and 41-test suite pass.
+
 ## [0.4.0] - 2026-10-05
 
 ### Added

@@ -48,9 +48,14 @@ The GUI provides:
 - Changed versus affected symbol visualization.
 - Node inspector with incoming/outgoing edges.
 - Static test-impact visibility.
-- Query endpoints prepared for test gaps, execution plans and runtime feedback.
+- Visual execution-plan panel showing impacted test commands and dependency order.
+- Explicit "Run impacted tests" action with persisted runtime feedback.
+- Per-step execution status and last-run result visibility.
+- Query endpoints for test gaps, execution plans and runtime feedback.
 
 The graph canvas intentionally shows the change-impact neighborhood instead of every node in a large repository. This keeps the UI useful for repositories with thousands of graph nodes.
+
+The execution panel uses the same deterministic execution-plan and runtime-feedback capabilities exposed by MCP as execution_plan, run_execution_plan and execution_feedback. GUI and MCP therefore share the application/domain behavior rather than duplicating it.
 
 ## Architecture
 

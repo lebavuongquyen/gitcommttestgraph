@@ -3,12 +3,13 @@ import {
   discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactQueryService, ImpactEngine, TestGapAnalyzer,
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, configurationFingerprint, IndexLock,
-  JsonTestResultStore
+  JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
+import { GCTG_VERSION } from "../../version.js";
 
 const configuration = {};
-const analyzerVersion = "0.4.0";
+const analyzerVersion = GCTG_VERSION;
 
 export async function startServer(root: string, port: number): Promise<void> {
   const repository = await discoverRepository(root);
@@ -158,9 +159,27 @@ export async function startServer(root: string, port: number): Promise<void> {
         }));
         return;
       }
+      if (url.pathname === "/api/run-execution-plan" && request.method === "POST") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const c = await buildChangeContext(commit);
+        const plan = buildExecutionPlan({
+          repository: c.indexed.snapshot.repository,
+          commit,
+          nodes: c.indexed.snapshot.nodes,
+          edges: c.indexed.snapshot.edges,
+          impacts: c.testImpact.impacts
+        });
+        const execution = await new ExecutionPlanRunner({ run: runProcess }).execute(plan);
+        const feedback = buildWorkflowExecutionFeedback(plan, execution);
+        const resultStore = new JsonTestResultStore(repository.root + "/.gctg/results");
+        await resultStore.save(feedback.executionId, { execution, feedback });
+        await resultStore.save("latest:" + repository.root + ":" + commit, { execution, feedback });
+        send(response, 200, { execution, feedback });
+        return;
+      }
       if (url.pathname === "/api/execution-feedback") {
         const commit = url.searchParams.get("commit") ?? await git.getHead();
-        const resultStore = new JsonTestResultStore(repository.root + "/.gctg/results/feedback");
+        const resultStore = new JsonTestResultStore(repository.root + "/.gctg/results");
         send(response, 200, await resultStore.get("latest:" + repository.root + ":" + commit) ?? { found: false, commit });
         return;
       }
