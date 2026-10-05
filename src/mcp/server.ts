@@ -1,0 +1,181 @@
+import { McpServer } from "@modelcontextprotocol/server";
+import { serveStdio } from "@modelcontextprotocol/server/stdio";
+import * as z from "zod/v4";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer, buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner, buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots } from "../index.js";
+
+const serverVersion = "0.3.8";
+const configuration = {};
+
+async function context(root: string) {
+  const repository = await discoverRepository(root);
+  const git = new CliGitRepository(repository.root);
+  const store = new JsonGraphStore(repository.root + "/.gctg/graph");
+  const cache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
+  return { repository, git, store, cache };
+}
+
+async function indexAt(ctx: Awaited<ReturnType<typeof context>>, commit: string) {
+  const full = new RepositoryIndexer(ctx.git, new TypeScriptProjectAnalyzer(), ctx.store, ctx.cache);
+  const incremental = new IncrementalRepositoryIndexer(ctx.git, full, (repo, hash, version, fingerprint) => ctx.store.getSnapshot(repo, hash, version, fingerprint));
+  const release = await new IndexLock(ctx.repository.root + "/.gctg/index.lock").acquire();
+  try {
+    return await incremental.index({ repository: ctx.repository.root, commit, configuration, analyzerVersion: serverVersion });
+  } finally {
+    await release();
+  }
+}
+
+function result(value: unknown) {
+  return { content: [{ type: "text" as const, text: JSON.stringify(value, null, 2) }], structuredContent: value };
+}
+
+export function createGctgMcpServer(root: string) {
+  const server = new McpServer({
+    name: "git-commit-test-graph",
+    version: serverVersion,
+    description: "Graph-first Git, code, test-impact and execution intelligence for software-engineering agents."
+  });
+
+  server.registerTool("repository_status", {
+    title: "Repository Status",
+    description: "Return repository root, HEAD and workspace discovery. Read-only.",
+    inputSchema: {}
+  }, async () => {
+    const ctx = await context(root);
+    return result({ root: ctx.repository.root, head: await ctx.git.getHead(), workspaceFiles: ctx.repository.workspaceFiles });
+  });
+
+  server.registerTool("commits", {
+    title: "List Commits",
+    description: "List recent Git commits for agent context. Read-only.",
+    inputSchema: { limit: z.number().int().min(1).max(100).default(20) }
+  }, async ({ limit }) => {
+    const ctx = await context(root);
+    return result(await ctx.git.listCommits(limit));
+  });
+
+  server.registerTool("graph_query", {
+    title: "Query Code Graph",
+    description: "Index a commit and return graph nodes filtered by type, package or file.",
+    inputSchema: { commit: z.string().optional(), nodeType: z.string().optional(), packageId: z.string().optional(), filePath: z.string().optional() }
+  }, async ({ commit, nodeType, packageId, filePath }) => {
+    const ctx = await context(root);
+    const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
+    const nodes = indexed.snapshot.nodes.filter(node =>
+      (!nodeType || node.type === nodeType) &&
+      (!packageId || node.attributes.packageId === packageId) &&
+      (!filePath || node.attributes.path === filePath)
+    );
+    return result({ nodes });
+  });
+
+  server.registerTool("impact_analyze", {
+    title: "Analyze Change Impact",
+    description: "Compute reverse semantic impact from changed graph node IDs and preserve evidence.",
+    inputSchema: { commit: z.string().optional(), nodeIds: z.array(z.string()).min(1), targetTypes: z.array(z.string()).optional() }
+  }, async ({ commit, nodeIds, targetTypes }) => {
+    const ctx = await context(root);
+    const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
+    const request = targetTypes ? { changedNodeIds: nodeIds, targetTypes: targetTypes as never } : { changedNodeIds: nodeIds };
+    return result(new ImpactEngine().analyze(indexed.snapshot, request));
+  });
+
+  server.registerTool("test_impact", {
+    title: "Analyze Test Impact",
+    description: "Map changed symbols to affected tests, test projects and runnable commands.",
+    inputSchema: { commit: z.string().optional(), symbolIds: z.array(z.string()).min(1) }
+  }, async ({ commit, symbolIds }) => {
+    const ctx = await context(root);
+    const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
+    const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: symbolIds });
+    return result(new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds: symbolIds, coverageLinks: gaps.coverageLinks }));
+  });
+
+  server.registerTool("execution_plan", {
+    title: "Build Execution Plan",
+    description: "Build a deterministic test execution plan from changed symbols. Does not execute commands.",
+    inputSchema: { commit: z.string().optional(), symbolIds: z.array(z.string()).min(1), format: z.enum(["json", "yaml", "md", "mermaid"]).default("json") }
+  }, async ({ commit, symbolIds, format }) => {
+    const ctx = await context(root);
+    const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
+    const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: symbolIds });
+    const impact = new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds: symbolIds, coverageLinks: gaps.coverageLinks });
+    const plan = buildExecutionPlan({ repository: indexed.snapshot.repository, commit: indexed.snapshot.commit, nodes: indexed.snapshot.nodes, edges: indexed.snapshot.edges, impacts: impact.impacts });
+    return result({ plan, rendered: serializeExecutionPlan(plan, format) });
+  });
+
+  server.registerTool("change_intelligence", {
+    title: "Analyze Change Intelligence",
+    description: "Produce one compact agent context bundle: changed symbols, semantic impact, test impact, execution plan and prior runtime feedback.",
+    inputSchema: { commit: z.string().optional() }
+  }, async ({ commit }) => {
+    const ctx = await context(root);
+    const target = commit ?? await ctx.git.getHead();
+    const indexed = await indexAt(ctx, target);
+    const commitInfo = await ctx.git.getCommit(target);
+    let changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
+    let diff = null;
+    const parentCommit = commitInfo.parents?.[0];
+    if (parentCommit) {
+      const parent = await indexAt(ctx, parentCommit);
+      diff = diffSnapshots(parent.snapshot, indexed.snapshot);
+      const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
+      changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
+    }
+    const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds });
+    const impact = new ImpactEngine().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds, targetTypes: ["Symbol"] });
+    const testImpact = new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds, coverageLinks: gaps.coverageLinks });
+    const plan = buildExecutionPlan({ repository: indexed.snapshot.repository, commit: indexed.snapshot.commit, nodes: indexed.snapshot.nodes, edges: indexed.snapshot.edges, impacts: testImpact.impacts });
+    const feedbackStore = new JsonTestResultStore(ctx.repository.root + "/.gctg/results");
+    const feedback = await feedbackStore.get(`latest:${ctx.repository.root}:${target}`);
+    return result({ commit: target, changedSymbolIds, diff, impact, testImpact, executionPlan: plan, priorExecution: feedback });
+  });
+
+  server.registerTool("execution_feedback", {
+    title: "Get Execution Feedback",
+    description: "Read persisted runtime execution feedback for a commit. Read-only.",
+    inputSchema: { commit: z.string().optional() }
+  }, async ({ commit }) => {
+    const ctx = await context(root);
+    const target = commit ?? await ctx.git.getHead();
+    const store = new JsonTestResultStore(ctx.repository.root + "/.gctg/results");
+    return result(await store.get(`latest:${ctx.repository.root}:${target}`) ?? { found: false, commit: target });
+  });
+
+  server.registerTool("run_execution_plan", {
+    title: "Run Impacted Tests",
+    description: "Execute the deterministic impacted-test plan for a commit, persist execution result and feedback, and return both. This is the only side-effecting test tool.",
+    inputSchema: { commit: z.string().optional(), symbolIds: z.array(z.string()).min(1) }
+  }, async ({ commit, symbolIds }) => {
+    const ctx = await context(root);
+    const target = commit ?? await ctx.git.getHead();
+    const indexed = await indexAt(ctx, target);
+    const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: symbolIds });
+    const impact = new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds: symbolIds, coverageLinks: gaps.coverageLinks });
+    const plan = buildExecutionPlan({ repository: indexed.snapshot.repository, commit: indexed.snapshot.commit, nodes: indexed.snapshot.nodes, edges: indexed.snapshot.edges, impacts: impact.impacts });
+    const execution = await new ExecutionPlanRunner({ run: runProcess }).execute(plan);
+    const feedback = buildWorkflowExecutionFeedback(plan, execution);
+    const results = new JsonTestResultStore(ctx.repository.root + "/.gctg/results");
+    await results.save(feedback.executionId, { execution, feedback });
+    await results.save(`latest:${ctx.repository.root}:${target}`, { execution, feedback });
+    return result({ execution, feedback });
+  });
+
+  server.registerResource("graph-snapshot", "gctg://graph/{commit}", {
+    title: "Graph Snapshot",
+    description: "Read-only graph snapshot for a Git commit.",
+    mimeType: "application/json"
+  }, async (uri) => {
+    const commit = uri.pathname.split("/").filter(Boolean).at(-1);
+    if (!commit) throw new Error("Missing commit");
+    const ctx = await context(root);
+    const indexed = await indexAt(ctx, commit);
+    return { contents: [{ uri: uri.href, mimeType: "application/json", text: JSON.stringify(indexed.snapshot) }] };
+  });
+
+  return server;
+}
+
+export function startGctgMcpStdio(root: string) {
+  return serveStdio(() => createGctgMcpServer(root));
+}

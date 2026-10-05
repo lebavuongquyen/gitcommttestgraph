@@ -51,6 +51,18 @@ Vitest, Jest, Node test, Playwright and generic package scripts.
 
 Snapshots are stored under `.gctg/graph`. Semantic artifacts are content-addressed under `.gctg/cache/semantic` using source-content hashes plus analyzer and resolution fingerprints, allowing identical source graphs to be reused across different commits. Snapshot reuse is exact for the repository, commit, analyzer version and configuration fingerprint. Semantic incremental indexing uses the parent graph as a dependency index, analyzes only impacted source paths, reuses unaffected semantic nodes and edges, and is verified against a clean full-index graph in the test suite. CLI indexing uses an atomic repository lock with timeout and stale-lock recovery so concurrent indexers cannot corrupt the same repository index.
 
+## MCP Agent Server
+
+The package also exposes an MCP server for software-engineering agents.
+
+The server exposes read-only repository, graph, impact, test-impact, execution-plan and execution-feedback tools, plus a historical graph resource. The high-level change-intelligence tool bundles changed symbols, semantic impact, test impact, execution plan and prior runtime feedback into one agent-oriented response.
+
+run_execution_plan is the only side-effecting MCP tool. It uses the existing structured process runner and persists runtime feedback separately from graph truth.
+
+For local MCP hosts, configure the command: gctg-mcp
+
+The MCP server uses stdio. Protocol traffic is written to stdout; diagnostics are written to stderr.
+
 ## HTTP API
 
 `gctg serve` exposes local JSON endpoints for status, commits, graph, tests, diff and impact.
