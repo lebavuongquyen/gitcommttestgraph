@@ -71,7 +71,7 @@ export async function startServer(root: string, port: number): Promise<void> {
     const baseIndexed = await indexAt(changeSet.mergeBase);
     const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
     const changedSymbolIds = changedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
-    const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, diff);
+    const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
     return new BranchReviewService().analyze({
       changeSet,
       current: indexed.snapshot,

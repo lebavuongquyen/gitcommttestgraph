@@ -27,7 +27,10 @@ const changeSet = {
   mergeBase: "base",
   branch: { name: "feature/test", commit: "head", current: true },
   commits: ["head"],
-  changedPaths: [{ path: "src/app.ts", status: "modified" }]
+  changedPaths: [{ path: "src/app.ts", status: "modified" }],
+  commitEvidence: [
+    { commit: "head", subject: "test change", changedPaths: [{ path: "src/app.ts", status: "modified" }] }
+  ]
 };
 
 test("branch review returns structured decision with impact and execution evidence", () => {
@@ -41,8 +44,22 @@ test("branch review returns structured decision with impact and execution eviden
   assert.ok(["READY", "NEEDS_REVIEW", "HIGH_RISK", "INCONCLUSIVE"].includes(review.decision));
   assert.equal(review.changeSet.head, "feature/test");
   assert.deepEqual(review.changedSymbolIds, ["changed"]);
+  assert.deepEqual(review.removedSymbolIds, []);
   assert.ok(Array.isArray(review.affectedSymbolIds));
   assert.ok(review.testImpact);
   assert.ok(review.testGaps);
   assert.ok(review.executionPlan);
+});
+
+test("branch review escalates removed symbols to high risk", () => {
+  const review = new BranchReviewService().analyze({
+    changeSet,
+    current: snapshot(),
+    changedSymbolIds: ["changed"],
+    removedSymbolIds: ["removed-symbol"]
+  });
+
+  assert.equal(review.decision, "HIGH_RISK");
+  assert.equal(review.risk, "HIGH");
+  assert.deepEqual(review.removedSymbolIds, ["removed-symbol"]);
 });

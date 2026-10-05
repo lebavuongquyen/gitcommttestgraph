@@ -2,6 +2,26 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.6.1] - 2026-10-06
+
+### Fixed
+- Hardened branch graph diffing for semantic edge-only changes.
+- Distinguished true deleted symbols from line-shifted symbol identities.
+- Prevented local variable churn from escalating branch review risk.
+- Preserved backward compatibility for existing ChangeSet and BranchReview consumers by making new evidence fields optional.
+
+### Added
+- Per-commit ChangeSet evidence.
+- Removed-symbol review evidence.
+- GUI display for merge-base, removed symbols and commit evidence.
+- Regression tests for edge changes, deleted symbols and line shifts.
+
+### Quality
+- Full typecheck, build and 48-test suite pass.
+- HTTP and CLI branch-review smoke tests pass.
+- Release gate is required and documented.
+
+
 ## [0.6.0] - 2026-10-06
 
 ### Added

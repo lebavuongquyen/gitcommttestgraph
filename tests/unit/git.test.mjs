@@ -15,12 +15,12 @@ test("branch refs and merge-base expose deterministic change ancestry", async ()
     await exec("git", ["init", "-b", "main"], { cwd: root });
     await exec("git", ["config", "user.email", "test@example.com"], { cwd: root });
     await exec("git", ["config", "user.name", "GCTG Test"], { cwd: root });
-    await writeFile(join(root, "sample.ts"), "export const value = 1;\\n");
+    await writeFile(join(root, "sample.ts"), "export const value = 1;\n");
     await exec("git", ["add", "."], { cwd: root });
     await exec("git", ["commit", "-m", "one"], { cwd: root });
     const base = (await exec("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
     await exec("git", ["switch", "-c", "feature/test"], { cwd: root });
-    await writeFile(join(root, "sample.ts"), "export const value = 2;\\n");
+    await writeFile(join(root, "sample.ts"), "export const value = 2;\n");
     await exec("git", ["commit", "-am", "two"], { cwd: root });
     const head = (await exec("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
     const git = new CliGitRepository(root);
@@ -30,6 +30,26 @@ test("branch refs and merge-base expose deterministic change ancestry", async ()
     const branches = await git.listBranches();
     assert.equal(branches.find(branch => branch.name === "feature/test")?.current, true);
     assert.equal(branches.find(branch => branch.name === "main")?.commit, base);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("commit changed paths are recursive for branch evidence", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-"));
+  try {
+    await exec("git", ["init", "-b", "main"], { cwd: root });
+    await exec("git", ["config", "user.email", "test@example.com"], { cwd: root });
+    await exec("git", ["config", "user.name", "GCTG Test"], { cwd: root });
+    await mkdir(join(root, "src", "nested"), { recursive: true });
+    await writeFile(join(root, "src", "nested", "sample.ts"), "export const value = 1;\n");
+    await exec("git", ["add", "."], { cwd: root });
+    await exec("git", ["commit", "-m", "one"], { cwd: root });
+    await writeFile(join(root, "src", "nested", "sample.ts"), "export const value = 2;\n");
+    await exec("git", ["commit", "-am", "two"], { cwd: root });
+    const commit = (await exec("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
+    const paths = await new CliGitRepository(root).getChangedPaths(commit);
+    assert.deepEqual(paths, [{ status: "modified", path: "src/nested/sample.ts" }]);
   } finally {
     await rm(root, { recursive: true, force: true });
   }

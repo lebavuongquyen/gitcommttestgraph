@@ -46,7 +46,21 @@ export function changedSymbolIdsFromDiff(from: GraphSnapshot, to: GraphSnapshot,
   return to.nodes.filter(node => node.type === "Symbol" && ids.has(node.id)).map(node => node.id).sort();
 }
 
-export function removedSymbolIdsFromDiff(from: GraphSnapshot, diff: GraphDiff): readonly string[] {
+export function removedSymbolIdsFromDiff(from: GraphSnapshot, to: GraphSnapshot, diff: GraphDiff): readonly string[] {
   const removed = new Set(diff.removedNodes);
-  return from.nodes.filter(node => node.type === "Symbol" && removed.has(node.id)).map(node => node.id).sort();
+  const addedSymbols = to.nodes.filter(node => node.type === "Symbol" && diff.addedNodes.includes(node.id));
+  const addedByIdentity = new Map<string, number>();
+  for (const node of addedSymbols) {
+    const key = symbolIdentityKey(node);
+    addedByIdentity.set(key, (addedByIdentity.get(key) ?? 0) + 1);
+  }
+  return from.nodes
+    .filter(node => node.type === "Symbol" && removed.has(node.id) && node.attributes.kind !== "variable")
+    .filter(node => (addedByIdentity.get(symbolIdentityKey(node)) ?? 0) === 0)
+    .map(node => node.id)
+    .sort();
+}
+
+function symbolIdentityKey(node: { attributes: Readonly<Record<string, unknown>> }): string {
+  return JSON.stringify([node.attributes.fileId ?? null, node.attributes.name ?? null, node.attributes.kind ?? null]);
 }

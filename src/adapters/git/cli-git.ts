@@ -58,7 +58,7 @@ export class CliGitRepository implements GitRepositoryPort {
   }
 
   async getChangedPaths(hash: string): Promise<readonly ChangedPath[]> {
-    const output = await this.run(["diff-tree", "--root", "--no-commit-id", "--name-status", "-M", "-C", hash]);
+    const output = await this.run(["diff-tree", "--root", "--no-commit-id", "--name-status", "-r", "-M", "-C", hash]);
     return parseNameStatus(output);
   }
 

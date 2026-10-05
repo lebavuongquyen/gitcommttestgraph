@@ -122,7 +122,7 @@ export function createGctgMcpServer(root: string) {
     const baseIndexed = await indexAt(ctx, changeSet.mergeBase);
     const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
     const changedSymbolIds = changedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
-    const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, diff);
+    const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
     return result(new BranchReviewService().analyze({
       changeSet,
       current: indexed.snapshot,

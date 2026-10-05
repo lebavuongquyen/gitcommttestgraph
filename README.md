@@ -54,7 +54,8 @@ The GUI provides:
 - Explicit "Run impacted tests" action with persisted runtime feedback.
 - Per-step execution status and last-run result visibility.
 - Branch base/head selectors and Branch Intelligence review cockpit.
-- Branch merge-base, commit range, changed-symbol, affected-symbol and review-risk visibility.
+- Branch merge-base, commit range, changed-symbol, removed-symbol, affected-symbol and review-risk visibility.
+- Branch commit-level evidence and uncertainty visibility.
 - Query endpoints for test gaps, execution plans and runtime feedback.
 
 The graph canvas intentionally shows the change-impact neighborhood instead of every node in a large repository. This keeps the UI useful for repositories with thousands of graph nodes.

@@ -14,7 +14,7 @@ export interface BranchReview {
   readonly uncertainty: readonly string[];
   readonly changeSet: BranchChangeSet;
   readonly changedSymbolIds: readonly string[];
-  readonly removedSymbolIds: readonly string[];
+  readonly removedSymbolIds?: readonly string[];
   readonly affectedSymbolIds: readonly string[];
   readonly testGaps: TestGapSummary;
   readonly testImpact: TestImpactSummary;

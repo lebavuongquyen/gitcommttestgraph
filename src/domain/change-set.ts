@@ -15,7 +15,7 @@ export interface ChangeSet {
   readonly branch?: BranchRef;
   readonly commits: readonly string[];
   readonly changedPaths: readonly ChangedPath[];
-  readonly commitEvidence: readonly CommitChangeEvidence[];
+  readonly commitEvidence?: readonly CommitChangeEvidence[];
 }
 
 export interface BranchChangeSet extends ChangeSet {

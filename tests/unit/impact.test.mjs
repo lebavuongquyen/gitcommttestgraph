@@ -46,5 +46,27 @@ test("graph diff preserves removed symbols for branch review", () => {
   const b=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"b",configuration:{},nodes:[node("file",NodeType.FILE)],edges:[]});
   const d=diffSnapshots(a,b);
   assert.deepEqual(d.removedNodes,["removed"]);
-  assert.deepEqual(removedSymbolIdsFromDiff(a,d),["removed"]);
+  assert.deepEqual(removedSymbolIdsFromDiff(a,b,d),["removed"]);
+});
+
+test("graph diff does not treat line-shifted symbols as deleted", () => {
+  const a=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"a",configuration:{},nodes:[
+    {id:"old",type:NodeType.SYMBOL,attributes:{fileId:"file",name:"same",kind:"function",startLine:1,endLine:2}}
+  ],edges:[]});
+  const b=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"b",configuration:{},nodes:[
+    {id:"new",type:NodeType.SYMBOL,attributes:{fileId:"file",name:"same",kind:"function",startLine:4,endLine:5}}
+  ],edges:[]});
+  const d=diffSnapshots(a,b);
+  assert.deepEqual(d.removedNodes,["old"]);
+  assert.deepEqual(d.addedNodes,["new"]);
+  assert.deepEqual(removedSymbolIdsFromDiff(a,b,d),[]);
+});
+
+test("graph diff ignores removed local variables for deletion risk", () => {
+  const a=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"a",configuration:{},nodes:[
+    {id:"old-var",type:NodeType.SYMBOL,attributes:{fileId:"file",name:"temp",kind:"variable"}}
+  ],edges:[]});
+  const b=createSnapshot({analyzerVersion:"0.2.0",repository:"repo",commit:"b",configuration:{},nodes:[],edges:[]});
+  const d=diffSnapshots(a,b);
+  assert.deepEqual(removedSymbolIdsFromDiff(a,b,d),[]);
 });
