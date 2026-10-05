@@ -1,12 +1,12 @@
 {
   "name": "git-commit-test-graph",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Deterministic semantic Git repository graph, test graph, and change-impact engine",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "gctg": "./bin/gctg.mjs"
+    "gctg": "bin/gctg.mjs"
   },
   "files": [
     "dist",
