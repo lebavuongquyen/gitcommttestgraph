@@ -26,3 +26,8 @@ export * from "./adapters/test-frameworks/generic-script/adapter.js";
 export * from "./adapters/package-managers/manager.js";
 export * from "./infrastructure/process/command-runner.js";
 export * from "./application/queries/impact-query-service.js";
+
+export * from "./domain/graph/resolution.js";
+export * from "./adapters/languages/typescript/module-resolver.js";
+export * from "./adapters/languages/typescript/semantic-project-analyzer.js";
+export * from "./adapters/package-managers/workspace-dependencies.js";
