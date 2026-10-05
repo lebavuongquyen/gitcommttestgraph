@@ -12,3 +12,7 @@ export * from "./application/ports/git.js";
 export * from "./application/ports/graph-store.js";
 export * from "./adapters/git/cli-git.js";
 export * from "./adapters/git/repository-discovery.js";
+export * from "./domain/repository/discovery-model.js";
+export * from "./application/ports/source-analyzer.js";
+export * from "./adapters/repository/package-discovery.js";
+export * from "./adapters/languages/typescript/semantic-analyzer.js";
