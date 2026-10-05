@@ -30,31 +30,26 @@ export * from "./adapters/test-frameworks/generic-script/adapter.js";
 export * from "./adapters/package-managers/manager.js";
 export * from "./infrastructure/process/command-runner.js";
 export * from "./application/queries/impact-query-service.js";
-
 export * from "./domain/graph/resolution.js";
 export * from "./adapters/languages/typescript/module-resolver.js";
 export * from "./adapters/languages/typescript/semantic-project-analyzer.js";
 export * from "./adapters/package-managers/workspace-dependencies.js";
 export * from "./application/indexing/classified-file-graph.js";
 export * from "./application/tests/test-graph-builder.js";
-
 export * from "./application/indexing/incremental-indexer.js";
 export * from "./application/ports/semantic-cache.js";
 export * from "./infrastructure/http/server.js";
-
 export * from "./adapters/test-frameworks/standard/adapters.js";
 export * from "./application/indexing/tsconfig-aliases.js";
-
 export * from "./domain/errors.js";
-
 export * from "./application/tests/execution-service.js";
 export * from "./infrastructure/persistence/json-test-result-store.js";
 export * from "./infrastructure/persistence/index-lock.js";
 export * from "./infrastructure/persistence/json-semantic-cache.js";
-
 export * from './domain/impact/test-impact.js';
 export * from './application/impact/test-impact-analyzer.js';
-
 export * from "./domain/workflow/execution-plan.js";
 export * from "./application/workflow/execution-plan-builder.js";
 export * from "./application/workflow/execution-plan-export.js";
+export * from "./domain/workflow/execution-result.js";
+export * from "./application/workflow/execution-plan-runner.js";
