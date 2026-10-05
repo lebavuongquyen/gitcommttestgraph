@@ -13,6 +13,7 @@ Deterministic semantic Git repository graph and change-impact engine for TypeScr
 - AI is optional and outside the core graph engine.
 - Static test-gap analysis identifies testable symbols without direct or dependency-based test evidence and reports generic-script-only areas as unknown; it is not runtime code coverage.
 - Test-impact analysis maps changed and affected symbols to TestCases, TestFiles, TestProjects and resolved runnable commands.
+- Workflow projection emits a deterministic JSON graph for Git → Code → Test → Command visualizations and downstream workflow tooling.
 - Test execution is opt-in and uses structured process arguments without a shell.
 - Semantic incremental indexing reanalyzes changed files plus reverse semantic dependents and reuses unaffected symbol subgraphs.
 
@@ -28,6 +29,7 @@ gctg impact <commit> <nodeId> [nodeId...]
 gctg tests [commit]
 gctg test-gaps [commit] [--package <name-or-id>]
 gctg test-impact [commit] [--package <name-or-id>]
+gctg workflow [commit]
 gctg run <executable> [args...]
 gctg serve [port]
 ```
