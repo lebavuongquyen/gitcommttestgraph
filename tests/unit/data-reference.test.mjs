@@ -11,5 +11,5 @@ test("data references create fixture and schema edges", () => {
   assert.equal(graph.nodes.filter(node => node.type === "Fixture").length, 1);
   assert.equal(graph.nodes.filter(node => node.type === "Schema").length, 1);
   assert.equal(graph.edges.filter(edge => edge.type === "USES_FIXTURE").length, 1);
-  assert.equal(graph.edges.filter(edge => edge.type === "USES_SCHEMA").length, 1);
+  assert.equal(graph.edges.filter(edge => edge.type === "USES_SCHEMA").length, 2);
 });
