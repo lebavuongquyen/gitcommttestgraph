@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, diffSnapshots, configurationFingerprint, runProcess, IndexLock } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
@@ -177,6 +177,47 @@ try {
     process.stdout.write(serializeExecutionPlan(plan, format));
     process.exit(0);
   }
+  if (command === "run-plan") {
+    const { repository, git, store, semanticCache } = await context();
+    const commit = process.argv[3] ?? await git.getHead();
+    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const commitInfo = await git.getCommit(commit);
+    let changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
+    if (commitInfo.parents?.length) {
+      const parent = await indexAt(git, store, semanticCache, repository.root, commitInfo.parents[0]);
+      const diff = diffSnapshots(parent.snapshot, result.snapshot);
+      const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
+      changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
+    }
+    const gapAnalysis = new TestGapAnalyzer().analyze(result.snapshot, { changedNodeIds: changedSymbolIds });
+    const impact = new TestImpactAnalyzer().analyze(result.snapshot, { changedSymbolIds, coverageLinks: gapAnalysis.coverageLinks });
+    const plan = buildExecutionPlan({
+      repository: result.snapshot.repository,
+      commit: result.snapshot.commit,
+      nodes: result.snapshot.nodes,
+      edges: result.snapshot.edges,
+      impacts: impact.impacts
+    });
+    const execution = await new ExecutionPlanRunner({ run: runProcess }).execute(plan);
+    const feedback = buildWorkflowExecutionFeedback(plan, execution);
+    const resultStore = new JsonTestResultStore(repository.root + "/.gctg/results/execution");
+    const feedbackStore = new JsonTestResultStore(repository.root + "/.gctg/results/feedback");
+    await resultStore.save(feedback.executionId, execution);
+    await resultStore.save(`latest:${repository.root}:${commit}`, execution);
+    await feedbackStore.save(feedback.executionId, feedback);
+    await feedbackStore.save(`latest:${repository.root}:${commit}`, feedback);
+    json({ execution, feedback });
+    process.exit(execution.passed ? 0 : 1);
+  }
+  if (command === "execution-feedback") {
+    const { repository, git } = await context();
+    const commit = process.argv[3] ?? await git.getHead();
+    const feedbackStore = new JsonTestResultStore(repository.root + "/.gctg/results/feedback");
+    const feedback = await feedbackStore.get(`latest:${repository.root}:${commit}`);
+    if (!feedback) throw new Error(`No execution feedback found for commit ${commit}`);
+    json(feedback);
+    process.exit(0);
+  }
   if (command === "tests") {
     const { repository, git, store, semanticCache } = await context();
     const commit = process.argv[3] ?? await git.getHead();
@@ -199,7 +240,7 @@ try {
     console.log("gctg server listening on http://127.0.0.1:" + port);
     await new Promise(() => {});
   }
-  console.log("Usage: gctg [--version] | status | commits [limit] | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | tests [commit] | run <executable> [args...] | serve [port]");
+  console.log("Usage: gctg [--version] | status | commits [limit] | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] | serve [port]");
   process.exit(command === "help" ? 0 : 2);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
