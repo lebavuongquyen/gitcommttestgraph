@@ -56,7 +56,7 @@ function isSymbolDeclaration(node: ts.Node): boolean {
 }
 
 function declarationName(node: ts.Node): string | null {
-  if (ts.isVariableStatement(node)) return node.declarationList.declarations.length === 1 && ts.isIdentifier(node.declarationList.declarations[0]?.name) ? node.declarationList.declarations[0].name.text : null;
+  if (ts.isVariableStatement(node)) const declaration = node.declarationList.declarations[0];\n  return node.declarationList.declarations.length === 1 && declaration && ts.isIdentifier(declaration.name) ? declaration.name.text : null;
   const named = node as ts.Declaration & { name?: ts.Node };
   return named.name && ts.isIdentifier(named.name) ? named.name.text : null;
 }
@@ -73,5 +73,5 @@ function symbolKind(node: ts.Node): SymbolKind {
 }
 
 function hasExportModifier(node: ts.Node): boolean {
-  return !!node.modifiers?.some(m => m.kind === ts.SyntaxKind.ExportKeyword);
+  return !!ts.getModifiers(node)?.some((m: ts.ModifierLike) => m.kind === ts.SyntaxKind.ExportKeyword);
 }
