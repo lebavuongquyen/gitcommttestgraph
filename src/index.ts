@@ -10,3 +10,5 @@ export * from "./domain/symbol/model.js";
 export * from "./domain/test/model.js";
 export * from "./application/ports/git.js";
 export * from "./application/ports/graph-store.js";
+export * from "./adapters/git/cli-git.js";
+export * from "./adapters/git/repository-discovery.js";
