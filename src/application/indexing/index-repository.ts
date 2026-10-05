@@ -9,6 +9,7 @@ import { TestRegistry } from "../tests/test-registry.js";
 import { GenericScriptTestAdapter } from "../../adapters/test-frameworks/generic-script/adapter.js";
 import { buildClassifiedFileGraph } from "./classified-file-graph.js";
 import { discoverPathAliases } from "./tsconfig-aliases.js";
+import { buildDataReferenceGraph } from "./data-reference-graph.js";
 import { VitestAdapter, JestAdapter, NodeTestAdapter, PlaywrightAdapter } from "../../adapters/test-frameworks/standard/adapters.js";
 import type { GitRepositoryPort } from "../ports/git.js";
 import type { GraphStore } from "../ports/graph-store.js";
@@ -86,6 +87,11 @@ export class RepositoryIndexer {
     edges.push(...classifiedGraph.edges);
 
     const analysis = this.analyzer.analyzeProject({ files: sourceInputs, pathAliases, packageRoots }, options.commit);
+    const dataInputs = new Map<string, string>();
+    for (const input of sourceInputs) dataInputs.set(normalize(input.path), input.content);
+    const dataGraph = buildDataReferenceGraph({ files, contents: dataInputs, commit: options.commit });
+    nodes.push(...dataGraph.nodes);
+    edges.push(...dataGraph.edges);
     nodes.push(...analysis.nodes);
     edges.push(...analysis.edges);
 
