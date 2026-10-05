@@ -22,7 +22,8 @@ export class ImpactEngine {
       }
     }
     const results = new Map<string, Impact>();
-    const queue = request.changedNodeIds.map(id => ({ id, path: [{ nodeId: id }], level: ImpactLevel.DIRECT, confidence: Confidence.EXACT, evidence: [] as Evidence[] }));
+    const queue: Array<{ id: string; path: Array<{ nodeId: string; relation?: string }>; level: ImpactLevel; confidence: Confidence; evidence: Evidence[] }> =
+      request.changedNodeIds.map(id => ({ id, path: [{ nodeId: id }], level: ImpactLevel.DIRECT, confidence: Confidence.EXACT, evidence: [] }));
     const seen = new Set<string>();
     while (queue.length) {
       const current = queue.shift()!;
@@ -49,7 +50,7 @@ export class ImpactEngine {
 }
 
 function isReverseDependency(type: GraphEdge["type"]): boolean {
-  return [EdgeType.IMPORTS, EdgeType.CALLS, EdgeType.EXTENDS, EdgeType.IMPLEMENTS, EdgeType.DEPENDS_ON, EdgeType.TESTS, EdgeType.USES_FIXTURE, EdgeType.USES_SCHEMA].includes(type);
+  return [EdgeType.IMPORTS, EdgeType.CALLS, EdgeType.EXTENDS, EdgeType.IMPLEMENTS, EdgeType.DEPENDS_ON, EdgeType.TESTS, EdgeType.USES_FIXTURE, EdgeType.USES_SCHEMA].some(value => value === type);
 }
 
 function minConfidence(a: Confidence, b: Confidence): Confidence {
