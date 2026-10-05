@@ -1,9 +1,11 @@
 #!/usr/bin/env node
+import { readFile } from "node:fs/promises";
 import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, RepositoryIndexer, GraphQueryService, ImpactQueryService, diffSnapshots, configurationFingerprint, runProcess } from "../dist/index.js";
 
+const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
 const root = process.cwd();
-const analyzerVersion = "0.3.0";
+const analyzerVersion = packageJson.version;
 const configuration = {};
 const json = value => console.log(JSON.stringify(value, null, 2));
 
@@ -20,6 +22,10 @@ async function indexAt(git, store, repository, commit) {
 }
 
 try {
+  if (command === "--version" || command === "-v") {
+    console.log(packageJson.version);
+    process.exit(0);
+  }
   if (command === "status") {
     const { repository, git } = await context();
     json({ root: repository.root, head: await git.getHead(), workspaceFiles: repository.workspaceFiles });
@@ -83,10 +89,10 @@ try {
     const { startServer } = await import("../dist/infrastructure/http/server.js");
     const port = Number(process.argv[3] ?? 3717);
     await startServer(root, port);
-    console.log(`gctg server listening on http://127.0.0.1:${port}`);
+    console.log("gctg server listening on http://127.0.0.1:" + port);
     await new Promise(() => {});
   }
-  console.log("Usage: gctg status | commits [limit] | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | tests [commit] | run <executable> [args...] | serve [port]");
+  console.log("Usage: gctg [--version] | status | commits [limit] | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | tests [commit] | run <executable> [args...] | serve [port]");
   process.exit(command === "help" ? 0 : 2);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));
