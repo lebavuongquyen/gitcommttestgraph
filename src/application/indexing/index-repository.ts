@@ -8,6 +8,7 @@ import { buildTestGraph } from "../tests/test-graph-builder.js";
 import { TestRegistry } from "../tests/test-registry.js";
 import { GenericScriptTestAdapter } from "../../adapters/test-frameworks/generic-script/adapter.js";
 import { buildClassifiedFileGraph } from "./classified-file-graph.js";
+import { discoverPathAliases } from "./tsconfig-aliases.js";
 import { VitestAdapter, JestAdapter, NodeTestAdapter, PlaywrightAdapter } from "../../adapters/test-frameworks/standard/adapters.js";
 import type { GitRepositoryPort } from "../ports/git.js";
 import type { GraphStore } from "../ports/graph-store.js";
@@ -49,6 +50,8 @@ export class RepositoryIndexer {
     const edges: GraphEdge[] = [];
     const classified = new Map(files.map(path => [normalize(path), classifyFile(path)]));
     const sourceInputs: SourceFileInput[] = [];
+    const pathAliases = await discoverPathAliases(this.git, files, options.commit);
+    const packageRoots = Object.fromEntries(packageInfo.packages.map(pkg => [pkg.name, pkg.rootPath]));
     const testRegistry = new TestRegistry();
     testRegistry.register(new PlaywrightAdapter());
     testRegistry.register(new VitestAdapter());
@@ -82,7 +85,7 @@ export class RepositoryIndexer {
     nodes.push(...classifiedGraph.nodes);
     edges.push(...classifiedGraph.edges);
 
-    const analysis = this.analyzer.analyzeProject({ files: sourceInputs }, options.commit);
+    const analysis = this.analyzer.analyzeProject({ files: sourceInputs, pathAliases, packageRoots }, options.commit);
     nodes.push(...analysis.nodes);
     edges.push(...analysis.edges);
 
