@@ -11,6 +11,10 @@ test("JSON result store persists and restores values", async () => {
     const store = new JsonTestResultStore(root);
     await store.save("abc", { passed: true });
     assert.deepEqual(await store.get("abc"), { passed: true });
+    await store.save("abc", { passed: false, attempt: 2 });
+    assert.deepEqual(await store.get("abc"), { passed: false, attempt: 2 });
+    const entries = await (await import("node:fs/promises")).readdir(root);
+    assert.equal(entries.some(name => name.endsWith(".tmp")), false);
   } finally {
     await rm(root, { recursive: true, force: true });
   }
