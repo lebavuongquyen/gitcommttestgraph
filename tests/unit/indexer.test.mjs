@@ -9,6 +9,7 @@ test("indexer persists and reuses exact commit snapshots", async () => {
   const root = await mkdtemp(join(tmpdir(), "gctg-store-"));
   try {
     const git = {
+      async getCommit(hash) { return { hash, parents: [], author: "a", committer: "c", timestamp: "2026-01-01T00:00:00Z", message: "test" }; },
       async listFilesAtCommit() { return ["src/a.ts"]; },
       async readFileAtCommit() { return "export function a() { return 1; }"; }
     };
