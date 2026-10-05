@@ -36,3 +36,6 @@ export * from "./application/tests/test-graph-builder.js";
 
 export * from "./application/indexing/incremental-indexer.js";
 export * from "./infrastructure/http/server.js";
+
+export * from "./adapters/test-frameworks/standard/adapters.js";
+export * from "./application/indexing/tsconfig-aliases.js";
