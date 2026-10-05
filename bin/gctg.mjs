@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, RepositoryIndexer, GraphQueryService, ImpactQueryService, diffSnapshots, configurationFingerprint, runProcess } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, diffSnapshots, configurationFingerprint, runProcess } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
@@ -16,9 +16,13 @@ async function context() {
   return { repository, git, store };
 }
 async function indexAt(git, store, repository, commit) {
-  return new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store).index({
-    repository, commit, configuration, analyzerVersion
-  });
+  const fullIndexer = new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store);
+  const incremental = new IncrementalRepositoryIndexer(
+    git,
+    fullIndexer,
+    (repo, hash, version, fingerprint) => store.getSnapshot(repo, hash, version, fingerprint)
+  );
+  return incremental.index({ repository, commit, configuration, analyzerVersion });
 }
 
 try {

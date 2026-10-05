@@ -12,6 +12,7 @@ Deterministic semantic Git repository graph and change-impact engine for TypeScr
 - Configuration, fixture and schema artifacts are modeled separately.
 - AI is optional and outside the core graph engine.
 - Test execution is opt-in and uses structured process arguments without a shell.
+- Semantic incremental indexing reanalyzes changed files plus reverse semantic dependents and reuses unaffected symbol subgraphs.
 
 ## CLI
 
@@ -39,7 +40,7 @@ Vitest, Jest, Node test, Playwright and generic package scripts.
 
 ## Persistence
 
-Snapshots are stored under `.gctg/graph`. Snapshot reuse is exact for the repository, commit, analyzer version and configuration fingerprint. Safe incremental reuse is available for changes classified as non-executable artifacts.
+Snapshots are stored under `.gctg/graph`. Snapshot reuse is exact for the repository, commit, analyzer version and configuration fingerprint. Semantic incremental indexing uses the parent graph as a dependency index, analyzes only impacted source paths, reuses unaffected semantic nodes and edges, and is verified against a clean full-index graph in the test suite.
 
 ## HTTP API
 

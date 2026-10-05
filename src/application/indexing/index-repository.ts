@@ -1,6 +1,6 @@
 import { posix } from "node:path";
 import { createSnapshot } from "../../domain/graph/snapshot.js";
-import { EdgeType, NodeType, type GraphNode, type GraphEdge } from "../../domain/graph/model.js";
+import { EdgeType, NodeType, type GraphNode, type GraphEdge, type GraphSnapshot } from "../../domain/graph/model.js";
 import { stableId, edgeId } from "../../domain/graph/ids.js";
 import { Confidence } from "../../domain/evidence/model.js";
 import { PackageManager } from "../../domain/package/model.js";
@@ -21,6 +21,8 @@ export interface IndexOptions {
   readonly commit: string;
   readonly configuration: unknown;
   readonly analyzerVersion: string;
+  readonly semanticAnalysisPaths?: readonly string[];
+  readonly incrementalParentSnapshot?: GraphSnapshot;
 }
 
 export class RepositoryIndexer {
@@ -92,7 +94,10 @@ export class RepositoryIndexer {
     nodes.push(...classifiedGraph.nodes);
     edges.push(...classifiedGraph.edges);
 
-    const analysis = this.analyzer.analyzeProject({ files: sourceInputs, pathAliases, packageRoots, packageEntrypoints }, options.commit);
+    const rawAnalysis = this.analyzer.analyzeProject({ files: sourceInputs, pathAliases, packageRoots, packageEntrypoints, ...(options.semanticAnalysisPaths ? { analysisPaths: options.semanticAnalysisPaths } : {}) }, options.commit);
+    const analysis = options.incrementalParentSnapshot && options.semanticAnalysisPaths
+      ? mergeIncrementalSemanticAnalysis(rawAnalysis, options.incrementalParentSnapshot, files, options.semanticAnalysisPaths, options.commit)
+      : rawAnalysis;
     const dataInputs = new Map<string, string>();
     for (const input of sourceInputs) dataInputs.set(normalize(input.path), input.content);
     const dataGraph = buildDataReferenceGraph({ files, contents: dataInputs, commit: options.commit });
@@ -137,7 +142,19 @@ export class RepositoryIndexer {
       configuration: options.configuration,
       nodes,
       edges,
-      metadata: { packageCount: packageById.size, sourceFileCount: sourceInputs.length, testFileCount, configFileCount, classifiedFileCount: classified.size }
+      metadata: {
+        packageCount: packageById.size,
+        sourceFileCount: sourceInputs.length,
+        testFileCount,
+        configFileCount,
+        classifiedFileCount: classified.size,
+        ...(options.incrementalParentSnapshot ? {
+          incremental: true,
+          parentCommit: options.incrementalParentSnapshot.commit,
+          semanticAnalyzedPaths: analysis.analyzedPaths ?? sourceInputs.map(input => normalize(input.path)).sort(),
+          semanticReusedPaths: sourceInputs.map(input => normalize(input.path)).filter(path => !options.semanticAnalysisPaths?.includes(path)).sort()
+        } : {})
+      }
     });
     await this.store.saveSnapshot(snapshot);
     return { snapshot, reused: false };
@@ -254,6 +271,61 @@ function exportTarget(value: unknown): string | undefined {
 
 function joinPath(root: string, target: string): string {
   return posix.normalize(posix.join(root, target));
+}
+
+function mergeIncrementalSemanticAnalysis(
+  fresh: { readonly nodes: readonly GraphNode[]; readonly edges: readonly GraphEdge[]; readonly analyzedPaths?: readonly string[] },
+  parent: GraphSnapshot,
+  currentFiles: readonly string[],
+  selectedPaths: readonly string[],
+  commit: string
+): { readonly nodes: readonly GraphNode[]; readonly edges: readonly GraphEdge[]; readonly analyzedPaths: readonly string[] } {
+  const currentSourcePaths = new Set(currentFiles.filter(isSource).map(normalize));
+  const selected = new Set(selectedPaths.map(normalize));
+  const parentFilePath = new Map<string, string>();
+  const parentSymbolPath = new Map<string, string>();
+
+  for (const node of parent.nodes) {
+    if (node.type === NodeType.FILE && typeof node.attributes.path === "string") parentFilePath.set(node.id, normalize(String(node.attributes.path)));
+  }
+  for (const node of parent.nodes) {
+    if (node.type === NodeType.SYMBOL && typeof node.attributes.fileId === "string") {
+      const path = parentFilePath.get(String(node.attributes.fileId));
+      if (path) parentSymbolPath.set(node.id, path);
+    }
+  }
+
+  const ownerPath = (nodeId: string): string | undefined => parentFilePath.get(nodeId) ?? parentSymbolPath.get(nodeId);
+  const reusableNodes = parent.nodes.filter(node => {
+    if (node.type !== NodeType.SYMBOL) return false;
+    const path = ownerPath(node.id);
+    return !!path && currentSourcePaths.has(path) && !selected.has(path);
+  });
+  const reusableEdges = parent.edges.filter(edge => {
+    const sourcePath = ownerPath(edge.source);
+    const targetPath = ownerPath(edge.target);
+    return !!sourcePath && !!targetPath && currentSourcePaths.has(sourcePath) && currentSourcePaths.has(targetPath) && !selected.has(sourcePath) && !selected.has(targetPath);
+  });
+
+  const nodes = dedupeNodes([...fresh.nodes, ...reusableNodes]);
+  const edges = dedupeEdges([...fresh.edges, ...reusableEdges.map(edge => remapEdgeForCommit(edge, commit))]);
+  return { nodes, edges, analyzedPaths: [...(fresh.analyzedPaths ?? [...selected])].sort() };
+}
+
+function remapEdgeForCommit(edge: GraphEdge, commit: string): GraphEdge {
+  return { ...edge, id: edgeId(edge.source, edge.type, edge.target, commit), sourceCommit: commit };
+}
+
+function dedupeNodes(nodes: readonly GraphNode[]): GraphNode[] {
+  const map = new Map<string, GraphNode>();
+  for (const node of nodes) map.set(node.id, node);
+  return [...map.values()];
+}
+
+function dedupeEdges(edges: readonly GraphEdge[]): GraphEdge[] {
+  const map = new Map<string, GraphEdge>();
+  for (const edge of edges) map.set(edge.id, edge);
+  return [...map.values()];
 }
 
 function normalize(path: string): string { return path.replaceAll("\\", "/"); }

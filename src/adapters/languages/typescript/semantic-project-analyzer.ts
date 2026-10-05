@@ -7,16 +7,18 @@ import { SymbolKind } from "../../../domain/symbol/model.js";
 import type { SourceAnalysis, SourceFileInput } from "../../../application/ports/source-analyzer.js";
 
 export class TypeScriptProjectAnalyzer {
-  analyzeProject(input: { readonly files: readonly SourceFileInput[]; readonly pathAliases?: Readonly<Record<string, readonly string[]>>; readonly baseUrl?: string; readonly packageRoots?: Readonly<Record<string, string>>; readonly packageEntrypoints?: Readonly<Record<string, string>> }, commit: string): SourceAnalysis {
-    return this.analyzeFiles(input.files, commit, input.pathAliases, input.baseUrl, input.packageRoots, input.packageEntrypoints);
+  analyzeProject(input: { readonly files: readonly SourceFileInput[]; readonly pathAliases?: Readonly<Record<string, readonly string[]>>; readonly baseUrl?: string; readonly packageRoots?: Readonly<Record<string, string>>; readonly packageEntrypoints?: Readonly<Record<string, string>>; readonly analysisPaths?: readonly string[] }, commit: string): SourceAnalysis {
+    return this.analyzeFiles(input.files, commit, input.pathAliases, input.baseUrl, input.packageRoots, input.packageEntrypoints, input.analysisPaths);
   }
 
   analyze(input: SourceFileInput | readonly SourceFileInput[], commit: string): SourceAnalysis {
     return this.analyzeFiles(Array.isArray(input) ? input : [input], commit);
   }
 
-  private analyzeFiles(files: readonly SourceFileInput[], commit: string, pathAliases?: Readonly<Record<string, readonly string[]>>, baseUrl?: string, packageRoots?: Readonly<Record<string, string>>, packageEntrypoints?: Readonly<Record<string, string>>): SourceAnalysis {
+  private analyzeFiles(files: readonly SourceFileInput[], commit: string, pathAliases?: Readonly<Record<string, readonly string[]>>, baseUrl?: string, packageRoots?: Readonly<Record<string, string>>, packageEntrypoints?: Readonly<Record<string, string>>, analysisPathList?: readonly string[]): SourceAnalysis {
     const normalized = files.map(file => ({ ...file, path: file.path.replaceAll("\\", "/") }));
+    const analysisPaths = analysisPathList ? new Set(analysisPathList.map(path => path.replaceAll("\\", "/"))) : undefined;
+    const shouldAnalyze = (path: string) => !analysisPaths || analysisPaths.has(path);
     const fileNames = normalized.map(file => file.path);
     const compilerOptions: ts.CompilerOptions = {
       target: ts.ScriptTarget.ES2022,
@@ -73,6 +75,7 @@ export class TypeScriptProjectAnalyzer {
     }
 
     for (const file of normalized) {
+      if (!shouldAnalyze(file.path)) continue;
       const source = program.getSourceFile(file.path);
       if (!source) continue;
       const fileId = fileNodes.get(file.path)!;
@@ -137,7 +140,7 @@ export class TypeScriptProjectAnalyzer {
       }
       ts.forEachChild(source, visit);
     }
-    return { nodes, edges };
+    return { nodes, edges, analyzedPaths: normalized.filter(file => shouldAnalyze(file.path)).map(file => file.path) };
   }
 }
 

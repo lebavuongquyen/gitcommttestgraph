@@ -9,6 +9,7 @@ export interface SourceFileInput {
 export interface SourceAnalysis {
   readonly nodes: readonly GraphNode[];
   readonly edges: readonly GraphEdge[];
+  readonly analyzedPaths?: readonly string[];
 }
 
 export interface SourceAnalyzer {
@@ -25,5 +26,5 @@ export interface SourceProjectInput {
   readonly baseUrl?: string;
   readonly packageRoots?: Readonly<Record<string, string>>;
   readonly packageEntrypoints?: Readonly<Record<string, string>>;
+  readonly analysisPaths?: readonly string[];
 }
-
