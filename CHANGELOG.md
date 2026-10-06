@@ -31,6 +31,11 @@ All notable changes to git-commit-test-graph are documented here.
 - Kept GUI behavior and HTTP routes compatible while moving API orchestration into a dedicated GUI client module.
 - Added GUI architecture contracts preventing direct application, domain and infrastructure dependencies in GUI code.
 
+### R06 — Typed GUI Capability Boundary
+- Added typed GUI capability descriptors and initial GUI view-model contracts.
+- Centralized GUI HTTP capability routing and query construction in the browser controller.
+- Added contracts preventing GUI capability drift from the application capability registry.
+
 ## [0.9.8] - 2026-10-06
 
 ### 0.9 Revalidation and MCP Surface Parity
