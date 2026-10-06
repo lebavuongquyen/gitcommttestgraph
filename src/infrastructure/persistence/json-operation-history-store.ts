@@ -73,6 +73,7 @@ function isOperationRecord(value: unknown): value is OperationRecord {
     (!("finishedAt" in item) || typeof item.finishedAt === "string") &&
     (!("parentId" in item) || typeof item.parentId === "string") &&
     (!("error" in item) || typeof item.error === "string") &&
+    (!("failureCategory" in item) || ["validation", "git", "analysis", "storage", "corruption", "resource", "execution", "external_provider", "recovery"].includes(String(item.failureCategory))) &&
     !!item.metadata && typeof item.metadata === "object" && !Array.isArray(item.metadata);
 }
 

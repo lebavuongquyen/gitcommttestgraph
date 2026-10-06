@@ -1,3 +1,5 @@
+import type { FailureCategory } from "./failure.js";
+
 export type OperationState = "queued" | "running" | "succeeded" | "failed" | "cancelled" | "recovered";
 
 export interface OperationRecord {
@@ -8,5 +10,6 @@ export interface OperationRecord {
   readonly finishedAt?: string;
   readonly parentId?: string;
   readonly error?: string;
+  readonly failureCategory?: FailureCategory;
   readonly metadata: Readonly<Record<string, unknown>>;
 }

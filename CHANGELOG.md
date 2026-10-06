@@ -511,6 +511,14 @@ See Git history for the previous release.
 - Exposed progress through HTTP and MCP.
 - Added focused tests and documentation.
 
+### O05 - Failure Taxonomy - 2026-10-07
+
+- Added deterministic validation, Git, analysis, storage, corruption, resource, execution, external-provider and recovery failure categories.
+- Added failureCategory to failed operation records.
+- Added conservative retryability classification without automatic retries.
+- Preserved secret-safe error messages.
+- Added focused unit coverage and documentation.
+
 ### O04 - Persistent Operation History - 2026-10-07
 
 - Persisted bounded runtime operation history in repository-owned .gctg/operations.json.
