@@ -115,6 +115,26 @@ export function createGctgMcpServer(root: string) {
     return result(planRetention(resolved.configuration, candidates as never, now ?? new Date().toISOString()));
   });
 
+  server.registerTool("cleanup_preview", {
+    title: "Cleanup Preview",
+    description: "Create a deterministic cleanup preview for exact snapshot commits without deleting anything.",
+    inputSchema: { commits: z.array(z.string()), now: z.string().optional() }
+  }, async ({ commits, now }) => {
+    const ctx = await context(root);
+    const { SnapshotCleanupService } = await import("../application/history/snapshot-cleanup-service.js");
+    return result(await new SnapshotCleanupService(ctx.store).preview(commits, now ?? new Date().toISOString()));
+  });
+
+  server.registerTool("cleanup_apply", {
+    title: "Cleanup Apply",
+    description: "Apply an exact cleanup preview. The preview proof is checked before deletion and repeated application is idempotent.",
+    inputSchema: { preview: z.unknown() }
+  }, async ({ preview }) => {
+    const ctx = await context(root);
+    const { SnapshotCleanupService } = await import("../application/history/snapshot-cleanup-service.js");
+    return result(await new SnapshotCleanupService(ctx.store).apply(preview as never));
+  });
+
   server.registerTool("change_intelligence", {
     title: "Change Intelligence",
     description: "Analyze a commit or branch through the unified change intelligence contract. Read-only and deterministic.",

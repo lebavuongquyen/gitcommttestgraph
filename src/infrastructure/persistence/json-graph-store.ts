@@ -1,8 +1,9 @@
-import { mkdir, readFile, writeFile, rename, readdir } from "node:fs/promises";
+import { mkdir, readFile, writeFile, rename, readdir, stat, unlink } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { GraphNode, GraphSnapshot } from "../../domain/graph/model.js";
 import type { GraphQueryRequest, GraphQueryResult, GraphStore } from "../../application/ports/graph-store.js";
 import type { GraphStorage } from "../../application/ports/graph-store-capabilities.js";
+import type { SnapshotMaintenanceStore, SnapshotRecord } from "../../application/ports/snapshot-maintenance.js";
 import { IndexCorruptError } from "../../domain/errors.js";
 import { IndexLock } from "./index-lock.js";
 
@@ -14,7 +15,7 @@ interface SnapshotManifestEntry {
   readonly path: string;
 }
 
-export class JsonGraphStore implements GraphStore, GraphStorage {
+export class JsonGraphStore implements GraphStore, GraphStorage, SnapshotMaintenanceStore {
   private manifestPromise: Promise<SnapshotManifestEntry[]> | undefined;
   private readonly manifestLock: IndexLock;
   readonly snapshots: GraphStore = this;
@@ -53,6 +54,30 @@ export class JsonGraphStore implements GraphStore, GraphStorage {
       if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") return null;
       if (error instanceof SyntaxError || error instanceof IndexCorruptError) throw new IndexCorruptError("Invalid graph snapshot for " + commit);
       return null;
+    }
+  }
+
+  async listSnapshots(): Promise<readonly SnapshotRecord[]> {
+    const records: SnapshotRecord[] = [];
+    for (const entry of await this.readManifest()) {
+      try {
+        const info = await stat(entry.path);
+        records.push({ ...entry, sizeBytes: info.size });
+      } catch {}
+    }
+    return records.sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  async deleteSnapshot(record: SnapshotRecord): Promise<void> {
+    const release = await this.manifestLock.acquire();
+    try {
+      try { await unlink(record.path); } catch (error) {
+        if (!isMissing(error)) throw error;
+      }
+      const entries = (await this.readManifest()).filter(entry => entry.path !== record.path);
+      await this.writeManifest(entries);
+    } finally {
+      await release();
     }
   }
 
@@ -126,6 +151,10 @@ function validateSnapshot(value: unknown): asserts value is GraphSnapshot {
     if (typeof item.id !== "string" || typeof item.source !== "string" || typeof item.target !== "string" || typeof item.type !== "string" || typeof item.sourceCommit !== "string" || !Array.isArray(item.evidence)) throw new IndexCorruptError("Graph snapshot contains an invalid edge");
     if (!nodeIds.has(item.source) || !nodeIds.has(item.target)) throw new IndexCorruptError("Graph snapshot contains a dangling edge");
   }
+}
+
+function isMissing(error: unknown): boolean {
+  return !!error && typeof error === "object" && "code" in error && error.code === "ENOENT";
 }
 
 async function walk(root: string, visit: (path: string) => Promise<void>): Promise<void> {

@@ -479,3 +479,11 @@ See Git history for the previous release.
 - Added quota-pressure evaluation without allowing protected evidence to be silently selected.
 - Exposed retention planning through HTTP and MCP.
 - Added focused tests and documentation.
+
+### H04 - Cleanup Preview and Apply - 2026-10-07
+
+- Added exact, deterministic cleanup previews for GCTG-owned snapshots.
+- Added proof-checked cleanup apply with stale-preview rejection.
+- Added idempotent repeated apply behavior and manifest locking.
+- Exposed cleanup preview/apply through HTTP and MCP.
+- Added focused tests and documentation.

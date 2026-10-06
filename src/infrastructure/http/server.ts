@@ -208,6 +208,20 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, planRetention(resolved.configuration, candidates as never, now));
         return;
       }
+      if (url.pathname === "/api/cleanup/preview" && request.method === "POST") {
+        const body = await readJsonBody(request);
+        const input = body as Record<string, unknown>;
+        const commits = Array.isArray(input.commits) ? input.commits.filter(value => typeof value === "string") as string[] : [];
+        const { SnapshotCleanupService } = await import("../../application/history/snapshot-cleanup-service.js");
+        send(response, 200, await new SnapshotCleanupService(runtime.store).preview(commits, typeof input.now === "string" ? input.now : new Date().toISOString()));
+        return;
+      }
+      if (url.pathname === "/api/cleanup/apply" && request.method === "POST") {
+        const body = await readJsonBody(request);
+        const { SnapshotCleanupService } = await import("../../application/history/snapshot-cleanup-service.js");
+        send(response, 200, await new SnapshotCleanupService(runtime.store).apply(body as never));
+        return;
+      }
       if (url.pathname === "/api/branch-review") {
         const base = url.searchParams.get("base");
         if (!base) return send(response, 400, { error: "Missing base branch" });
