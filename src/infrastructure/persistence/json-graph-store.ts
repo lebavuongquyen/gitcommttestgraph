@@ -2,6 +2,7 @@ import { mkdir, readFile, writeFile, rename, readdir } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import type { GraphNode, GraphSnapshot } from "../../domain/graph/model.js";
 import type { GraphQueryRequest, GraphQueryResult, GraphStore } from "../../application/ports/graph-store.js";
+import type { GraphStorage } from "../../application/ports/graph-store-capabilities.js";
 import { IndexCorruptError } from "../../domain/errors.js";
 import { IndexLock } from "./index-lock.js";
 
@@ -13,9 +14,11 @@ interface SnapshotManifestEntry {
   readonly path: string;
 }
 
-export class JsonGraphStore implements GraphStore {
+export class JsonGraphStore implements GraphStore, GraphStorage {
   private manifestPromise: Promise<SnapshotManifestEntry[]> | undefined;
   private readonly manifestLock: IndexLock;
+  readonly snapshots: GraphStore = this;
+  readonly nodes: GraphStore = this;
 
   constructor(private readonly directory: string) {
     this.manifestLock = new IndexLock(join(directory, "manifest.lock"));
