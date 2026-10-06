@@ -1,6 +1,6 @@
 {
   "name": "git-commit-test-graph",
-  "version": "0.9.7",
+  "version": "0.9.8",
   "description": "Deterministic semantic Git repository graph, test graph, and change-impact engine",
   "type": "module",
   "main": "./dist/index.js",
@@ -49,3 +49,4 @@
     "typescript": "^5.9.2"
   }
 }
+

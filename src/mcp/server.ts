@@ -286,6 +286,29 @@ export function createGctgMcpServer(root: string) {
     return result(new ImpactEngine().analyze(indexed.snapshot, request));
   });
 
+  server.registerTool("test_gaps", {
+    title: "Test Gaps",
+    description: "Analyze direct, indirect, untested and unknown test coverage for repository symbols. Read-only and deterministic.",
+    inputSchema: { commit: z.string().optional(), packageId: z.string().optional() }
+  }, async ({ commit, packageId }) => {
+    const ctx = await context(root);
+    const target = commit ?? await ctx.git.getHead();
+    const indexed = await indexAt(ctx, target);
+    const currentNodeIds = new Set(indexed.snapshot.nodes.map(node => node.id));
+    let changedNodeIds: string[] = [];
+    const commitInfo = await ctx.git.getCommit(target);
+    const parentCommit = commitInfo.parents?.[0];
+    if (parentCommit) {
+      const parent = await indexAt(ctx, parentCommit);
+      const diff = diffSnapshots(parent.snapshot, indexed.snapshot);
+      changedNodeIds = [...new Set([...diff.addedNodes, ...diff.changedNodes])].filter(id => currentNodeIds.has(id));
+    }
+    const packageNode = packageId ? indexed.snapshot.nodes.find(node => node.type === "Package" && (node.id === packageId || String(node.attributes.name ?? "") === packageId)) : undefined;
+    const analysisPackageId = packageNode?.id ?? packageId;
+    const request = analysisPackageId ? { changedNodeIds, packageId: analysisPackageId } : { changedNodeIds };
+    return result(new TestGapAnalyzer().analyze(indexed.snapshot, request));
+  });
+
   server.registerTool("test_impact", {
     title: "Analyze Test Impact",
     description: "Map changed symbols to affected tests, test projects and runnable commands.",

@@ -2,6 +2,15 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.9.8] - 2026-10-06
+
+### 0.9 Revalidation and MCP Surface Parity
+- Revalidated the complete 0.9 line after repeated development interruptions.
+- Exposed the existing test-gap intelligence through MCP as `test_gaps`.
+- Added MCP discovery and callable contract coverage.
+- Preserved public API compatibility at 1.0.0.
+- Recorded remaining runtime-composition architecture debt for 0.10.
+
 ## [0.9.7] - 2026-10-06
 
 ### Compatibility Freeze
