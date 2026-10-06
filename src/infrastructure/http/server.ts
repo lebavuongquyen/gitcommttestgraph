@@ -180,6 +180,11 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, await buildDiagnosticBundle(runtime));
         return;
       }
+      if (url.pathname === "/api/consistency-check") {
+        const { ConsistencyChecker } = await import("../../application/recovery/consistency-checker.js");
+        send(response, 200, await new ConsistencyChecker(runtime.store).check());
+        return;
+      }
       if (url.pathname === "/api/operations") {
         const limit = url.searchParams.get("limit");
         const parsedLimit = limit === null ? undefined : Number(limit);

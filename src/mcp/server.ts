@@ -177,6 +177,16 @@ export function createGctgMcpServer(root: string) {
     return result(await buildDiagnosticBundle(ctx));
   });
 
+  server.registerTool("consistency_check", {
+    title: "Consistency Check",
+    description: "Check GCTG snapshot manifest and physical objects for missing, corrupt, duplicate, orphaned or incomplete-cleanup state without modifying anything.",
+    inputSchema: {}
+  }, async () => {
+    const ctx = await context(root);
+    const { ConsistencyChecker } = await import("../application/recovery/consistency-checker.js");
+    return result(await new ConsistencyChecker(ctx.store).check());
+  });
+
   server.registerTool("progress", {
     title: "Progress",
     description: "Inspect deterministic progress stages for a runtime operation.",

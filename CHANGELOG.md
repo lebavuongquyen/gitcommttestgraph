@@ -511,6 +511,14 @@ See Git history for the previous release.
 - Exposed progress through HTTP and MCP.
 - Added focused tests and documentation.
 
+### RCV01 - Consistency Checker - 2026-10-07
+
+- Added read-only consistency checking for manifest, snapshot objects and incomplete temporary artifacts.
+- Detects duplicate identities, missing objects, corrupt objects and orphan objects.
+- Exposed consistency checking through HTTP /api/consistency-check and MCP consistency_check.
+- Added focused storage, unit and cross-surface contract coverage.
+- Added docs/0.10.2-RCV01-CONSISTENCY-CHECKER.md.
+
 ### O06 - Diagnostic Bundle - 2026-10-07
 
 - Added a machine-readable diagnostic bundle combining health, bounded operation history, configuration provenance, storage accounting and reproducibility metadata.

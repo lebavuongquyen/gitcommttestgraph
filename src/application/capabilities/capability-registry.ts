@@ -118,6 +118,11 @@ export const capabilityRegistry: readonly CapabilityDescriptor[] = Object.freeze
     surfaces: { MCP: 'registerTool("diagnostic_bundle"', HTTP: "/api/diagnostic-bundle" }
   },
   {
+    id: "consistency_check",
+    applicationHandler: "ConsistencyChecker",
+    surfaces: { MCP: 'registerTool("consistency_check"', HTTP: "/api/consistency-check" }
+  },
+  {
     id: "branch_review",
     applicationHandler: "BranchReviewService",
     surfaces: { GUI: 'capability(\\"branchReview\\"', MCP: 'registerTool("branch_review"', CLI: 'command === "branch-review"', HTTP: "/api/branch-review" }

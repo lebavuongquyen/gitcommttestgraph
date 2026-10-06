@@ -4,6 +4,7 @@ import type { GraphNode, GraphSnapshot } from "../../domain/graph/model.js";
 import type { GraphQueryRequest, GraphQueryResult, GraphStore } from "../../application/ports/graph-store.js";
 import type { GraphStorage } from "../../application/ports/graph-store-capabilities.js";
 import type { SnapshotMaintenanceStore, SnapshotRecord } from "../../application/ports/snapshot-maintenance.js";
+import type { SnapshotConsistencyStore, SnapshotConsistencyIssue } from "../../application/ports/snapshot-consistency.js";
 import { IndexCorruptError } from "../../domain/errors.js";
 import { IndexLock } from "./index-lock.js";
 
@@ -15,7 +16,7 @@ interface SnapshotManifestEntry {
   readonly path: string;
 }
 
-export class JsonGraphStore implements GraphStore, GraphStorage, SnapshotMaintenanceStore {
+export class JsonGraphStore implements GraphStore, GraphStorage, SnapshotMaintenanceStore, SnapshotConsistencyStore {
   private manifestPromise: Promise<SnapshotManifestEntry[]> | undefined;
   private readonly manifestLock: IndexLock;
   readonly snapshots: GraphStore = this;
@@ -66,6 +67,56 @@ export class JsonGraphStore implements GraphStore, GraphStorage, SnapshotMainten
       } catch {}
     }
     return records.sort((a, b) => a.path.localeCompare(b.path));
+  }
+
+  async checkConsistency(): Promise<readonly SnapshotConsistencyIssue[]> {
+    const issues: SnapshotConsistencyIssue[] = [];
+    const manifestPath = join(this.directory, "manifest.json");
+    let entries: SnapshotManifestEntry[] = [];
+    try {
+      const parsed = JSON.parse(await readFile(manifestPath, "utf8")) as unknown;
+      if (!Array.isArray(parsed)) {
+        issues.push({ kind: "manifest", path: manifestPath, detail: "Manifest is not an array." });
+      } else {
+        entries = parsed as SnapshotManifestEntry[];
+        const identities = new Map<string, string>();
+        for (const entry of entries) {
+          if (!entry || typeof entry !== "object" || typeof entry.path !== "string" || typeof entry.repository !== "string" || typeof entry.commit !== "string" || typeof entry.analyzerVersion !== "string" || typeof entry.configurationFingerprint !== "string") {
+            issues.push({ kind: "manifest", detail: "Manifest contains an invalid entry." });
+            continue;
+          }
+          const identity = [entry.repository, entry.commit, entry.analyzerVersion, entry.configurationFingerprint].join("\u0000");
+          const previous = identities.get(identity);
+          if (previous) issues.push({ kind: "duplicate_identity", path: entry.path, detail: "Duplicate snapshot identity also appears at " + previous });
+          identities.set(identity, entry.path);
+          try {
+            const snapshot = JSON.parse(await readFile(entry.path, "utf8")) as unknown;
+            validateSnapshot(snapshot);
+          } catch (error) {
+            if (isMissing(error)) {
+              issues.push({ kind: "missing_object", path: entry.path, detail: "Manifest entry has no physical snapshot object." });
+            } else {
+              issues.push({ kind: "corrupt_object", path: entry.path, detail: error instanceof Error ? error.message : String(error) });
+            }
+          }
+        }
+      }
+    } catch (error) {
+      if (!isMissing(error)) issues.push({ kind: "manifest", path: manifestPath, detail: "Manifest cannot be parsed." });
+    }
+
+    const referenced = new Set(entries.map(entry => entry.path));
+    await walk(this.directory, async path => {
+      if (path === manifestPath) return;
+      if (path.endsWith(".tmp")) {
+        issues.push({ kind: "orphan_object", path, detail: "Temporary snapshot artifact indicates an incomplete write or cleanup." });
+        return;
+      }
+      if (!path.endsWith(".json")) return;
+      if (!referenced.has(path)) issues.push({ kind: "orphan_object", path, detail: "Physical snapshot object is not referenced by the manifest." });
+    });
+
+    return issues.sort((a, b) => (a.kind + (a.path ?? "")).localeCompare(b.kind + (b.path ?? "")));
   }
 
   async deleteSnapshot(record: SnapshotRecord): Promise<void> {
