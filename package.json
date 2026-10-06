@@ -30,7 +30,8 @@
     "reliability:gate": "npm run reliability:gate",
     "configuration:gate": "node scripts/configuration-gate.mjs",
     "security:gate": "node scripts/security-gate.mjs",
-    "compatibility:gate": "npm run build && node scripts/compatibility-gate.mjs"
+    "compatibility:gate": "npm run build && node scripts/compatibility-gate.mjs",
+    "reliability": "node scripts/reliability-gate.mjs"
   },
   "engines": {
     "node": ">=20"
