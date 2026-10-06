@@ -1,4 +1,5 @@
 import type { ConfigurationUpdateResult, ResolvedConfiguration } from "../../domain/configuration/model.js";
+import type { ConfigurationHistoryStore } from "./configuration-history.js";
 
 export interface ConfigurationStore {
   load(repositoryRoot: string): Promise<unknown | undefined>;
@@ -9,4 +10,7 @@ export interface ConfigurationStore {
 export interface ConfigurationServicePort {
   resolve(repositoryRoot: string, overrides?: unknown): Promise<ResolvedConfiguration>;
   update(repositoryRoot: string, configuration: unknown): Promise<ConfigurationUpdateResult>;
+  history(repositoryRoot: string): Promise<readonly import("./configuration-history.js").ConfigurationHistoryEntry[]>;
 }
+
+export type { ConfigurationHistoryStore };

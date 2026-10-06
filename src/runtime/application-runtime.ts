@@ -4,6 +4,7 @@ import { ConfigurationService } from "../application/configuration/configuration
 import { RepositoryIndexer } from "../application/indexing/index-repository.js";
 import { IncrementalRepositoryIndexer, type IncrementalIndexResult } from "../application/indexing/incremental-indexer.js";
 import { JsonConfigurationStore } from "../infrastructure/configuration/json-configuration-store.js";
+import { JsonConfigurationHistoryStore } from "../infrastructure/configuration/json-configuration-history-store.js";
 import { IndexLock } from "../infrastructure/persistence/index-lock.js";
 import { JsonGraphStore } from "../infrastructure/persistence/json-graph-store.js";
 import { JsonSemanticCache } from "../infrastructure/persistence/json-semantic-cache.js";
@@ -50,7 +51,11 @@ export class ApplicationRuntime {
 
   static async create(root: string, options: ApplicationRuntimeOptions = {}): Promise<ApplicationRuntime> {
     const repository = await discoverRepository(root);
-    const configurationService = new ConfigurationService(new JsonConfigurationStore());
+    const configurationService = new ConfigurationService(
+      new JsonConfigurationStore(),
+      [],
+      new JsonConfigurationHistoryStore()
+    );
     const configuration = (await configurationService.resolve(repository.root)).configuration;
     const store = new JsonGraphStore(repository.root + "/.gctg/graph");
     const semanticCache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
@@ -99,6 +104,16 @@ export class ApplicationRuntime {
 
   async resolveConfiguration(overrides?: unknown) {
     return this.configurationService.resolve(this.repository.root, overrides);
+  }
+
+  async reloadConfiguration() {
+    const resolved = await this.configurationService.resolve(this.repository.root);
+    this.configuration = resolved.configuration;
+    return resolved;
+  }
+
+  async configurationHistory() {
+    return this.configurationService.history(this.repository.root);
   }
 
   async updateConfiguration(configuration: unknown) {

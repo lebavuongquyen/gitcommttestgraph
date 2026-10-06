@@ -449,3 +449,11 @@ See Git history for the previous release.
 - Made configuration precedence explicit: DEFAULT, REPOSITORY, then RUNTIME.
 - Added winning-source attribution and source locations for nested configuration values.
 - Added targeted tests and Fresher/Junior-oriented documentation without changing resolution behavior.
+
+### C04 - Configuration History and Reload - 2026-10-07
+
+- Added append-only configuration change evidence with operation ID and timestamp.
+- Added explicit runtime configuration reload.
+- Added configuration history access through the application runtime.
+- Exposed history and reload operations through the existing MCP configuration tool.
+- Added persistence tests and Fresher/Junior-oriented documentation.

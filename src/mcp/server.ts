@@ -70,7 +70,7 @@ export function createGctgMcpServer(root: string) {
     title: "Configuration",
     description: "Read or update the repository GCTG configuration. Updates are validated and persisted as .gctg/config.json.",
     inputSchema: {
-      operation: z.enum(["get", "update"]).default("get"),
+      operation: z.enum(["get", "update", "history", "reload"]).default("get"),
       configuration: z.unknown().optional()
     }
   }, async ({ operation, configuration }) => {
@@ -79,6 +79,8 @@ export function createGctgMcpServer(root: string) {
       if (configuration === undefined) throw new Error("configuration is required for update.");
       return result(await ctx.updateConfiguration(configuration));
     }
+    if (operation === "history") return result(await ctx.configurationHistory());
+    if (operation === "reload") return result(await ctx.reloadConfiguration());
     return result(await ctx.resolveConfiguration());
   });
 

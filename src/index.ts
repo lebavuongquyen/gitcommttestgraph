@@ -6,6 +6,8 @@ export * from "./domain/review/model.js";
 export * from "./domain/evidence/model.js";
 export * from "./domain/configuration/model.js";
 export * from "./application/ports/configuration.js";
+export * from "./application/ports/configuration-history.js";
+export * from "./infrastructure/configuration/json-configuration-history-store.js";
 export * from "./application/configuration/configuration-service.js";
 export * from "./infrastructure/configuration/json-configuration-store.js";
 export * from "./domain/graph/model.js";

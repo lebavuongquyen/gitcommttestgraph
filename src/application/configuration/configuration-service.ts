@@ -2,9 +2,15 @@
 import type { ConfigurationServicePort, ConfigurationStore } from "../ports/configuration.js";
 import { CURRENT_CONFIGURATION_SCHEMA_VERSION, migrateConfiguration, type ConfigurationMigration } from "./configuration-migration.js";
 import { assertNoSensitiveConfiguration } from "./sensitive-configuration.js";
+import { randomUUID } from "node:crypto";
+import type { ConfigurationHistoryStore } from "../ports/configuration-history.js";
 
 export class ConfigurationService implements ConfigurationServicePort {
-  constructor(private readonly store: ConfigurationStore, private readonly migrations: readonly ConfigurationMigration[] = []) {}
+  constructor(
+    private readonly store: ConfigurationStore,
+    private readonly migrations: readonly ConfigurationMigration[] = [],
+    private readonly historyStore?: ConfigurationHistoryStore
+  ) {}
 
   async resolve(repositoryRoot: string, overrides?: unknown): Promise<ResolvedConfiguration> {
     const sources: ConfigurationSource[] = [{ kind: "DEFAULT", location: "built-in", values: DEFAULT_CONFIGURATION }];
@@ -50,7 +56,18 @@ export class ConfigurationService implements ConfigurationServicePort {
   async update(repositoryRoot: string, configuration: unknown): Promise<ConfigurationUpdateResult> {
     const validated = validateConfiguration(configuration);
     await this.store.save(repositoryRoot, validated);
+    if (this.historyStore) {
+      await this.historyStore.append(repositoryRoot, {
+        operationId: randomUUID(),
+        timestamp: new Date().toISOString(),
+        configuration: validated
+      });
+    }
     return { configuration: validated, source: "REPOSITORY", location: repositoryRoot + "/.gctg/config.json" };
+  }
+
+  async history(repositoryRoot: string) {
+    return this.historyStore?.load(repositoryRoot) ?? [];
   }
 }
 
