@@ -9,6 +9,7 @@ import { IndexLock } from "../infrastructure/persistence/index-lock.js";
 import { JsonGraphStore } from "../infrastructure/persistence/json-graph-store.js";
 import { JsonSemanticCache } from "../infrastructure/persistence/json-semantic-cache.js";
 import { GCTG_VERSION } from "../version.js";
+import { OperationService } from "../application/operations/operation-service.js";
 
 export interface ApplicationRuntimeOptions {
   readonly analyzerVersion?: string;
@@ -23,6 +24,7 @@ export class ApplicationRuntime {
   readonly configurationService: ConfigurationService;
   configuration: Awaited<ReturnType<ConfigurationService["resolve"]>>["configuration"];
   readonly analyzerVersion: string;
+  readonly operations: OperationService;
 
   private readonly indexer: IncrementalRepositoryIndexer;
   private readonly indexLock: IndexLock;
@@ -35,7 +37,8 @@ export class ApplicationRuntime {
     semanticCache: JsonSemanticCache,
     indexer: IncrementalRepositoryIndexer,
     indexLock: IndexLock,
-    analyzerVersion: string
+    analyzerVersion: string,
+    operations: OperationService
   ) {
     this.repository = repository;
     this.git = repository.git;
@@ -47,6 +50,7 @@ export class ApplicationRuntime {
     this.indexer = indexer;
     this.indexLock = indexLock;
     this.analyzerVersion = analyzerVersion;
+    this.operations = operations;
   }
 
   static async create(root: string, options: ApplicationRuntimeOptions = {}): Promise<ApplicationRuntime> {
@@ -71,6 +75,7 @@ export class ApplicationRuntime {
       (repo, commit, analyzerVersion, fingerprint) => store.getSnapshot(repo, commit, analyzerVersion, fingerprint)
     );
     const indexLock = new IndexLock(repository.root + "/.gctg/index.lock");
+    const operations = new OperationService();
     return new ApplicationRuntime(
       repository,
       configuration,
@@ -79,7 +84,8 @@ export class ApplicationRuntime {
       semanticCache,
       indexer,
       indexLock,
-      options.analyzerVersion ?? GCTG_VERSION
+      options.analyzerVersion ?? GCTG_VERSION,
+      operations
     );
   }
 
@@ -89,14 +95,21 @@ export class ApplicationRuntime {
 
   async index(commit?: string): Promise<IncrementalIndexResult> {
     const target = commit ?? await this.head();
+    const operation = this.operations.begin("index", { commit: target });
+    this.operations.start(operation.id);
     const release = await this.indexLock.acquire();
     try {
-      return await this.indexer.index({
+      const result = await this.indexer.index({
         repository: this.repository.root,
         commit: target,
         configuration: this.configuration,
         analyzerVersion: this.analyzerVersion
       });
+      this.operations.succeed(operation.id);
+      return result;
+    } catch (error) {
+      this.operations.fail(operation.id, error);
+      throw error;
     } finally {
       await release();
     }

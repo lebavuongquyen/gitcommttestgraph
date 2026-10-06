@@ -86,6 +86,8 @@ export * from "./application/intelligence/change-intelligence-service.js";
 export * from "./application/intelligence/change-intelligence-query-service.js";
 export * from "./domain/ci.js";
 export * from "./domain/diagnostics.js";
+export * from "./domain/operation.js";
+export * from "./application/operations/operation-service.js";
 export * from "./application/intelligence/ci-analysis-service.js";
 export * from "./application/intelligence/diagnostics-service.js";
 export * from "./application/review/pull-request-review-service.js";

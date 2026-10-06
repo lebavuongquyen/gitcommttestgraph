@@ -157,6 +157,15 @@ export function createGctgMcpServer(root: string) {
     return result(await new SnapshotAccountingService(ctx.store).planCompaction(resolved.configuration, protectedPaths ?? []));
   });
 
+  server.registerTool("operations", {
+    title: "Operations",
+    description: "Inspect the current runtime operation lifecycle and individual operation records.",
+    inputSchema: { id: z.string().optional() }
+  }, async ({ id }) => {
+    const ctx = await context(root);
+    return result(id ? ctx.operations.get(id) ?? null : ctx.operations.list());
+  });
+
   server.registerTool("change_intelligence", {
     title: "Change Intelligence",
     description: "Analyze a commit or branch through the unified change intelligence contract. Read-only and deterministic.",

@@ -495,3 +495,11 @@ See Git history for the previous release.
 - Protected snapshot paths are excluded from compaction candidates.
 - Exposed accounting and compaction planning through HTTP and MCP.
 - Added focused tests and documentation.
+
+### O01 - Operation Model - 2026-10-07
+
+- Added explicit queued/running/succeeded/failed/cancelled/recovered operation states.
+- Added parent operation linkage and operation metadata.
+- Integrated indexing lifecycle with the shared runtime operation tracker.
+- Exposed operation inspection through HTTP and MCP.
+- Added focused tests and documentation.
