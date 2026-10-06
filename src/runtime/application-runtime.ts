@@ -18,6 +18,7 @@ export class ApplicationRuntime {
   readonly git: RepositoryDiscovery["git"];
   readonly store: JsonGraphStore;
   readonly semanticCache: JsonSemanticCache;
+  readonly cache: JsonSemanticCache;
   readonly configurationService: ConfigurationService;
   readonly configuration: Awaited<ReturnType<ConfigurationService["resolve"]>>["configuration"];
   readonly analyzerVersion: string;
@@ -41,6 +42,7 @@ export class ApplicationRuntime {
     this.configurationService = configurationService;
     this.store = store;
     this.semanticCache = semanticCache;
+    this.cache = semanticCache;
     this.indexer = indexer;
     this.indexLock = indexLock;
     this.analyzerVersion = analyzerVersion;
