@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import type { SourceAnalysis } from "./source-analyzer.js";
 
 export interface SemanticCacheReader {
