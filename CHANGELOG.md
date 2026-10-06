@@ -3,6 +3,12 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### R07 - GUI View Models - 2026-10-06
+
+- Added pure GUI view-model adapters for status, commits, graph, execution, and change intelligence.
+- Reused a browser-safe view-model script from the same module to keep client normalization aligned with the typed presentation contract.
+- Added R07 GUI view-model contract coverage while preserving existing HTTP and visual contracts.
+
 
 ### R01 — Public Package Boundary
 - Made `git-commit-test-graph` and `git-commit-test-graph/api` resolve to the supported public SDK entrypoint.

@@ -34,38 +34,10 @@ export const guiCapabilityContracts: readonly GuiCapabilityDescriptor[] = Object
   { id: "pull_request_review", path: "/api/pull-request-review" }
 ]);
 
-export interface GuiStatusViewModel {
-  readonly repository: string;
-  readonly head: string;
-  readonly workspaceFiles: readonly string[];
-}
-
-export interface GuiCommitViewModel {
-  readonly hash: string;
-  readonly subject: string;
-}
-
-export interface GuiGraphViewModel {
-  readonly schemaVersion: string;
-  readonly repository: string;
-  readonly commit: string;
-  readonly nodes: readonly unknown[];
-  readonly edges: readonly unknown[];
-}
-
-export interface GuiExecutionViewModel {
-  readonly steps: readonly unknown[];
-  readonly execution?: unknown;
-}
-
-export interface GuiChangeIntelligenceViewModel {
-  readonly intelligence?: unknown;
-}
-
-export interface GuiCapabilityViewModels {
-  readonly status: GuiStatusViewModel;
-  readonly commits: readonly GuiCommitViewModel[];
-  readonly graph: GuiGraphViewModel;
-  readonly executionPlan: GuiExecutionViewModel;
-  readonly changeIntelligence: GuiChangeIntelligenceViewModel;
-}
+export type {
+  GuiStatusViewModel,
+  GuiCommitViewModel,
+  GuiGraphViewModel,
+  GuiExecutionViewModel,
+  GuiChangeIntelligenceViewModel
+} from "./view-models.js";
