@@ -1,6 +1,6 @@
 {
   "name": "git-commit-test-graph",
-  "version": "0.8.3",
+  "version": "0.8.4",
   "description": "Deterministic semantic Git repository graph, test graph, and change-impact engine",
   "type": "module",
   "main": "./dist/index.js",
@@ -23,7 +23,8 @@
     "release:check": "node scripts/release-check.mjs",
     "performance:gate": "npm run build && node scripts/performance-gate.mjs",
     "reliability:gate": "node scripts/reliability-gate.mjs",
-    "configuration:gate": "node scripts/configuration-gate.mjs"
+    "configuration:gate": "node scripts/configuration-gate.mjs",
+    "security:gate": "node scripts/security-gate.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -9,6 +9,7 @@ import {
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
+import { SECURITY_POLICY, sanitizeErrorMessage } from "../../domain/security/policy.js";
 
 const analyzerVersion = GCTG_VERSION;
 
@@ -101,10 +102,32 @@ export async function startServer(root: string, port: number): Promise<void> {
     response.end(JSON.stringify(value));
   };
   const readJsonBody = async (request: import("node:http").IncomingMessage): Promise<unknown> => {
+    const declaredLength = Number(request.headers["content-length"] ?? 0);
+    if (Number.isFinite(declaredLength) && declaredLength > SECURITY_POLICY.maxHttpBodyBytes) {
+      const error = new Error("Request body is too large.");
+      (error as Error & { statusCode?: number }).statusCode = 413;
+      throw error;
+    }
     const chunks: Buffer[] = [];
-    for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    let total = 0;
+    for await (const chunk of request) {
+      const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      total += buffer.length;
+      if (total > SECURITY_POLICY.maxHttpBodyBytes) {
+        const error = new Error("Request body is too large.");
+        (error as Error & { statusCode?: number }).statusCode = 413;
+        throw error;
+      }
+      chunks.push(buffer);
+    }
     if (!chunks.length) throw new Error("Request body is required.");
-    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+    try {
+      return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+    } catch {
+      const error = new Error("Malformed JSON request body.");
+      (error as Error & { statusCode?: number }).statusCode = 400;
+      throw error;
+    }
   };
 
   const server = createServer(async (request, response) => {
@@ -245,6 +268,7 @@ export async function startServer(root: string, port: number): Promise<void> {
         return;
       }
       if (url.pathname === "/api/run-execution-plan" && request.method === "POST") {
+        if (request.headers["x-gctg-execution-approval"] !== "true") return send(response, 403, { error: "Execution approval is required." });
         const commit = url.searchParams.get("commit") ?? await git.getHead();
         const c = await buildChangeContext(commit);
         const plan = buildExecutionPlan({
@@ -299,7 +323,9 @@ export async function startServer(root: string, port: number): Promise<void> {
       }
       send(response, 404, { error: "Not found" });
     } catch (error) {
-      send(response, 500, { error: error instanceof Error ? error.message : String(error) });
+      const statusCode = error && typeof error === "object" && "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 500;
+      const publicMessage = statusCode === 400 || statusCode === 413 ? sanitizeErrorMessage(error) : "Internal server error.";
+      send(response, statusCode, { error: publicMessage });
     }
   });
 

@@ -176,7 +176,7 @@ async function runPlan(){
   if(!confirm("Run all statically impacted test commands for commit "+state.commit.slice(0,8)+"?"))return;
   state.running=true;$("runPlan").disabled=true;$("status").textContent="Running impacted tests…";
   try{
-    const result=await api("/api/run-execution-plan",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({commit:state.commit})});
+    const result=await api("/api/run-execution-plan",{method:"POST",headers:{"content-type":"application/json","x-gctg-execution-approval":"true"},body:JSON.stringify({commit:state.commit})});
     state.feedback=result;renderExecution(state.plan,result);$("status").textContent="Execution "+(result.execution?.status||"completed");
   }catch(e){$("status").textContent=e.message;alert(e.message);}
   finally{state.running=false;if($("runPlan"))$("runPlan").disabled=false;}

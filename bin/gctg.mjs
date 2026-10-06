@@ -282,15 +282,17 @@ try {
   }
   if (command === "run") {
     const executable = process.argv[3];
-    const args = process.argv.slice(4);
-    if (!executable) throw new Error("Usage: gctg run <executable> [args...]");
-    const result = await runProcess({ executable, args, cwd: root });
+    const args = process.argv.slice(4).filter(arg => arg !== "--allow-execution");
+    if (!process.argv.includes("--allow-execution")) throw new Error("Usage: gctg run <executable> [args...] --allow-execution");
+    if (!executable) throw new Error("Usage: gctg run <executable> [args...] --allow-execution");
+    const result = await runProcess({ executable, args, cwd: root, allowSensitiveEnvironment: false });
     json(result);
     process.exit(result.exitCode);
   }
   if (command === "serve") {
     const { startServer } = await import("../dist/infrastructure/http/server.js");
     const port = Number(process.argv[3] ?? 3717);
+    if (!Number.isInteger(port) || port < 1024 || port > 65535) throw new Error("Usage: gctg serve <port 1024-65535>");
     await startServer(root, port);
     console.log("gctg server listening on http://127.0.0.1:" + port);
     await new Promise(() => {});

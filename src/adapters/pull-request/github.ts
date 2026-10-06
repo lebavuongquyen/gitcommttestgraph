@@ -1,15 +1,19 @@
 import type { PullRequestProvider, PullRequestContext } from "../../application/ports/pull-request.js";
 import { GitOperationError } from "../../domain/errors.js";
 import type { PullRequestCheck, PullRequestReviewEvidence, PullRequestReviewState } from "../../domain/pull-request/model.js";
+import { sanitizeErrorMessage, validateGitHubApiBase, validateGitHubOwnerRepo } from "../../domain/security/policy.js";
 
 export class GitHubPullRequestProvider implements PullRequestProvider {
   constructor(
     private readonly token = process.env.GITHUB_TOKEN,
-    private readonly apiBase = process.env.GITHUB_API_URL ?? "https://api.github.com"
+    private readonly apiBase = validateGitHubApiBase(process.env.GITHUB_API_URL)
   ) {}
 
   async get(ownerRepo: string, number: number): Promise<PullRequestContext> {
-    if (!/^[^/\\]+\/[^/\\]+$/.test(ownerRepo) || !Number.isInteger(number) || number < 1) {
+    try {
+      validateGitHubOwnerRepo(ownerRepo);
+      if (!Number.isInteger(number) || number < 1) throw new Error("Invalid GitHub pull request identifier");
+    } catch {
       throw new Error("Invalid GitHub pull request identifier");
     }
     const headers: Record<string, string> = {
@@ -23,7 +27,7 @@ export class GitHubPullRequestProvider implements PullRequestProvider {
       try {
         response = await fetch(this.apiBase + path, { headers });
       } catch (error) {
-        throw new GitOperationError("GitHub pull request lookup failed: network error", error);
+        throw new GitOperationError("GitHub pull request lookup failed: network error: " + sanitizeErrorMessage(error), error);
       }
       if (!response.ok) throw new GitOperationError("GitHub pull request lookup failed: " + response.status + " " + response.statusText);
       try {

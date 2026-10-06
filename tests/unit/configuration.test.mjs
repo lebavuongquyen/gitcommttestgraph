@@ -9,3 +9,10 @@ test("configuration resolves repository overrides and records source", async () 
 test("runtime configuration has highest precedence", async () => { const root = await mkdtemp(join(tmpdir(), "gctg-config-")); const service = new ConfigurationService(new JsonConfigurationStore()); await service.update(root, DEFAULT_CONFIGURATION); const result = await service.resolve(root, { historyRetention: { deletedBranchGracePeriodDays: 30 } }); assert.equal(result.configuration.historyRetention.deletedBranchGracePeriodDays, 30); });
 test("configuration rejects unsafe cleanup policy values", async () => { const root = await mkdtemp(join(tmpdir(), "gctg-config-")); const service = new ConfigurationService(new JsonConfigurationStore()); await assert.rejects(() => service.update(root, { ...DEFAULT_CONFIGURATION, cleanup: { ...DEFAULT_CONFIGURATION.cleanup, mode: "unknown" } }), /cleanup\.mode/); });
 test("configuration persistence is JSON and readable", async () => { const root = await mkdtemp(join(tmpdir(), "gctg-config-")); const service = new ConfigurationService(new JsonConfigurationStore()); await service.update(root, DEFAULT_CONFIGURATION); const raw = JSON.parse(await readFile(join(root, ".gctg", "config.json"), "utf8")); assert.equal(raw.schemaVersion, 1); });
+
+test("configuration rejects unknown keys", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-config-"));
+  const service = new ConfigurationService(new JsonConfigurationStore());
+  const base = (await service.resolve(root)).configuration;
+  await assert.rejects(() => service.update(root, { ...base, unexpected: true }), /unknown key/i);
+});

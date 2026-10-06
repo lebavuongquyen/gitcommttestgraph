@@ -270,8 +270,9 @@ export function createGctgMcpServer(root: string) {
   server.registerTool("run_execution_plan", {
     title: "Run Impacted Tests",
     description: "Execute the deterministic impacted-test plan for a commit, persist execution result and feedback, and return both. This is the only side-effecting test tool.",
-    inputSchema: { commit: z.string().optional(), symbolIds: z.array(z.string()).min(1) }
-  }, async ({ commit, symbolIds }) => {
+    inputSchema: { commit: z.string().optional(), symbolIds: z.array(z.string()).min(1), approved: z.boolean().default(false) }
+  }, async ({ commit, symbolIds, approved }) => {
+    if (!approved) throw new Error("Execution approval is required.");
     const ctx = await context(root);
     const target = commit ?? await ctx.git.getHead();
     const indexed = await indexAt(ctx, target);

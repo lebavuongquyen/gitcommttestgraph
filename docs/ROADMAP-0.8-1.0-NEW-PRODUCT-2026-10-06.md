@@ -558,6 +558,8 @@ Evidence:
 
 ## 0.8.4 — Security
 
+Status: COMPLETE
+
 Focus:
 
 - untrusted repository input;
@@ -568,7 +570,31 @@ Focus:
 - unsafe environment inheritance;
 - malicious repository fixtures.
 
-Security tests become permanent regression tests.
+Delivered:
+
+- Git revision and Git path validation;
+- GitHub repository and API endpoint trust-boundary validation;
+- sanitized Git/GitHub errors;
+- credential environment isolation for child processes;
+- repository-owned configuration path confinement;
+- strict configuration key validation;
+- bounded HTTP request bodies and safe internal error responses;
+- explicit HTTP and MCP execution approval;
+- CLI arbitrary-process authorization flag;
+- permanent security regression suite;
+- executable security gate;
+- Release Gate v2 integration for versions >= 0.8.4;
+- security audit and release documentation.
+
+Evidence:
+
+- docs/AUDIT-0.8.4-SECURITY-2026-10-06.md
+- scripts/security-gate.mjs
+- tests/unit/security.test.mjs
+- tests/contracts/0.8.4-security.contract.test.mjs
+- docs/releases/0.8.4.md
+
+Security tests are permanent regression tests.
 
 ---
 

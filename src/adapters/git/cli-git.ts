@@ -3,6 +3,7 @@ import { promisify } from "node:util";
 import type { BranchRef, ChangedPath, Commit, CommitDiff } from "../../domain/git/model.js";
 import type { GitRepositoryPort } from "../../application/ports/git.js";
 import { GitOperationError, InvalidCommitError } from "../../domain/errors.js";
+import { createChildEnvironment, sanitizeErrorMessage, validateGitPath, validateGitReference } from "../../domain/security/policy.js";
 
 const execFileAsync = promisify(execFile);
 
@@ -14,6 +15,8 @@ export class CliGitRepository implements GitRepositoryPort {
   }
 
   async ensureCommit(commit: string, remoteUrl?: string): Promise<void> {
+    validateGitReference(commit, "Git commit");
+    if (remoteUrl && !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\.git$/.test(remoteUrl)) throw new Error("Git remote URL is not allowed.");
     try {
       await this.run(["cat-file", "-e", commit + "^{commit}"]);
       return;
@@ -38,10 +41,14 @@ export class CliGitRepository implements GitRepositoryPort {
   }
 
   async getMergeBase(base: string, head: string): Promise<string> {
+    validateGitReference(base, "Base Git reference");
+    validateGitReference(head, "Head Git reference");
     return (await this.run(["merge-base", base, head])).trim();
   }
 
   async getCommitsBetween(base: string, head: string): Promise<readonly string[]> {
+    validateGitReference(base, "Base Git reference");
+    validateGitReference(head, "Head Git reference");
     const output = await this.run(["rev-list", "--reverse", `${base}..${head}`]);
     return output.split("\n").map(x => x.trim()).filter(Boolean);
   }
@@ -55,6 +62,7 @@ export class CliGitRepository implements GitRepositoryPort {
   }
 
   async getCommit(hash: string): Promise<Commit> {
+    validateGitReference(hash, "Git commit");
     const value = await this.run(["show", "-s", "--format=%H%x00%P%x00%an%x00%cn%x00%cI%x00%s", hash]);
     const [commitHash, parents, author, committer, timestamp, message] = value.split("\0");
     if (!commitHash || !timestamp) throw new InvalidCommitError(`Invalid Git commit: ${hash}`);
@@ -69,20 +77,27 @@ export class CliGitRepository implements GitRepositoryPort {
   }
 
   async getChangedPaths(hash: string): Promise<readonly ChangedPath[]> {
+    validateGitReference(hash, "Git commit");
     const output = await this.run(["diff-tree", "--root", "--no-commit-id", "--name-status", "-r", "-M", "-C", hash]);
     return parseNameStatus(output);
   }
 
   async getDiff(fromCommit: string, toCommit: string): Promise<CommitDiff> {
+    validateGitReference(fromCommit, "From Git commit");
+    validateGitReference(toCommit, "To Git commit");
     const output = await this.run(["diff", "--name-status", "-M", "-C", fromCommit, toCommit]);
     return { fromCommit, toCommit, paths: parseNameStatus(output) };
   }
 
   async readFileAtCommit(commit: string, path: string): Promise<string> {
+    validateGitReference(commit, "Git commit");
+    validateGitPath(path);
     return this.run(["show", `${commit}:${path}`]);
   }
 
   async readFilesAtCommit(commit: string, paths: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    validateGitReference(commit, "Git commit");
+    for (const path of paths) validateGitPath(path);
     const safe = paths.filter(path => !/[\r\n]/.test(path));
     const result = new Map<string, string>();
     for (const [path, content] of await this.readFilesBatch(commit, safe)) result.set(path, content);
@@ -91,6 +106,7 @@ export class CliGitRepository implements GitRepositoryPort {
   }
 
   async listFilesAtCommit(commit: string): Promise<readonly string[]> {
+    validateGitReference(commit, "Git commit");
     const output = await this.run(["ls-tree", "-r", "--name-only", commit]);
     return output.split("\n").map(x => x.trim()).filter(Boolean);
   }
@@ -98,7 +114,7 @@ export class CliGitRepository implements GitRepositoryPort {
   private async readFilesBatch(commit: string, paths: readonly string[]): Promise<ReadonlyArray<readonly [string, string]>> {
     if (paths.length === 0) return [];
     return new Promise((resolve, reject) => {
-      const child = spawn("git", ["cat-file", "--batch"], { cwd: this.root, env: { ...process.env } });
+      const child = spawn("git", ["cat-file", "--batch"], { cwd: this.root, env: createChildEnvironment() });
       const chunks: Buffer[] = [];
       const errors: Buffer[] = [];
       child.stdout.on("data", chunk => chunks.push(Buffer.from(chunk)));
@@ -139,7 +155,7 @@ export class CliGitRepository implements GitRepositoryPort {
 
   private async run(args: readonly string[]): Promise<string> {
     try {
-      const env = { ...process.env };
+      const env = createChildEnvironment();
       if (args[0] === "fetch" && args.some(arg => arg.includes("github.com")) && process.env.GITHUB_TOKEN) {
         env.GIT_CONFIG_COUNT = "1";
         env.GIT_CONFIG_KEY_0 = "http.https://github.com/.extraheader";
@@ -148,8 +164,8 @@ export class CliGitRepository implements GitRepositoryPort {
       const { stdout } = await execFileAsync("git", args, { cwd: this.root, env, maxBuffer: 32 * 1024 * 1024 });
       return stdout;
     } catch (error) {
-      const detail = error instanceof Error ? error.message : String(error);
-      throw new GitOperationError(`Git operation failed: git ${args.join(" ")}: ${detail}`, error);
+      const detail = sanitizeErrorMessage(error);
+      throw new GitOperationError("Git operation failed: " + detail, error);
     }
   }
 }

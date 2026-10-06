@@ -2,6 +2,29 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.8.4] - 2026-10-06
+
+### Security
+- Hardened Git revision and Git path validation.
+- Restricted GitHub repository identifiers and API endpoint selection.
+- Sanitized Git/GitHub errors and isolated credential environment variables.
+- Confined configuration persistence to the repository-owned .gctg directory.
+- Rejected unknown configuration keys.
+- Bounded HTTP JSON bodies and hardened HTTP error responses.
+- Added explicit approval boundaries for HTTP and MCP test execution.
+- Required --allow-execution for the CLI arbitrary process runner.
+
+### Added
+- Permanent security regression suite.
+- HTTP security contract coverage.
+- scripts/security-gate.mjs and npm run security:gate.
+- docs/AUDIT-0.8.4-SECURITY-2026-10-06.md.
+- docs/releases/0.8.4.md.
+
+### Quality
+- Security gate covers build, typecheck, security unit tests and HTTP security contracts.
+- Release Gate v2 runs the security gate for versions >= 0.8.4.
+
 ## [0.8.3] - 2026-10-06
 
 ### Fixed
