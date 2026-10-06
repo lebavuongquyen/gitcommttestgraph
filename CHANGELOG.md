@@ -14,6 +14,12 @@ All notable changes to git-commit-test-graph are documented here.
 - Routed CLI, HTTP and MCP indexing/configuration through the shared runtime.
 - Added runtime composition conformance tests to prevent surface-level dependency-stack duplication.
 
+### R03 — Capability Surface Conformance
+- Added a capability registry describing application handlers and applicable GUI, MCP, CLI, HTTP and public-API surfaces.
+- Added executable conformance checks that detect surface drift.
+- The new gate caught the missing GUI test-gap surface; the GUI now exposes test-gap analysis.
+- Preserved existing GUI contract behavior while adding the test-gap view.
+
 ## [0.9.8] - 2026-10-06
 
 ### 0.9 Revalidation and MCP Surface Parity
