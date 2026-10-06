@@ -2,38 +2,26 @@ import { McpServer } from "@modelcontextprotocol/server";
 import { serveStdio } from "@modelcontextprotocol/server/stdio";
 import * as z from "zod/v4";
 import {
-  discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
-  RepositoryIndexer, IncrementalRepositoryIndexer, ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer,
-  buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
+  ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer,
+  buildExecutionPlan, serializeExecutionPlan, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService
+  ChangeIntelligenceQueryService, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
 import { GCTG_VERSION } from "../version.js";
+import { ApplicationRuntime } from "../runtime/application-runtime.js";
 
 const serverVersion = GCTG_VERSION;
 const agentTasks = new AgentTaskService();
 
 async function context(root: string) {
-  const repository = await discoverRepository(root);
-  const git = new CliGitRepository(repository.root);
-  const store = new JsonGraphStore(repository.root + "/.gctg/graph");
-  const cache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
-  const configuration = (await new ConfigurationService(new JsonConfigurationStore()).resolve(repository.root)).configuration;
-  return { repository, git, store, cache, configuration };
+  return ApplicationRuntime.create(root, { analyzerVersion: serverVersion });
 }
 
 async function indexAt(ctx: Awaited<ReturnType<typeof context>>, commit: string) {
-  const full = new RepositoryIndexer(ctx.git, new TypeScriptProjectAnalyzer(), ctx.store, ctx.cache);
-  const incremental = new IncrementalRepositoryIndexer(ctx.git, full, (repo, hash, version, fingerprint) => ctx.store.getSnapshot(repo, hash, version, fingerprint));
-  const release = await new IndexLock(ctx.repository.root + "/.gctg/index.lock").acquire();
-  try {
-    return await incremental.index({ repository: ctx.repository.root, commit, configuration: ctx.configuration, analyzerVersion: serverVersion });
-  } finally {
-    await release();
-  }
+  return ctx.index(commit);
 }
 
 function result(value: unknown) {
@@ -87,12 +75,11 @@ export function createGctgMcpServer(root: string) {
     }
   }, async ({ operation, configuration }) => {
     const ctx = await context(root);
-    const service = new ConfigurationService(new JsonConfigurationStore());
     if (operation === "update") {
       if (configuration === undefined) throw new Error("configuration is required for update.");
-      return result(await service.update(ctx.repository.root, configuration));
+      return result(await ctx.updateConfiguration(configuration));
     }
-    return result(await service.resolve(ctx.repository.root));
+    return result(await ctx.resolveConfiguration());
   });
 
   server.registerTool("change_intelligence", {
