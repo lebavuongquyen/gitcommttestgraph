@@ -13,4 +13,7 @@ test("GUI shell exposes repository explorer and graph workbench", () => {
   assert.match(html, /Run impacted tests/);
   assert.match(html, /Execution/);
   assert.match(html, /Inspector/);
+  assert.match(html, /Pull request intelligence/);
+  assert.ok(html.includes("/api/pull-request-review"));
+  assert.match(html, /Review PR/);
 });

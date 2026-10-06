@@ -4,7 +4,7 @@ import {
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactQueryService, ImpactEngine, TestGapAnalyzer,
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
-  BranchChangeSetService, BranchReviewService
+  BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
@@ -80,6 +80,18 @@ export async function startServer(root: string, port: number): Promise<void> {
     });
   };
 
+  const buildPullRequestReview = async (ownerRepo: string, number: number) => {
+    const pullRequest = await new GitHubPullRequestProvider().get(ownerRepo, number);
+    if (!pullRequest.base || !pullRequest.head) throw new Error("Pull request metadata does not contain base/head refs");
+    const changeSet = await new PullRequestChangeSetService(git).build({ repository: repository.root, pullRequest, base: pullRequest.base, head: pullRequest.head });
+    const indexed = await indexAt(changeSet.head);
+    const baseIndexed = await indexAt(changeSet.mergeBase);
+    const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
+    const changedSymbolIds = changedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
+    const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
+    return new PullRequestReviewService().analyze({ changeSet, pullRequest, current: indexed.snapshot, changedSymbolIds, removedSymbolIds });
+  };
+
   const send = (response: import("node:http").ServerResponse, status: number, value: unknown) => {
     response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     response.end(JSON.stringify(value));
@@ -113,6 +125,13 @@ export async function startServer(root: string, port: number): Promise<void> {
         if (!base) return send(response, 400, { error: "Missing base branch" });
         const head = url.searchParams.get("head") ?? undefined;
         send(response, 200, await buildBranchReview(base, head));
+        return;
+      }
+      if (url.pathname === "/api/pull-request-review") {
+        const ownerRepo = url.searchParams.get("ownerRepo");
+        const number = Number(url.searchParams.get("number"));
+        if (!ownerRepo || !Number.isInteger(number) || number < 1) return send(response, 400, { error: "Missing ownerRepo or valid number" });
+        send(response, 200, await buildPullRequestReview(ownerRepo, number));
         return;
       }
       if (url.pathname === "/api/overview") {

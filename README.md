@@ -24,6 +24,7 @@ gctg status
 gctg commits [limit]
 gctg branches
 gctg branch-review <base> [head]
+gctg pr-review <owner/repo> <number>
 gctg index [commit]
 gctg graph [commit] [nodeType]
 gctg diff <fromCommit> <toCommit>
@@ -56,11 +57,12 @@ The GUI provides:
 - Branch base/head selectors and Branch Intelligence review cockpit.
 - Branch merge-base, commit range, changed-symbol, removed-symbol, affected-symbol and review-risk visibility.
 - Branch commit-level evidence and uncertainty visibility.
+- Pull Request Intelligence cockpit with GitHub PR metadata, review state, check state, semantic risk and merge-readiness visibility.
 - Query endpoints for test gaps, execution plans and runtime feedback.
 
 The graph canvas intentionally shows the change-impact neighborhood instead of every node in a large repository. This keeps the UI useful for repositories with thousands of graph nodes.
 
-The execution panel uses the same deterministic execution-plan and runtime-feedback capabilities exposed by MCP as execution_plan, run_execution_plan and execution_feedback. Branch review uses the same BranchChangeSetService and BranchReviewService exposed through MCP as branches and branch_review. GUI and MCP therefore share application/domain behavior rather than duplicating it.
+The execution panel uses the same deterministic execution-plan and runtime-feedback capabilities exposed by MCP as execution_plan, run_execution_plan and execution_feedback. Branch review uses the same BranchChangeSetService and BranchReviewService exposed through MCP as branches and branch_review. Pull Request Intelligence uses PullRequestChangeSetService, PullRequestReviewService and GitHubPullRequestProvider and is exposed through HTTP, GUI, CLI and MCP as pull_request_review. GUI and MCP therefore share application/domain behavior rather than duplicating it.
 
 ## Architecture
 
@@ -106,6 +108,8 @@ The package exposes an MCP server for software-engineering agents. MCP is intent
 For local MCP hosts, configure the command: `gctg-mcp`.
 
 The MCP server uses stdio. Protocol traffic is written to stdout; diagnostics are written to stderr.
+
+Pull Request Intelligence uses the GitHub REST API through a provider adapter. Public repositories can be queried without a token; set `GITHUB_TOKEN` for authenticated/private repositories. The local repository must contain the PR base/head commits or refs before semantic indexing can analyze them.
 
 ## Persistence
 

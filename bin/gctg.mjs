@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
@@ -131,6 +131,22 @@ try {
     json(new TestImpactAnalyzer().analyze(result.snapshot, { changedSymbolIds, coverageLinks: gapAnalysis.coverageLinks }));
     process.exit(0);
   }
+  if (command === "pr-review") {
+    const { repository, git, store, semanticCache } = await context();
+    const ownerRepo = process.argv[3];
+    const number = Number(process.argv[4]);
+    if (!ownerRepo || !Number.isInteger(number) || number < 1) throw new Error("Usage: gctg pr-review <owner/repo> <number>");
+    const pullRequest = await new GitHubPullRequestProvider().get(ownerRepo, number);
+    if (!pullRequest.base || !pullRequest.head) throw new Error("Pull request metadata does not contain base/head refs");
+    const changeSet = await new PullRequestChangeSetService(git).build({ repository: repository.root, pullRequest, base: pullRequest.base, head: pullRequest.head });
+    const result = await indexAt(git, store, semanticCache, repository.root, changeSet.head);
+    const baseResult = await indexAt(git, store, semanticCache, repository.root, changeSet.mergeBase);
+    const diff = diffSnapshots(baseResult.snapshot, result.snapshot);
+    const changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol" && new Set([...diff.addedNodes, ...diff.changedNodes]).has(node.id)).map(node => node.id);
+    const removedSymbolIds = (await import("../dist/application/analysis/graph-diff.js")).removedSymbolIdsFromDiff(baseResult.snapshot, result.snapshot, diff);
+    json(new PullRequestReviewService().analyze({ changeSet, pullRequest, current: result.snapshot, changedSymbolIds, removedSymbolIds }));
+    process.exit(0);
+  }
   if (command === "branches") {
     const { git } = await context();
     json({ current: await git.getCurrentBranch(), branches: await git.listBranches() });
@@ -259,7 +275,7 @@ try {
     console.log("gctg server listening on http://127.0.0.1:" + port);
     await new Promise(() => {});
   }
-  console.log("Usage: gctg [--version] | status | commits [limit] | branches | branch-review <base> [head] | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] | serve [port]");
+  console.log("Usage: gctg [--version] | status | commits [limit] | branches | branch-review <base> [head] | pr-review <owner/repo> <number> | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] | serve [port]");
   process.exit(command === "help" ? 0 : 2);
 } catch (error) {
   console.error(error instanceof Error ? error.message : String(error));

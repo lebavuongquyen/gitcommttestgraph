@@ -10,6 +10,9 @@ The MCP server is an adapter around the existing graph and impact application se
 
 - repository_status: repository discovery and HEAD.
 - commits: recent Git history.
+- branches: branch refs and current branch metadata.
+- branch_review: deterministic branch merge-readiness analysis.
+- pull_request_review: GitHub PR metadata, review/check state, semantic change analysis and merge-readiness.
 - graph_query: filtered graph nodes.
 - impact_analyze: reverse semantic impact with evidence.
 - test_impact: changed symbols to affected tests and commands.
@@ -22,14 +25,15 @@ The MCP server is an adapter around the existing graph and impact application se
 ## Agent loop
 
 1. repository_status
-2. change_intelligence
-3. inspect graph/impact evidence when needed
-4. inspect test impact
-5. build execution_plan
-6. decide whether execution is justified
-7. explicitly call run_execution_plan
-8. inspect execution_feedback
-9. report static evidence separately from runtime evidence
+2. pull_request_review when the agent is reviewing a GitHub PR
+3. change_intelligence
+4. inspect graph/impact evidence when needed
+5. inspect test impact
+6. build execution_plan
+7. decide whether execution is justified
+8. explicitly call run_execution_plan
+9. inspect execution_feedback
+10. report static evidence separately from runtime evidence
 
 The agent must never infer PASS from static impact alone.
 
