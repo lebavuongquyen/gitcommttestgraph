@@ -5,9 +5,7 @@ export interface GraphSnapshotReader {
   readonly snapshots: GraphSnapshotStore;
 }
 
-export interface GraphNodeReader {
-  readonly nodes: GraphNodeStore;
-}
+export interface GraphNodeReader extends GraphNodeStore {}
 
 export interface GraphQueryReader {
   query(request: GraphQueryRequest): Promise<GraphQueryResult>;
@@ -20,3 +18,7 @@ export interface GraphSnapshotWriter {
 }
 
 export interface GraphWriteStore extends GraphSnapshotWriter {}
+
+export interface GraphStorage extends GraphReadStore, GraphWriteStore {
+  saveSnapshot(snapshot: GraphSnapshot): Promise<void>;
+}
