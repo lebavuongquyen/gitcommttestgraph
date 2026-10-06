@@ -13,3 +13,5 @@ export type { RepositoryEcosystem, EcosystemCapability, EcosystemSupport } from 
 export type { HistoricalIntelligence, HistoricalCommit, HistoricalSymbolTransition, HistoricalDependencyTransition, HistoricalTestImpactTransition, HistoricalUncertainty } from "../domain/historical-intelligence.js";
 export { HistoricalIntelligenceService } from "../application/history/historical-intelligence-service.js";
 export type { HistoricalIntelligenceInput, HistoricalSnapshotLoader } from "../application/history/historical-intelligence-service.js";
+export type { CiAnalysisResult, CiFormat } from "../domain/ci.js";
+export type { OperationDiagnostics } from "../domain/diagnostics.js";

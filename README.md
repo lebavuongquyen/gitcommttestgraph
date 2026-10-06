@@ -21,6 +21,12 @@ Deterministic semantic Git repository graph, test graph, change-impact engine an
 
 ```text
 gctg status
+gctg config
+gctg ecosystem [commit]
+gctg monorepo [commit]
+gctg historical-intelligence <fromCommit> [toCommit] --max-commits N
+gctg ci [COMMIT <commit>|BRANCH <base> [head]] --format json|sarif|summary
+gctg diagnostics [commit]
 gctg commits [limit]
 gctg branches
 gctg branch-review <base> [head]
@@ -63,6 +69,21 @@ The GUI provides:
 The graph canvas intentionally shows the change-impact neighborhood instead of every node in a large repository. This keeps the UI useful for repositories with thousands of graph nodes.
 
 The execution panel uses the same deterministic execution-plan and runtime-feedback capabilities exposed by MCP as execution_plan, run_execution_plan and execution_feedback. Branch review uses the same BranchChangeSetService and BranchReviewService exposed through MCP as branches and branch_review. Pull Request Intelligence uses PullRequestChangeSetService, PullRequestReviewService and GitHubPullRequestProvider and is exposed through HTTP, GUI, CLI and MCP as pull_request_review. GUI and MCP therefore share application/domain behavior rather than duplicating it.
+
+## Documentation
+
+0.9.6 preview references:
+- `docs/API-REFERENCE-0.9.6.md`
+- `docs/MCP-REFERENCE-0.9.6.md`
+- `docs/CLI-REFERENCE-0.9.6.md`
+- `docs/INTEGRATION-GUIDE-0.9.6.md`
+- `docs/TROUBLESHOOTING-0.9.6.md`
+- `docs/PERFORMANCE-GUIDE-0.9.6.md`
+- `docs/SECURITY-MODEL-0.9.6.md`
+- `docs/EXTENSION-GUIDE-0.9.6.md`
+- `docs/SDK-PREVIEW-0.9.6.md`
+
+The SDK preview supports only the `git-commit-test-graph/api` package subpath. Internal modules are not part of the preview compatibility surface.
 
 ## Architecture
 

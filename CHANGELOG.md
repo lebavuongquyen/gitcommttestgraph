@@ -2,6 +2,16 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.9.6] - 2026-10-06
+
+### Documentation and SDK Preview
+- Added API, MCP and CLI references.
+- Added integration, troubleshooting, performance and security guides.
+- Added extension guide and SDK preview guide.
+- Added README documentation index.
+- Exported CI Analysis and Diagnostics types from the public API.
+- Added 3 documentation/SDK contract tests.
+
 ## [0.9.5] - 2026-10-06
 
 ### Observability
