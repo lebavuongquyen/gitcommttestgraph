@@ -64,6 +64,7 @@ export const testImpactSchema = z.object({
   impacts: z.array(z.unknown())
 }).passthrough();
 export const executionPlanSchema = z.object({ schemaVersion: z.literal(1), workflow: z.string(), repository: z.string(), commit: z.string(), steps: z.array(z.unknown()) }).passthrough();
+export const ciAnalysisSchema = z.object({ schemaVersion: z.literal(1), repository: z.string(), commit: z.string(), status: z.enum(["PASS", "FAIL", "UNKNOWN"]), exitCode: z.union([z.literal(0), z.literal(1), z.literal(2)]), risk: z.enum(["LOW", "MEDIUM", "HIGH", "UNKNOWN"]), reasons: z.array(z.string()), uncertainty: z.array(z.object({ code: z.string(), message: z.string() })), changedPathCount: z.number(), changedSymbolCount: z.number(), impactedTestCases: z.number(), deterministic: z.literal(true) }).passthrough();
 export const historicalIntelligenceSchema = z.object({
   schemaVersion: z.literal(1), repository: z.string(), fromCommit: z.string(), toCommit: z.string(),
   commits: z.array(z.object({ hash: z.string(), parents: z.array(z.string()), timestamp: z.string(), message: z.string(), merge: z.boolean() }).passthrough()),
@@ -81,6 +82,7 @@ export const publicContractRegistry = Object.freeze({
   testImpact: testImpactSchema,
   executionPlan: executionPlanSchema,
   historicalIntelligence: historicalIntelligenceSchema,
+  ciAnalysis: ciAnalysisSchema,
   evidence: evidenceSchemaPublic,
   error: publicErrorSchema
 });

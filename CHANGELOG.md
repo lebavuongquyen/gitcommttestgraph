@@ -2,6 +2,21 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.9.4] - 2026-10-06
+
+### CI Integration
+- Added deterministic CI analysis over Change Intelligence.
+- Added PASS/FAIL/UNKNOWN status and exit codes 0/1/2.
+- Added JSON, SARIF 2.1.0 and summary formats.
+- Added GUI CI status surface.
+- Added CLI gctg ci.
+- Added HTTP /api/ci.
+- Added MCP ci_analysis.
+- Added public ciAnalysis contract.
+
+### Quality
+- Added 7 dedicated 0.9.4 application/surface contract tests.
+
 ## [0.9.3] - 2026-10-06
 
 ### Historical Intelligence

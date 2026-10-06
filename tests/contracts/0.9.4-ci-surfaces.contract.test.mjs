@@ -1,0 +1,8 @@
+import assert from "node:assert/strict";
+import test from "node:test";
+import { runCli, withHttpServer, mcpRequest } from "./helpers.mjs";
+const root=new URL("../../",import.meta.url).pathname.replace(/^\//,"").replaceAll("/","\\");
+test("0.9.4 CLI exposes CI analysis",async()=>{const r=await runCli(root,["ci","COMMIT","HEAD","--format","json"]);assert.ok([0,1,2].includes(r.code));const v=JSON.parse(r.stdout);assert.equal(v.schemaVersion,1);assert.ok(["PASS","FAIL","UNKNOWN"].includes(v.status));});
+test("0.9.4 HTTP exposes CI analysis",async()=>{await withHttpServer(root,37987,async base=>{const r=await fetch(base+"/api/ci?commit=HEAD&format=json");assert.equal(r.status,200);const v=await r.json();assert.equal(v.schemaVersion,1);assert.ok(v.status);});});
+test("0.9.4 MCP exposes ci_analysis",async()=>{const {responses}=await mcpRequest(root,[{method:"initialize",params:{protocolVersion:"2025-06-18",capabilities:{},clientInfo:{name:"0.9.4-contract",version:"1.0.0"}}},{method:"notifications/initialized",params:{}},{method:"tools/list",params:{}},{method:"tools/call",params:{name:"ci_analysis",arguments:{source:"COMMIT",commit:"HEAD",format:"json"}}}]);assert.ok(responses[2].result.tools.some(x=>x.name==="ci_analysis"));assert.equal(responses[3].error,undefined);const v=JSON.parse(responses[3].result.content[0].text);assert.equal(v.schemaVersion,1);});
+test("0.9.4 GUI exposes CI analysis",async()=>{await withHttpServer(root,37988,async base=>{const r=await fetch(base+"/");const html=await r.text();assert.equal(r.status,200);assert.match(html,/CI analysis/);assert.match(html,/api\/ci/);});});

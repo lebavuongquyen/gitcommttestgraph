@@ -7,7 +7,7 @@ import {
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
@@ -127,6 +127,17 @@ export function createGctgMcpServer(root: string) {
     const ctx = await context(root);
     const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
     return result(analyzeMonorepo(indexed.snapshot, changedNodeIds ?? []));
+  });
+
+  server.registerTool("ci_analysis", {
+    title: "CI Analysis",
+    description: "Produce deterministic CI status, risk, reasons and JSON/SARIF/summary output from Change Intelligence.",
+    inputSchema: { source: z.enum(["COMMIT", "BRANCH"]).default("COMMIT"), commit: z.string().optional(), base: z.string().optional(), head: z.string().optional(), format: z.enum(["json", "sarif", "summary"]).default("json") }
+  }, async ({ source, commit, base, head, format }) => {
+    const ctx = await context(root);
+    const intelligence = new ChangeIntelligenceQueryService(ctx.repository.root, ctx.git, { index: (hash: string) => indexAt(ctx, hash) });
+    const ciResult = new CiAnalysisService().analyze(await intelligence.analyze({ source, ...(commit ? { commit } : {}), ...(base ? { base } : {}), ...(head ? { head } : {}) }));
+    return result({ ...ciResult, rendered: new CiAnalysisService().serialize(ciResult, format) });
   });
 
   server.registerTool("historical_intelligence", {

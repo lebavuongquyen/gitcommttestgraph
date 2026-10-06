@@ -76,6 +76,8 @@ export * from "./application/change/branch-change-set-service.js";
 export * from "./application/change/pull-request-change-set-service.js";
 export * from "./application/intelligence/change-intelligence-service.js";
 export * from "./application/intelligence/change-intelligence-query-service.js";
+export * from "./domain/ci.js";
+export * from "./application/intelligence/ci-analysis-service.js";
 export * from "./application/review/pull-request-review-service.js";
 export * from "./application/review/branch-review-service.js";
 export * from "./version.js";

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeMonorepo, HistoricalIntelligenceService } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
@@ -46,6 +46,17 @@ try {
     const indexed = await indexAt(x.git, x.store, x.semanticCache, x.repository.root, c ?? await x.git.getHead());
     json(analyzeMonorepo(indexed.snapshot, process.argv.slice(4)));
     process.exit(0);
+  }
+  if (command === "ci") {
+    const source = (process.argv[3] ?? "COMMIT").toUpperCase();
+    const formatIndex = process.argv.indexOf("--format");
+    const format = formatIndex >= 0 ? process.argv[formatIndex + 1] : "json";
+    if (!["COMMIT", "BRANCH"].includes(source) || !["json", "sarif", "summary"].includes(format)) throw new Error("Usage: gctg ci [COMMIT <commit>|BRANCH <base> [head]] [--format json|sarif|summary]");
+    const x = await context();
+    const intelligence = new ChangeIntelligenceQueryService(x.repository.root, x.git, { index: hash => indexAt(x.git, x.store, x.semanticCache, x.repository.root, hash) });
+    const result = new CiAnalysisService().analyze(await intelligence.analyze({ source, ...(source === "COMMIT" && process.argv[4] ? { commit: process.argv[4] } : {}), ...(source === "BRANCH" && process.argv[4] ? { base: process.argv[4], ...(process.argv[5] ? { head: process.argv[5] } : {}) } : {}) }));
+    process.stdout.write(new CiAnalysisService().serialize(result, format));
+    process.exit(result.exitCode);
   }
   if (command === "historical-intelligence") {
     const from = process.argv[3];

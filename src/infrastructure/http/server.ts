@@ -5,7 +5,7 @@ import {
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
@@ -152,6 +152,18 @@ export async function startServer(root: string, port: number): Promise<void> {
         const commit = url.searchParams.get("commit") ?? await git.getHead();
         const indexed = await indexAt(commit);
         send(response, 200, analyzeMonorepo(indexed.snapshot));
+        return;
+      }
+      if (url.pathname === "/api/ci") {
+        const source = (url.searchParams.get("source") ?? "COMMIT").toUpperCase();
+        const format = (url.searchParams.get("format") ?? "json") as "json" | "sarif" | "summary";
+        if (!["COMMIT", "BRANCH"].includes(source)) return send(response, 400, { error: "source must be COMMIT or BRANCH" });
+        if (!["json", "sarif", "summary"].includes(format)) return send(response, 400, { error: "format must be json, sarif or summary" });
+        const intelligence = new ChangeIntelligenceQueryService(repository.root, git, { index: indexAt });
+        const result = new CiAnalysisService().analyze(await intelligence.analyze({ source: source as "COMMIT" | "BRANCH", ...(url.searchParams.get("commit") ? { commit: url.searchParams.get("commit")! } : {}), ...(url.searchParams.get("base") ? { base: url.searchParams.get("base")!, ...(url.searchParams.get("head") ? { head: url.searchParams.get("head")! } : {}) } : {}) }));
+        if (format === "json") return send(response, 200, result);
+        response.writeHead(result.exitCode === 0 ? 200 : result.exitCode === 1 ? 422 : 409, { "content-type": format === "sarif" ? "application/sarif+json; charset=utf-8" : "text/plain; charset=utf-8", "cache-control": "no-store" });
+        response.end(new CiAnalysisService().serialize(result, format));
         return;
       }
       if (url.pathname === "/api/historical-intelligence") {
