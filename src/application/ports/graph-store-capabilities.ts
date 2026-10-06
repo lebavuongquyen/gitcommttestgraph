@@ -10,7 +10,7 @@ export interface GraphNodeReader {
 }
 
 export interface GraphQueryReader {
-  readonly query: (request: GraphQueryRequest) => Promise<GraphQueryResult>;
+  query(request: GraphQueryRequest): Promise<GraphQueryResult>;
 }
 
 export interface GraphReadStore extends GraphSnapshotReader, GraphNodeReader, GraphQueryReader {}
