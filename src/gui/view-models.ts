@@ -36,6 +36,20 @@ export interface GuiExecutionViewModel {
 export interface GuiChangeIntelligenceViewModel {
   readonly intelligence: unknown | null;
 }
+
+export interface GuiBranchViewModel { readonly current: string; readonly branches: readonly unknown[]; }
+export interface GuiBranchReviewViewModel { readonly decision: unknown; readonly risk: unknown; readonly changeSet: unknown; readonly changedSymbolIds: readonly unknown[]; readonly affectedSymbolIds: readonly unknown[]; readonly testImpact: unknown; readonly reasons: readonly unknown[]; readonly uncertainty: readonly unknown[]; }
+export interface GuiPullRequestReviewViewModel { readonly decision: unknown; readonly risk: unknown; readonly pullRequest: unknown; readonly changeSet: unknown; readonly changedSymbolIds: readonly unknown[]; readonly removedSymbolIds: readonly unknown[]; readonly testImpact: unknown; readonly reasons: readonly unknown[]; readonly uncertainty: readonly unknown[]; }
+export interface GuiConfigurationViewModel { readonly configuration: unknown | null; readonly sources: readonly unknown[]; }
+export interface GuiDiagnosticsViewModel { readonly operation: unknown; readonly durationMs: unknown; readonly cache: unknown; readonly graph: unknown; readonly uncertaintyCount: unknown; readonly operationId: unknown; }
+export interface GuiCiViewModel { readonly status: unknown; readonly risk: unknown; readonly exitCode: unknown; readonly changedPathCount: unknown; readonly impactedTestCases: unknown; readonly reasons: readonly unknown[]; }
+export interface GuiEcosystemViewModel { readonly support: unknown; readonly packageManagers: readonly unknown[]; readonly languages: readonly unknown[]; readonly testFrameworks: readonly unknown[]; readonly unsupported: readonly unknown[]; }
+export interface GuiMonorepoViewModel { readonly isMonorepo: boolean; readonly packageCount: unknown; readonly workspaceCount: unknown; readonly packages: readonly unknown[]; }
+export interface GuiHistoricalViewModel { readonly fromCommit: string; readonly toCommit: string; readonly symbolTransitions: readonly unknown[]; readonly dependencyTransitions: readonly unknown[]; readonly testImpactTransitions: readonly unknown[]; }
+export interface GuiTestGapViewModel { readonly symbols: unknown; readonly tested: unknown; readonly indirectlyTested: unknown; readonly untested: unknown; readonly unknown: unknown; readonly gaps: readonly unknown[]; }
+export interface GuiTestImpactViewModel { readonly impacts: readonly unknown[]; }
+export interface GuiOverviewViewModel { readonly commit: string; readonly subject: string; readonly changedFiles: unknown; readonly changedSymbols: unknown; readonly affectedSymbols: unknown; readonly impactedTestCases: unknown; }
+
 const asRecord = (value: unknown): Record<string, unknown> => value && typeof value === "object" ? value as Record<string, unknown> : {};
 const asString = (value: unknown): string => typeof value === "string" ? value : "";
 const asArray = (value: unknown): readonly unknown[] => Array.isArray(value) ? value : [];
@@ -84,4 +98,3 @@ function toGuiGraphViewModel(value){const source=guiRecord(value);return {schema
 function toGuiExecutionViewModel(plan,feedback){const source=guiRecord(plan);const feedbackRecord=guiRecord(feedback);return {steps:guiArray(source.steps).map(item=>{const step=guiRecord(item);return {id:guiString(step.id),affectedTestCaseIds:guiArray(step.affectedTestCaseIds).filter(id=>typeof id==="string"),command:step.command};}),execution:feedbackRecord.execution};}
 function toGuiChangeIntelligenceViewModel(value){const source=guiRecord(value);return {intelligence:source.intelligence??null};}
 `;
-

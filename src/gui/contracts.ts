@@ -1,43 +1,33 @@
 export type GuiCapabilityId =
-  | "repository_status"
-  | "configuration"
-  | "repository_ecosystem"
-  | "monorepo_intelligence"
-  | "historical_intelligence"
-  | "ci_analysis"
-  | "diagnostics"
-  | "change_intelligence"
-  | "test_gaps"
-  | "test_impact"
-  | "execution_plan"
-  | "branch_review"
-  | "pull_request_review";
+  | "repository_status" | "configuration" | "repository_ecosystem" | "monorepo_intelligence"
+  | "historical_intelligence" | "ci_analysis" | "diagnostics" | "change_intelligence"
+  | "test_gaps" | "test_impact" | "execution_plan" | "branch_review" | "pull_request_review"
+  | "commits" | "branches" | "node" | "execution_feedback" | "run_execution_plan"
+  | "overview" | "graph_view";
 
 export interface GuiCapabilityDescriptor {
   readonly id: GuiCapabilityId;
   readonly path: string;
 }
 
-export const guiCapabilityContracts: readonly GuiCapabilityDescriptor[] = Object.freeze([
-  { id: "repository_status", path: "/api/status" },
-  { id: "configuration", path: "/api/config" },
-  { id: "repository_ecosystem", path: "/api/ecosystem" },
-  { id: "monorepo_intelligence", path: "/api/monorepo" },
-  { id: "historical_intelligence", path: "/api/historical-intelligence" },
-  { id: "ci_analysis", path: "/api/ci" },
-  { id: "diagnostics", path: "/api/diagnostics" },
-  { id: "change_intelligence", path: "/api/change-intelligence" },
-  { id: "test_gaps", path: "/api/test-gaps" },
-  { id: "test_impact", path: "/api/test-impact" },
-  { id: "execution_plan", path: "/api/execution-plan" },
-  { id: "branch_review", path: "/api/branch-review" },
-  { id: "pull_request_review", path: "/api/pull-request-review" }
-]);
+const GUI_CAPABILITY_PATHS = [
+  ["repository_status","/api/status"],["configuration","/api/config"],["repository_ecosystem","/api/ecosystem"],
+  ["monorepo_intelligence","/api/monorepo"],["historical_intelligence","/api/historical-intelligence"],
+  ["ci_analysis","/api/ci"],["diagnostics","/api/diagnostics"],["change_intelligence","/api/change-intelligence"],
+  ["test_gaps","/api/test-gaps"],["test_impact","/api/test-impact"],["execution_plan","/api/execution-plan"],
+  ["branch_review","/api/branch-review"],["pull_request_review","/api/pull-request-review"],
+  ["commits","/api/commits"],["branches","/api/branches"],["node","/api/node"],
+  ["execution_feedback","/api/execution-feedback"],["run_execution_plan","/api/run-execution-plan"],
+  ["overview","/api/overview"],["graph_view","/api/graph-view"]
+] as const;
+
+export const guiCapabilityContracts: readonly GuiCapabilityDescriptor[] =
+  Object.freeze(GUI_CAPABILITY_PATHS.map(([id,path]) => ({id,path})));
 
 export type {
-  GuiStatusViewModel,
-  GuiCommitViewModel,
-  GuiGraphViewModel,
-  GuiExecutionViewModel,
-  GuiChangeIntelligenceViewModel
+  GuiStatusViewModel, GuiCommitViewModel, GuiGraphViewModel, GuiExecutionViewModel,
+  GuiChangeIntelligenceViewModel, GuiBranchViewModel, GuiBranchReviewViewModel,
+  GuiPullRequestReviewViewModel, GuiConfigurationViewModel, GuiDiagnosticsViewModel,
+  GuiCiViewModel, GuiEcosystemViewModel, GuiMonorepoViewModel, GuiHistoricalViewModel,
+  GuiTestGapViewModel, GuiTestImpactViewModel, GuiOverviewViewModel
 } from "./view-models.js";
