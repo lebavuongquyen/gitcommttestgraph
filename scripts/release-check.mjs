@@ -130,6 +130,11 @@ try {
     console.log("PASS security gate");
   }
 
+  if (compareVersion(parsedVersion, parseVersion("0.9.7")) >= 0) {
+    run(npmCommand, ["run", "compatibility:gate"], cleanRepo);
+    console.log("PASS compatibility gate");
+  }
+
   const packOutput = runCapture(npmCommand, ["pack", "--dry-run", "--json"], cleanRepo);
   const pack = JSON.parse(packOutput)[0];
   assert(pack && Array.isArray(pack.files), "package dry-run produced file manifest");

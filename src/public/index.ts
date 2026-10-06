@@ -14,4 +14,5 @@ export type { HistoricalIntelligence, HistoricalCommit, HistoricalSymbolTransiti
 export { HistoricalIntelligenceService } from "../application/history/historical-intelligence-service.js";
 export type { HistoricalIntelligenceInput, HistoricalSnapshotLoader } from "../application/history/historical-intelligence-service.js";
 export type { CiAnalysisResult, CiFormat } from "../domain/ci.js";
+export type { CiAnalysisContract, DiagnosticsContract } from "./contracts.js";
 export type { OperationDiagnostics } from "../domain/diagnostics.js";
