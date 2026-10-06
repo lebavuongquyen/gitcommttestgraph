@@ -1,5 +1,5 @@
 import { discoverRepository, type RepositoryDiscovery } from "../adapters/git/repository-discovery.js";
-import { TypeScriptProjectAnalyzer } from "../adapters/languages/typescript/semantic-analyzer.js";
+import { TypeScriptSemanticAnalyzer } from "../adapters/languages/typescript/semantic-analyzer.js";
 import { ConfigurationService } from "../application/configuration/configuration-service.js";
 import { RepositoryIndexer } from "../application/indexing/index-repository.js";
 import { IncrementalRepositoryIndexer, type IncrementalIndexResult } from "../application/indexing/incremental-indexer.js";
@@ -56,7 +56,7 @@ export class ApplicationRuntime {
     const semanticCache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
     const fullIndexer = new RepositoryIndexer(
       repository.git,
-      new TypeScriptProjectAnalyzer(),
+      new TypeScriptSemanticAnalyzer(),
       store,
       semanticCache
     );
