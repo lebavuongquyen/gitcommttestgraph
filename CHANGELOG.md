@@ -2,6 +2,12 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.9.7] - 2026-10-06
+
+### Compatibility Freeze
+- Planned milestone for freezing and verifying the supported 0.9.x compatibility surface before the mandatory 0.9 to 0.10 architecture re-audit.
+- No new feature scope is introduced by this marker.
+
 ## [0.9.6] - 2026-10-06
 
 ### Documentation and SDK Preview
