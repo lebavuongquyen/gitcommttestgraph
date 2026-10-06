@@ -170,6 +170,11 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, analyzeRepositoryEcosystem(indexed.snapshot));
         return;
       }
+      if (url.pathname === "/api/progress") {
+        const id = url.searchParams.get("id");
+        send(response, 200, id ? runtime.progress.snapshot(id) : []);
+        return;
+      }
       if (url.pathname === "/api/operations") {
         const id = url.searchParams.get("id");
         send(response, 200, id ? runtime.operations.get(id) ?? null : runtime.operations.list());

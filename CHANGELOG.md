@@ -503,3 +503,10 @@ See Git history for the previous release.
 - Integrated indexing lifecycle with the shared runtime operation tracker.
 - Exposed operation inspection through HTTP and MCP.
 - Added focused tests and documentation.
+
+### O02 - Progress Stages - 2026-10-07
+
+- Added explicit progress stage model for runtime operations.
+- Integrated indexing with lock/analyze/complete progress stages.
+- Exposed progress through HTTP and MCP.
+- Added focused tests and documentation.

@@ -10,6 +10,7 @@ import { JsonGraphStore } from "../infrastructure/persistence/json-graph-store.j
 import { JsonSemanticCache } from "../infrastructure/persistence/json-semantic-cache.js";
 import { GCTG_VERSION } from "../version.js";
 import { OperationService } from "../application/operations/operation-service.js";
+import { ProgressService } from "../application/operations/progress-service.js";
 
 export interface ApplicationRuntimeOptions {
   readonly analyzerVersion?: string;
@@ -25,6 +26,7 @@ export class ApplicationRuntime {
   configuration: Awaited<ReturnType<ConfigurationService["resolve"]>>["configuration"];
   readonly analyzerVersion: string;
   readonly operations: OperationService;
+  readonly progress: ProgressService;
 
   private readonly indexer: IncrementalRepositoryIndexer;
   private readonly indexLock: IndexLock;
@@ -38,7 +40,8 @@ export class ApplicationRuntime {
     indexer: IncrementalRepositoryIndexer,
     indexLock: IndexLock,
     analyzerVersion: string,
-    operations: OperationService
+    operations: OperationService,
+    progress: ProgressService
   ) {
     this.repository = repository;
     this.git = repository.git;
@@ -51,6 +54,7 @@ export class ApplicationRuntime {
     this.indexLock = indexLock;
     this.analyzerVersion = analyzerVersion;
     this.operations = operations;
+    this.progress = progress;
   }
 
   static async create(root: string, options: ApplicationRuntimeOptions = {}): Promise<ApplicationRuntime> {
@@ -76,6 +80,7 @@ export class ApplicationRuntime {
     );
     const indexLock = new IndexLock(repository.root + "/.gctg/index.lock");
     const operations = new OperationService();
+    const progress = new ProgressService();
     return new ApplicationRuntime(
       repository,
       configuration,
@@ -85,7 +90,8 @@ export class ApplicationRuntime {
       indexer,
       indexLock,
       options.analyzerVersion ?? GCTG_VERSION,
-      operations
+      operations,
+      progress
     );
   }
 
@@ -97,7 +103,9 @@ export class ApplicationRuntime {
     const target = commit ?? await this.head();
     const operation = this.operations.begin("index", { commit: target });
     this.operations.start(operation.id);
+    this.progress.start(operation.id, "acquire-lock");
     const release = await this.indexLock.acquire();
+    this.progress.update(operation.id, "analyze", 0, 1);
     try {
       const result = await this.indexer.index({
         repository: this.repository.root,
@@ -105,6 +113,8 @@ export class ApplicationRuntime {
         configuration: this.configuration,
         analyzerVersion: this.analyzerVersion
       });
+      this.progress.update(operation.id, "analyze", 1, 1);
+      this.progress.update(operation.id, "complete", 1, 1);
       this.operations.succeed(operation.id);
       return result;
     } catch (error) {

@@ -157,6 +157,15 @@ export function createGctgMcpServer(root: string) {
     return result(await new SnapshotAccountingService(ctx.store).planCompaction(resolved.configuration, protectedPaths ?? []));
   });
 
+  server.registerTool("progress", {
+    title: "Progress",
+    description: "Inspect deterministic progress stages for a runtime operation.",
+    inputSchema: { id: z.string() }
+  }, async ({ id }) => {
+    const ctx = await context(root);
+    return result(ctx.progress.snapshot(id));
+  });
+
   server.registerTool("operations", {
     title: "Operations",
     description: "Inspect the current runtime operation lifecycle and individual operation records.",
