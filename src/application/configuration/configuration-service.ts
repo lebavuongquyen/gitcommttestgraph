@@ -1,6 +1,7 @@
-import { DEFAULT_CONFIGURATION, type ConfigurationUpdateResult, type GctgConfiguration, type ResolvedConfiguration, type ConfigurationSource, type ConfigurationMigrationEvidence } from "../../domain/configuration/model.js";
+﻿import { DEFAULT_CONFIGURATION, type ConfigurationUpdateResult, type GctgConfiguration, type ResolvedConfiguration, type ConfigurationSource, type ConfigurationMigrationEvidence } from "../../domain/configuration/model.js";
 import type { ConfigurationServicePort, ConfigurationStore } from "../ports/configuration.js";
 import { CURRENT_CONFIGURATION_SCHEMA_VERSION, migrateConfiguration, type ConfigurationMigration } from "./configuration-migration.js";
+import { assertNoSensitiveConfiguration } from "./sensitive-configuration.js";
 
 export class ConfigurationService implements ConfigurationServicePort {
   constructor(private readonly store: ConfigurationStore, private readonly migrations: readonly ConfigurationMigration[] = []) {}
@@ -54,6 +55,7 @@ export class ConfigurationService implements ConfigurationServicePort {
 }
 
 export function validateConfiguration(value: unknown): GctgConfiguration {
+  assertNoSensitiveConfiguration(value);
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new Error("Configuration must be an object.");
   const root = value as Record<string, unknown>;
   exactKeys(root, ["schemaVersion", "indexing", "historyRetention", "performance", "storage", "cleanup"], "configuration");
