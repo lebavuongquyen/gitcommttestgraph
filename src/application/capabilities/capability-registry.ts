@@ -3,7 +3,7 @@ export type CapabilitySurface = "GUI" | "MCP" | "CLI" | "HTTP" | "PUBLIC_API";
 export interface CapabilityDescriptor {
   readonly id: string;
   readonly applicationHandler: string;
-  readonly surfaces: Readonly<Record<CapabilitySurface, string>>;
+  readonly surfaces: Readonly<Partial<Record<CapabilitySurface, string>>>;
 }
 
 export const capabilityRegistry: readonly CapabilityDescriptor[] = Object.freeze([
