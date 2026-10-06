@@ -5,8 +5,11 @@ All notable changes to git-commit-test-graph are documented here.
 ## [0.9.7] - 2026-10-06
 
 ### Compatibility Freeze
-- Planned milestone for freezing and verifying the supported 0.9.x compatibility surface before the mandatory 0.9 to 0.10 architecture re-audit.
-- No new feature scope is introduced by this marker.
+- Froze the 0.9 public API compatibility surface.
+- Kept public API version at 1.0.0.
+- Added compatibility verification for contract registry, CLI commands and public exports.
+- Integrated compatibility verification into Release Gate v2.
+- Marked the mandatory 0.9 to 0.10 architecture re-audit as the next milestone.
 
 ## [0.9.6] - 2026-10-06
 
