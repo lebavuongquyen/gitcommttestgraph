@@ -2,6 +2,30 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.8.1] - 2026-10-06
+
+### Added
+- Public contract hardening for Change Intelligence across CLI, HTTP, MCP and GUI.
+- Explicit CLI usage validation and usage exit code 2 for invalid Change Intelligence source selection.
+- HTTP 400 validation for invalid Change Intelligence source values.
+- MCP contract coverage for the `change_intelligence` source enum and deterministic envelope.
+- Determinism regression coverage for repeated CLI Change Intelligence queries.
+- GUI contract coverage for the real Change Intelligence fetch path.
+
+### Fixed
+- GUI Change Intelligence loading now captures the sixth API result instead of silently discarding it.
+- GUI commit loading now exposes API failures in the visible status and inspector state.
+
+### Quality
+- 7/7 dedicated 0.8.1 public-contract gates passed.
+- CLI, HTTP, MCP and GUI gates passed.
+- Full contract suite passed after the hardening changes.
+- Typecheck and build passed.
+
+### Documentation
+- Added `docs/releases/0.8.1.md`.
+- Updated the 0.8–1.0 roadmap with 0.8.1 contract-hardening acceptance.
+
 ## [0.8.0] - 2026-10-06
 
 ### Added
@@ -153,3 +177,5 @@ All notable changes to `git-commit-test-graph` are documented here.
 ## [0.3.8] - 2026-10-04
 
 See Git history for the previous release.
+
+[executed on device: QuyenLe (f538f86d-fbfa-478e-a5df-d3f9a375cbf0)]

@@ -451,6 +451,8 @@ Every 0.8 release must include:
 
 ## 0.8.1 — Public Contract Hardening
 
+Status: COMPLETE
+
 Focus:
 
 - MCP schemas;
@@ -459,6 +461,23 @@ Focus:
 - serialization;
 - backwards-compatible field additions;
 - GUI state/error handling.
+
+Delivered:
+
+- CLI Change Intelligence source validation with deterministic usage exit code 2;
+- HTTP Change Intelligence source validation with HTTP 400;
+- MCP source enum/schema contract coverage;
+- deterministic repeated-query contract coverage;
+- GUI Change Intelligence result capture fixed;
+- GUI visible error state for commit intelligence loading;
+- dedicated 0.8.1 contract suite with 7/7 gates passing;
+- release documentation and changelog;
+- version 0.8.1.
+
+Evidence:
+
+- `tests/contracts/0.8.1-public-contract.contract.test.mjs`
+- `docs/releases/0.8.1.md`
 
 ## 0.8.2 — Performance
 
@@ -1339,9 +1358,9 @@ Every feature surface exposed through CLI, HTTP/API, MCP or GUI must have an exe
 
 ### M03 — Unified Change model
 
-Status: NEXT
+Status: COMPLETE
 
-Implement the application-level abstraction.
+Implemented as the shared application/domain model used by Change Intelligence.
 
 ### M04 — Unified Change Intelligence
 
@@ -1370,31 +1389,58 @@ See docs/QUALITY-GATES.md and docs/releases/0.8.0.md.
 
 ### M05 — 0.8.0 acceptance
 
-Status: IN PROGRESS
+Status: COMPLETE
 
-Run Release Gate v2 on the final 0.8.0 release commit.
+Release Gate v2 passed on the final 0.8.0 release commit.
 
-Acceptance must include clean install, typecheck, build, full tests, public contract tests, M04 gate, package manifest, documentation, changelog, version consistency and clean Git state.
+Acceptance evidence:
 
-Only after the final gate passes should v0.8.0 be tagged and pushed.
+- clean install and dependency provenance;
+- typecheck;
+- build;
+- full regression;
+- public contract tests;
+- M04 gate;
+- package verification;
+- documentation and changelog;
+- version consistency;
+- clean Git state;
+- immutable tag `v0.8.0` verified and pushed.
 
-### M03 — Unified Change model
+### M06 — 0.8.1 public contract hardening
 
-Implement the application-level abstraction.
+Status: COMPLETE
 
-### M04 — Unified Change Intelligence
+Acceptance evidence:
 
-Expose it through:
+- CLI usage/error contract;
+- HTTP status/error contract;
+- MCP schema contract;
+- deterministic serialization/query behavior;
+- GUI Change Intelligence runtime path;
+- 7/7 dedicated contract gates;
+- release documentation and changelog.
 
-- GUI;
-- MCP;
-- CLI/API.
+See `docs/releases/0.8.1.md`.
 
-### M05 — 0.8.0 acceptance
+### M07 — 0.8.2 performance hardening
 
-Run the complete release gate.
+Status: NEXT
 
-Only after these are accepted should 0.8.0 be tagged.
+First establish benchmark gates before changing indexing behavior.
+
+Required benchmark classes:
+
+- cold index;
+- warm historical query;
+- repeated historical query;
+- small repository;
+- medium monorepo;
+- large-history repository;
+- memory pressure;
+- graph query latency.
+
+No performance optimization is accepted without a reproducible baseline and regression threshold.
 
 ---
 

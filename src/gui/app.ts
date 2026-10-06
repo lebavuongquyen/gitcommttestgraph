@@ -79,7 +79,8 @@ function renderCommits(items){
 }
 async function loadCommit(commit){
   $("status").textContent="Indexing "+commit.slice(0,8)+"…";
-  const [overview,graph,tests,plan,feedback]=await Promise.all([
+  try{
+  const [overview,graph,tests,plan,feedback,intelligence]=await Promise.all([
     api("/api/overview?commit="+encodeURIComponent(commit)),
     api("/api/graph-view?commit="+encodeURIComponent(commit)),
     api("/api/test-impact?commit="+encodeURIComponent(commit)),
@@ -90,6 +91,11 @@ async function loadCommit(commit){
   state.graph=graph;state.plan=plan;state.feedback=feedback;state.intelligence=intelligence;
   renderOverview(overview);renderIntelligence(intelligence);renderGraph(graph);renderTests(tests);renderExecution(plan,feedback);
   $("status").textContent=overview.repository+" · "+commit.slice(0,8);
+  }catch(e){
+    $("status").textContent=e.message;
+    $("intelligence").innerHTML='<div class="empty">'+esc(e.message)+'</div>';
+    $("inspector").innerHTML='<div class="empty">Unable to load commit intelligence.</div>';
+  }
 }
 async function reviewBranch(){
   const base=$("baseBranch").value, head=$("headBranch").value;

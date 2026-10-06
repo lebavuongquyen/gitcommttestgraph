@@ -138,7 +138,9 @@ export async function startServer(root: string, port: number): Promise<void> {
         return;
       }
       if (url.pathname === "/api/change-intelligence") {
-        const source = (url.searchParams.get("source") ?? "COMMIT").toUpperCase() as "COMMIT" | "BRANCH";
+        const requestedSource = (url.searchParams.get("source") ?? "COMMIT").toUpperCase();
+        if (requestedSource !== "COMMIT" && requestedSource !== "BRANCH") return send(response, 400, { error: "source must be COMMIT or BRANCH" });
+        const source = requestedSource as "COMMIT" | "BRANCH";
         const commit = url.searchParams.get("commit") ?? undefined;
         const base = url.searchParams.get("base") ?? undefined;
         const head = url.searchParams.get("head") ?? undefined;
