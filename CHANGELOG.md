@@ -9,6 +9,11 @@ All notable changes to git-commit-test-graph are documented here.
 - Kept internal composition exports outside the package export map.
 - Added package-boundary contract tests that reject known infrastructure symbols from the public root.
 
+### R02 — Shared Application Runtime
+- Added a single application runtime owning repository discovery, configuration, Git, graph storage, semantic cache, indexing and locking.
+- Routed CLI, HTTP and MCP indexing/configuration through the shared runtime.
+- Added runtime composition conformance tests to prevent surface-level dependency-stack duplication.
+
 ## [0.9.8] - 2026-10-06
 
 ### 0.9 Revalidation and MCP Surface Parity
