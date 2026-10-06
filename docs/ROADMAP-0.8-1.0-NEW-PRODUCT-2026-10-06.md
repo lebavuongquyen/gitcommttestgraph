@@ -606,7 +606,39 @@ It is the phase where the product becomes operationally trustworthy.
 
 ## 7.1 0.9.0 — Stable Public API
 
+Status: COMPLETE
+
 Freeze the first public API surface.
+
+Delivered:
+
+- supported programmatic entrypoint at `git-commit-test-graph/api`;
+- explicit public API version 1.0.0;
+- runtime contract validation;
+- graph snapshot contract;
+- change intelligence contract;
+- impact contract;
+- test impact contract;
+- execution plan contract;
+- evidence contract;
+- public error contract;
+- additive compatibility policy;
+- fail-closed schema-version policy;
+- package export map;
+- public API contract tests;
+- audit and release documentation.
+
+Evidence:
+
+- `src/public/index.ts`
+- `src/public/contracts.ts`
+- `tests/contracts/0.9.0-public-api.contract.test.mjs`
+- `docs/AUDIT-0.9.0-PUBLIC-API-2026-10-06.md`
+- `docs/releases/0.9.0.md`
+
+Freeze rule:
+
+No new public contract family is added during 0.9.1 without an explicit compatibility review.
 
 Potential public namespaces:
 

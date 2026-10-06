@@ -2,6 +2,20 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.9.0] - 2026-10-06
+
+### Stable Public API
+- Added supported programmatic entrypoint at `git-commit-test-graph/api`.
+- Added explicit public API version `1.0.0`.
+- Added runtime Zod validation for graph snapshot, change intelligence, impact, test impact, execution plan, evidence and public error contracts.
+- Added additive compatibility policy and fail-closed schema versioning.
+- Kept the package as a single distribution; package splitting remains deferred until post-1.0 product extraction.
+
+### Documentation
+- Added `docs/AUDIT-0.9.0-PUBLIC-API-2026-10-06.md`.
+- Added `docs/releases/0.9.0.md`.
+- Added permanent 0.9.0 public API contract coverage.
+
 ## [0.8.4] - 2026-10-06
 
 ### Security
