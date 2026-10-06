@@ -82,14 +82,16 @@ export async function startServer(root: string, port: number): Promise<void> {
 
   const buildPullRequestReview = async (ownerRepo: string, number: number) => {
     const pullRequest = await new GitHubPullRequestProvider().get(ownerRepo, number);
-    if (!pullRequest.base || !pullRequest.head) throw new Error("Pull request metadata does not contain base/head refs");
-    const changeSet = await new PullRequestChangeSetService(git).build({ repository: repository.root, pullRequest, base: pullRequest.base, head: pullRequest.head });
+    await git.ensureCommit(pullRequest.baseSha);
+    const headRemoteUrl = "https://github.com/" + pullRequest.headRepository + ".git";
+    await git.ensureCommit(pullRequest.headSha, headRemoteUrl);
+    const changeSet = await new PullRequestChangeSetService(git).build({ repository: repository.root, pullRequest, base: pullRequest.baseSha, head: pullRequest.headSha });
     const indexed = await indexAt(changeSet.head);
     const baseIndexed = await indexAt(changeSet.mergeBase);
     const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
     const changedSymbolIds = changedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
     const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
-    return new PullRequestReviewService().analyze({ changeSet, pullRequest, current: indexed.snapshot, changedSymbolIds, removedSymbolIds });
+    return new PullRequestReviewService().analyze({ changeSet, pullRequest, current: indexed.snapshot, base: baseIndexed.snapshot, changedSymbolIds, removedSymbolIds });
   };
 
   const send = (response: import("node:http").ServerResponse, status: number, value: unknown) => {

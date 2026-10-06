@@ -1,4 +1,11 @@
-export type PullRequestReviewState = "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "PENDING" | "UNKNOWN";
+export type PullRequestReviewState = "APPROVED" | "CHANGES_REQUESTED" | "COMMENTED" | "PENDING" | "DISMISSED" | "UNKNOWN";
+
+export interface PullRequestReviewEvidence {
+  readonly reviewer: string;
+  readonly state: PullRequestReviewState;
+  readonly commitId?: string;
+  readonly submittedAt?: string;
+}
 
 export interface PullRequestCheck {
   readonly name: string;
@@ -15,9 +22,14 @@ export interface PullRequestMetadata {
   readonly labels: readonly string[];
   readonly reviewers: readonly string[];
   readonly reviewState: PullRequestReviewState;
+  readonly reviewCommitId?: string;
+  readonly reviewEvidence: readonly PullRequestReviewEvidence[];
   readonly checks: readonly PullRequestCheck[];
   readonly mergeable?: boolean;
   readonly url?: string;
+  readonly baseSha: string;
+  readonly headSha: string;
+  readonly headRepository: string;
 }
 
 export interface PullRequestReview {

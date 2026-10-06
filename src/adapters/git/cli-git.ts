@@ -13,6 +13,17 @@ export class CliGitRepository implements GitRepositoryPort {
     return (await this.run(["rev-parse", "HEAD"])).trim();
   }
 
+  async ensureCommit(commit: string, remoteUrl?: string): Promise<void> {
+    try {
+      await this.run(["cat-file", "-e", commit + "^{commit}"]);
+      return;
+    } catch {
+      if (!remoteUrl) throw new InvalidCommitError("Git commit is not available locally: " + commit);
+      await this.run(["fetch", "--no-tags", "--depth=1", remoteUrl, commit]);
+      await this.run(["cat-file", "-e", commit + "^{commit}"]);
+    }
+  }
+
   async getCurrentBranch(): Promise<string> {
     return (await this.run(["branch", "--show-current"])).trim();
   }
@@ -78,7 +89,13 @@ export class CliGitRepository implements GitRepositoryPort {
 
   private async run(args: readonly string[]): Promise<string> {
     try {
-      const { stdout } = await execFileAsync("git", args, { cwd: this.root, maxBuffer: 32 * 1024 * 1024 });
+      const env = { ...process.env };
+      if (args[0] === "fetch" && args.some(arg => arg.includes("github.com")) && process.env.GITHUB_TOKEN) {
+        env.GIT_CONFIG_COUNT = "1";
+        env.GIT_CONFIG_KEY_0 = "http.https://github.com/.extraheader";
+        env.GIT_CONFIG_VALUE_0 = "Authorization: Bearer " + process.env.GITHUB_TOKEN;
+      }
+      const { stdout } = await execFileAsync("git", args, { cwd: this.root, env, maxBuffer: 32 * 1024 * 1024 });
       return stdout;
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);

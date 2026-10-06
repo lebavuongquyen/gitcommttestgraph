@@ -10,6 +10,7 @@ export interface PullRequestReviewInput {
   readonly changeSet: PullRequestChangeSet;
   readonly pullRequest: PullRequestMetadata;
   readonly current: GraphSnapshot;
+  readonly base?: GraphSnapshot;
   readonly changedSymbolIds: readonly string[];
   readonly removedSymbolIds?: readonly string[];
 }
@@ -24,10 +25,14 @@ export class PullRequestReviewService {
     const removedSymbolIds = [...new Set(input.removedSymbolIds ?? [])].sort();
     const testGaps = this.gaps.analyze(input.current, { changedNodeIds: changedSymbolIds });
     const testImpact = this.tests.analyze(input.current, { changedSymbolIds, coverageLinks: testGaps.coverageLinks });
-    const affectedSymbolIds = this.impact.analyze(input.current, {
+    const currentAffected = this.impact.analyze(input.current, {
       changedNodeIds: changedSymbolIds,
       targetTypes: ["Symbol"]
     }).map(item => item.nodeId).filter(id => !changedSymbolIds.includes(id));
+    const removedAffected = input.base && removedSymbolIds.length
+      ? this.impact.analyze(input.base, { changedNodeIds: removedSymbolIds, targetTypes: ["Symbol"] }).map(item => item.nodeId).filter(id => !removedSymbolIds.includes(id))
+      : [];
+    const affectedSymbolIds = [...new Set([...currentAffected, ...removedAffected])];
 
     const executionPlan = buildExecutionPlan({
       repository: input.current.repository,
@@ -52,12 +57,16 @@ export class PullRequestReviewService {
     if (input.pullRequest.reviewState === "CHANGES_REQUESTED") reasons.push("A reviewer has requested changes.");
     if (input.pullRequest.reviewState === "COMMENTED") uncertainty.push("Review feedback exists without an approval decision.");
     if (input.pullRequest.reviewState === "PENDING" || input.pullRequest.reviewState === "UNKNOWN") uncertainty.push("No final approval decision is recorded.");
+    if (input.pullRequest.reviewState === "DISMISSED") uncertainty.push("The latest GitHub review state is dismissed.");
+    if (input.pullRequest.reviewState === "APPROVED" && input.pullRequest.reviewCommitId !== input.pullRequest.headSha) uncertainty.push("The approval evidence belongs to an older pull request head commit.");
+    if (input.pullRequest.reviewState === "APPROVED" && input.pullRequest.reviewCommitId === input.pullRequest.headSha) uncertainty.push("GitHub branch-protection requirements are not available from this review response.");
     if (failedChecks.length) reasons.push(failedChecks.length + " GitHub check(s) are failing or cancelled.");
     if (pendingChecks.length) uncertainty.push(pendingChecks.length + " GitHub check(s) are still pending.");
     if (!input.pullRequest.checks.length) uncertainty.push("No GitHub checks are recorded for the pull request head.");
     if (removedSymbolIds.length) {
       reasons.push(removedSymbolIds.length + " symbols were removed and require review of downstream consumers.");
-      uncertainty.push("Removed symbols are absent from the head graph and cannot be directly test-mapped.");
+      if (removedAffected.length) reasons.push(removedAffected.length + " downstream symbols depend on removed symbols in the base graph.");
+      else if (!input.base) uncertainty.push("Removed-symbol downstream impact could not be resolved because the base graph is unavailable.");
     }
     if (highGaps.length) reasons.push(highGaps.length + " changed symbols have HIGH test gaps.");
     if (testGaps.unknown > 0) uncertainty.push(testGaps.unknown + " testable areas have UNKNOWN coverage.");

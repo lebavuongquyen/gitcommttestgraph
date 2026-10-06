@@ -28,7 +28,12 @@ const metadata = {
   labels: ["feature"],
   reviewers: ["reviewer"],
   reviewState: "APPROVED",
-  checks: [{ name: "ci", status: "COMPLETED", conclusion: "SUCCESS" }]
+  reviewCommitId: "head-sha",
+  reviewEvidence: [{ reviewer: "reviewer", state: "APPROVED", commitId: "head-sha" }],
+  checks: [{ name: "ci", status: "COMPLETED", conclusion: "SUCCESS" }],
+  baseSha: "base-sha",
+  headSha: "head-sha",
+  headRepository: "acme/app"
 };
 
 test("pull request change set preserves PR identity and commit evidence", async () => {
@@ -62,24 +67,94 @@ test("pull request review blocks a reported merge conflict", () => {
   assert.equal(review.risk, "HIGH");
 });
 
-test("GitHub provider maps pull request metadata and reviewers", async () => {
+test("GitHub provider resolves effective review state, immutable refs and paginated reviews", async () => {
   const original = globalThis.fetch;
-  const responses = [
-    { ok: true, json: async () => ({ number: 7, title: "Improve checkout", body: "desc", draft: true, user: { login: "author" }, labels: [{ name: "feature" }], requested_reviewers: [{ login: "requested" }], mergeable: true, html_url: "https://github.com/acme/app/pull/7", base: { ref: "main" }, head: { ref: "feature", repo: { full_name: "acme/app" } } }) },
-    { ok: true, json: async () => [{ user: { login: "reviewed" }, state: "COMMENTED" }] },
-    { ok: true, json: async () => ({ check_runs: [{ name: "ci", status: "completed", conclusion: "SUCCESS" }] }) }
-  ];
-  globalThis.fetch = async () => responses.shift();
+  const requests = [];
+  globalThis.fetch = async url => {
+    requests.push(String(url));
+    if (String(url).includes("/pulls/7") && !String(url).includes("/reviews")) {
+      return { ok: true, json: async () => ({ number: 7, title: "Improve checkout", body: "desc", draft: true, user: { login: "author" }, labels: [{ name: "feature" }], requested_reviewers: [{ login: "requested" }], mergeable: true, html_url: "https://github.com/acme/app/pull/7", base: { ref: "main", sha: "base-sha" }, head: { ref: "feature", sha: "head-sha", repo: { full_name: "acme/app" } } }) };
+    }
+    if (String(url).includes("/reviews?") && new URL(String(url)).searchParams.get("page") === "1") {
+      const reviews = Array.from({ length: 100 }, (_, index) => ({ user: { login: "reviewer-" + index }, state: index === 0 ? "CHANGES_REQUESTED" : "COMMENTED", commit_id: "old" }));
+      reviews[0] = { user: { login: "reviewed" }, state: "CHANGES_REQUESTED", commit_id: "old" };
+      return { ok: true, json: async () => reviews };
+    }
+    if (String(url).includes("/reviews?") && new URL(String(url)).searchParams.get("page") === "2") {
+      return { ok: true, json: async () => [{ user: { login: "reviewed" }, state: "APPROVED", commit_id: "head-sha" }] };
+    }
+    if (String(url).includes("/check-runs?") && new URL(String(url)).searchParams.get("page") === "1") {
+      return { ok: true, json: async () => ({ check_runs: [{ name: "ci", status: "completed", conclusion: "SUCCESS" }] }) };
+    }
+    if (String(url).includes("/check-runs?") && new URL(String(url)).searchParams.get("page") === "2") {
+      return { ok: true, json: async () => ({ check_runs: [] }) };
+    }
+    throw new Error("Unexpected GitHub request: " + url);
+  };
   try {
     const result = await new GitHubPullRequestProvider("token").get("acme/app", 7);
     assert.equal(result.number, 7);
-    assert.equal(result.base, "main");
-    assert.equal(result.head, "feature");
-    assert.equal(result.draft, true);
-    assert.equal(result.reviewState, "COMMENTED");
+    assert.equal(result.baseSha, "base-sha");
+    assert.equal(result.headSha, "head-sha");
+    assert.equal(result.headRepository, "acme/app");
+    assert.equal(result.reviewState, "APPROVED");
+    assert.equal(result.reviewCommitId, "head-sha");
+    assert.equal(result.reviewEvidence.find(item => item.reviewer === "reviewed")?.state, "APPROVED");
     assert.equal(result.checks[0].conclusion, "SUCCESS");
-    assert.deepEqual(result.reviewers, ["requested", "reviewed"]);
+    assert.equal(requests.filter(url => url.includes("/reviews?")).length, 2);
   } finally {
     globalThis.fetch = original;
   }
+});
+
+test("GitHub provider rejects invalid repository identifiers", async () => {
+  await assert.rejects(() => new GitHubPullRequestProvider("token").get("acme/app/unsafe", 7), /Invalid GitHub pull request identifier/);
+});
+
+test("pull request review resolves downstream consumers of removed symbols from the base graph", () => {
+  const changeSet = {
+    repository: "fixture", source: "PULL_REQUEST", base: "base", head: "head", mergeBase: "base",
+    commits: ["c1"], changedPaths: [{ path: "src/app.ts", status: "deleted" }], pullRequestNumber: 7, title: "Remove legacy service"
+  };
+  const base = {
+    repository: "fixture",
+    commit: "base",
+    nodes: [
+      { id: "removed", type: "Symbol", label: "removed", attributes: {} },
+      { id: "consumer", type: "Symbol", label: "consumer", attributes: {} }
+    ],
+    edges: [{ id: "e1", source: "consumer", target: "removed", type: "CALLS", confidence: "EXACT", evidence: [], sourceCommit: "base" }]
+  };
+  const current = {
+    repository: "fixture",
+    commit: "head",
+    nodes: [{ id: "consumer", type: "Symbol", label: "consumer", attributes: {} }],
+    edges: []
+  };
+  const review = new PullRequestReviewService().analyze({
+    changeSet,
+    pullRequest: metadata,
+    current,
+    base,
+    changedSymbolIds: [],
+    removedSymbolIds: ["removed"]
+  });
+  assert.ok(review.affectedSymbolIds.includes("consumer"));
+  assert.ok(review.reasons.some(reason => reason.includes("downstream symbols depend on removed symbols")));
+  assert.equal(review.decision, "HIGH_RISK");
+});
+
+test("pull request approval on an older head requires review", () => {
+  const changeSet = {
+    repository: "fixture", source: "PULL_REQUEST", base: "base", head: "head-sha", mergeBase: "base",
+    commits: ["c1"], changedPaths: [], pullRequestNumber: 7, title: "Change"
+  };
+  const review = new PullRequestReviewService().analyze({
+    changeSet,
+    pullRequest: { ...metadata, reviewCommitId: "old-sha" },
+    current: snapshot(),
+    changedSymbolIds: ["changed"]
+  });
+  assert.equal(review.decision, "NEEDS_REVIEW");
+  assert.ok(review.uncertainty.some(item => item.includes("older pull request head")));
 });

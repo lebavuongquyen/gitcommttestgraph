@@ -141,12 +141,13 @@ export function createGctgMcpServer(root: string) {
   }, async ({ ownerRepo, number }) => {
     const ctx = await context(root);
     const pullRequest = await new GitHubPullRequestProvider().get(ownerRepo, number);
-    if (!pullRequest.base || !pullRequest.head) throw new Error("Pull request metadata does not contain base/head refs");
+    await ctx.git.ensureCommit(pullRequest.baseSha);
+    await ctx.git.ensureCommit(pullRequest.headSha, "https://github.com/" + pullRequest.headRepository + ".git");
     const changeSet = await new PullRequestChangeSetService(ctx.git).build({
       repository: ctx.repository.root,
       pullRequest,
-      base: pullRequest.base,
-      head: pullRequest.head
+      base: pullRequest.baseSha,
+      head: pullRequest.headSha
     });
     const indexed = await indexAt(ctx, changeSet.head);
     const baseIndexed = await indexAt(ctx, changeSet.mergeBase);
@@ -157,6 +158,7 @@ export function createGctgMcpServer(root: string) {
       changeSet,
       pullRequest,
       current: indexed.snapshot,
+      base: baseIndexed.snapshot,
       changedSymbolIds,
       removedSymbolIds
     }));

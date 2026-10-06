@@ -2,6 +2,23 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.7.1] - 2026-10-06
+
+### Fixed
+- PR analysis now uses immutable GitHub base/head SHAs.
+- Fork PRs resolve exact head repositories and commits.
+- Review state now uses the latest review per reviewer.
+- Approval evidence is tied to the reviewed commit SHA.
+- Review and check-run pagination is bounded and supported.
+- Removed-symbol downstream impact is analyzed from the base graph.
+- Merge-readiness is conservative when GitHub branch-protection information is unavailable.
+- GitHub repository identifier validation is stricter.
+- Private GitHub fetches can use GITHUB_TOKEN without putting the token in command arguments.
+
+### Tests
+- Added regression tests for fork/SHA metadata, review pagination, stale approval, invalid repository identifiers and removed-symbol downstream impact.
+- Full suite: 56/56 tests passed.
+
 ## [0.7.0] - 2026-10-06
 
 ### Added
