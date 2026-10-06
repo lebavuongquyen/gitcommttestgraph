@@ -104,6 +104,17 @@ export function createGctgMcpServer(root: string) {
     return result(await new ReachabilityService(ctx.git).analyze({ commits, ...(protectedCommits ? { protectedCommits } : {}) }));
   });
 
+  server.registerTool("retention_plan", {
+    title: "Retention Plan",
+    description: "Produce a deterministic, read-only retention plan from configuration and supplied snapshot evidence.",
+    inputSchema: { candidates: z.array(z.unknown()), now: z.string().optional() }
+  }, async ({ candidates, now }) => {
+    const ctx = await context(root);
+    const { planRetention } = await import("../application/history/retention-planner.js");
+    const resolved = await ctx.resolveConfiguration();
+    return result(planRetention(resolved.configuration, candidates as never, now ?? new Date().toISOString()));
+  });
+
   server.registerTool("change_intelligence", {
     title: "Change Intelligence",
     description: "Analyze a commit or branch through the unified change intelligence contract. Read-only and deterministic.",

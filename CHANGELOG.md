@@ -472,3 +472,10 @@ See Git history for the previous release.
 - Preserved uncertainty when Git evidence is unavailable.
 - Exposed reachability through HTTP and MCP.
 - Added focused tests and documentation.
+
+### H03 - Retention Planner - 2026-10-07
+
+- Added deterministic retention planning from policy, protection evidence and deleted-branch grace periods.
+- Added quota-pressure evaluation without allowing protected evidence to be silently selected.
+- Exposed retention planning through HTTP and MCP.
+- Added focused tests and documentation.

@@ -197,6 +197,17 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, await new ReachabilityService(git).analyze({ commits }));
         return;
       }
+      if (url.pathname === "/api/retention-plan" && request.method === "POST") {
+        const body = await readJsonBody(request);
+        if (!body || typeof body !== "object" || Array.isArray(body)) return send(response, 400, { error: "Invalid retention plan request" });
+        const input = body as Record<string, unknown>;
+        const { planRetention } = await import("../../application/history/retention-planner.js");
+        const resolved = await runtime.resolveConfiguration();
+        const now = typeof input.now === "string" ? input.now : new Date().toISOString();
+        const candidates = Array.isArray(input.candidates) ? input.candidates : [];
+        send(response, 200, planRetention(resolved.configuration, candidates as never, now));
+        return;
+      }
       if (url.pathname === "/api/branch-review") {
         const base = url.searchParams.get("base");
         if (!base) return send(response, 400, { error: "Missing base branch" });

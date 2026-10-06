@@ -40,6 +40,7 @@ export * from "./domain/historical-intelligence.js";
 export * from "./application/history/historical-intelligence-service.js";
 export * from "./application/history/branch-lifecycle-service.js";
 export * from "./application/history/reachability-service.js";
+export * from "./application/history/retention-planner.js";
 export * from "./application/impact/impact-engine.js";
 export * from "./application/analysis/graph-diff.js";
 export * from "./application/tests/test-registry.js";
