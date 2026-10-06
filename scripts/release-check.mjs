@@ -9,13 +9,20 @@ const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 const packageJsonPath = join(root, "package.json");
 const packageLockPath = join(root, "package-lock.json");
 
+function execute(command, args, cwd, options) {
+  if (process.platform === "win32" && command === npmCommand) {
+    return execFileSync(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", [command, ...args].join(" ")], { cwd, ...options });
+  }
+  return execFileSync(command, args, { cwd, ...options });
+}
+
 function run(command, args, cwd = root) {
   console.log("\n$ " + command + " " + args.join(" "));
-  execFileSync(command, args, { cwd, stdio: "inherit", shell: process.platform === "win32" });
+  execute(command, args, cwd, { stdio: "inherit" });
 }
 
 function runCapture(command, args, cwd = root) {
-  return execFileSync(command, args, { cwd, encoding: "utf8" }).trim();
+  return execute(command, args, cwd, { encoding: "utf8" }).trim();
 }
 
 function assert(condition, message) {
