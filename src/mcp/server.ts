@@ -157,6 +157,16 @@ export function createGctgMcpServer(root: string) {
     return result(await new SnapshotAccountingService(ctx.store).planCompaction(resolved.configuration, protectedPaths ?? []));
   });
 
+  server.registerTool("health", {
+    title: "Health",
+    description: "Aggregate repository, storage and runtime operation health without mutating the repository.",
+    inputSchema: {}
+  }, async () => {
+    const ctx = await context(root);
+    const { HealthService } = await import("../application/operations/health-service.js");
+    return result(await new HealthService().check(ctx));
+  });
+
   server.registerTool("progress", {
     title: "Progress",
     description: "Inspect deterministic progress stages for a runtime operation.",

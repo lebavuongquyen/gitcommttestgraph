@@ -89,6 +89,7 @@ export * from "./domain/diagnostics.js";
 export * from "./domain/operation.js";
 export * from "./domain/progress.js";
 export * from "./application/operations/progress-service.js";
+export * from "./application/operations/health-service.js";
 export * from "./application/operations/operation-service.js";
 export * from "./application/intelligence/ci-analysis-service.js";
 export * from "./application/intelligence/diagnostics-service.js";

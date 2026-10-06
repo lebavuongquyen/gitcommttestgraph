@@ -510,3 +510,10 @@ See Git history for the previous release.
 - Integrated indexing with lock/analyze/complete progress stages.
 - Exposed progress through HTTP and MCP.
 - Added focused tests and documentation.
+
+### O03 - Health Aggregation - 2026-10-07
+
+- Added read-only health aggregation for Git, snapshot storage and failed runtime operations.
+- Added HEALTHY, DEGRADED and UNHEALTHY statuses.
+- Exposed health through HTTP and MCP.
+- Added focused tests and documentation.
