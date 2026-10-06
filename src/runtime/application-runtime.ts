@@ -8,8 +8,10 @@ import { JsonConfigurationHistoryStore } from "../infrastructure/configuration/j
 import { IndexLock } from "../infrastructure/persistence/index-lock.js";
 import { JsonGraphStore } from "../infrastructure/persistence/json-graph-store.js";
 import { JsonSemanticCache } from "../infrastructure/persistence/json-semantic-cache.js";
+import { JsonOperationHistoryStore } from "../infrastructure/persistence/json-operation-history-store.js";
 import { GCTG_VERSION } from "../version.js";
 import { OperationService } from "../application/operations/operation-service.js";
+import { OperationHistoryService, type OperationHistoryQuery } from "../application/operations/operation-history-service.js";
 import { ProgressService } from "../application/operations/progress-service.js";
 
 export interface ApplicationRuntimeOptions {
@@ -26,6 +28,7 @@ export class ApplicationRuntime {
   configuration: Awaited<ReturnType<ConfigurationService["resolve"]>>["configuration"];
   readonly analyzerVersion: string;
   readonly operations: OperationService;
+  readonly operationHistory: OperationHistoryService;
   readonly progress: ProgressService;
 
   private readonly indexer: IncrementalRepositoryIndexer;
@@ -41,6 +44,7 @@ export class ApplicationRuntime {
     indexLock: IndexLock,
     analyzerVersion: string,
     operations: OperationService,
+    operationHistory: OperationHistoryService,
     progress: ProgressService
   ) {
     this.repository = repository;
@@ -54,6 +58,7 @@ export class ApplicationRuntime {
     this.indexLock = indexLock;
     this.analyzerVersion = analyzerVersion;
     this.operations = operations;
+    this.operationHistory = operationHistory;
     this.progress = progress;
   }
 
@@ -80,6 +85,12 @@ export class ApplicationRuntime {
     );
     const indexLock = new IndexLock(repository.root + "/.gctg/index.lock");
     const operations = new OperationService();
+    const operationHistory = new OperationHistoryService(
+      repository.root,
+      new JsonOperationHistoryStore()
+    );
+    const history = await operationHistory.load();
+    operations.restore(history);
     const progress = new ProgressService();
     return new ApplicationRuntime(
       repository,
@@ -91,6 +102,7 @@ export class ApplicationRuntime {
       indexLock,
       options.analyzerVersion ?? GCTG_VERSION,
       operations,
+      operationHistory,
       progress
     );
   }
@@ -99,10 +111,16 @@ export class ApplicationRuntime {
     return this.git.getHead();
   }
 
+  private async persistOperations(): Promise<void> {
+    await this.operationHistory.record(this.operations.list());
+  }
+
   async index(commit?: string): Promise<IncrementalIndexResult> {
     const target = commit ?? await this.head();
     const operation = this.operations.begin("index", { commit: target });
+    await this.persistOperations();
     this.operations.start(operation.id);
+    await this.persistOperations();
     this.progress.start(operation.id, "acquire-lock");
     const release = await this.indexLock.acquire();
     this.progress.update(operation.id, "analyze", 0, 1);
@@ -116,9 +134,11 @@ export class ApplicationRuntime {
       this.progress.update(operation.id, "analyze", 1, 1);
       this.progress.update(operation.id, "complete", 1, 1);
       this.operations.succeed(operation.id);
+      await this.persistOperations();
       return result;
     } catch (error) {
       this.operations.fail(operation.id, error);
+      await this.persistOperations();
       throw error;
     } finally {
       await release();
@@ -143,5 +163,9 @@ export class ApplicationRuntime {
     const result = await this.configurationService.update(this.repository.root, configuration);
     this.configuration = result.configuration;
     return result;
+  }
+
+  async operationsHistory(query: OperationHistoryQuery = {}) {
+    return this.operationHistory.query(query);
   }
 }

@@ -28,6 +28,11 @@ export class OperationService {
 
   get(id: string): OperationRecord | undefined { return this.records.get(id); }
 
+  restore(records: readonly OperationRecord[]): void {
+    this.records.clear();
+    for (const record of records) this.records.set(record.id, record);
+  }
+
   list(): readonly OperationRecord[] {
     return [...this.records.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id));
   }

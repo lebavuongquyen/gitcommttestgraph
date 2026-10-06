@@ -511,6 +511,16 @@ See Git history for the previous release.
 - Exposed progress through HTTP and MCP.
 - Added focused tests and documentation.
 
+### O04 - Persistent Operation History - 2026-10-07
+
+- Persisted bounded runtime operation history in repository-owned .gctg/operations.json.
+- Restored operation history when the shared application runtime starts.
+- Added deterministic name/state/limit filtering.
+- Added secret-safe metadata and error redaction.
+- Exposed operation history through HTTP /api/operations and MCP operations.
+- Added focused unit and cross-surface contract coverage.
+- Added docs/0.10.2-O04-OPERATION-HISTORY.md.
+
 ### O03 - Health Aggregation - 2026-10-07
 
 - Added read-only health aggregation for Git, snapshot storage and failed runtime operations.

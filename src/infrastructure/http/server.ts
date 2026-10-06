@@ -175,14 +175,27 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, await new HealthService().check(runtime));
         return;
       }
+      if (url.pathname === "/api/operations") {
+        const limit = url.searchParams.get("limit");
+        const parsedLimit = limit === null ? undefined : Number(limit);
+        if (parsedLimit !== undefined && (!Number.isInteger(parsedLimit) || parsedLimit < 0 || parsedLimit > 100)) {
+          return send(response, 400, { error: "limit must be an integer between 0 and 100" });
+        }
+        const requestedState = url.searchParams.get("state");
+        const validStates = ["queued", "running", "succeeded", "failed", "cancelled", "recovered"];
+        if (requestedState !== null && !validStates.includes(requestedState)) {
+          return send(response, 400, { error: "state is invalid" });
+        }
+        send(response, 200, await runtime.operationsHistory({
+          ...(url.searchParams.get("name") ? { name: url.searchParams.get("name")! } : {}),
+          ...(requestedState ? { state: requestedState as import("../../domain/operation.js").OperationState } : {}),
+          ...(parsedLimit !== undefined ? { limit: parsedLimit } : {})
+        }));
+        return;
+      }
       if (url.pathname === "/api/progress") {
         const id = url.searchParams.get("id");
         send(response, 200, id ? runtime.progress.snapshot(id) : []);
-        return;
-      }
-      if (url.pathname === "/api/operations") {
-        const id = url.searchParams.get("id");
-        send(response, 200, id ? runtime.operations.get(id) ?? null : runtime.operations.list());
         return;
       }
       if (url.pathname === "/api/status") {

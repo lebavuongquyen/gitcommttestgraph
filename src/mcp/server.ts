@@ -178,11 +178,17 @@ export function createGctgMcpServer(root: string) {
 
   server.registerTool("operations", {
     title: "Operations",
-    description: "Inspect the current runtime operation lifecycle and individual operation records.",
-    inputSchema: { id: z.string().optional() }
-  }, async ({ id }) => {
+    description: "Inspect bounded persisted operation history, optionally filtered by operation name or lifecycle state.",
+    inputSchema: {
+      id: z.string().optional(),
+      name: z.string().optional(),
+      state: z.enum(["queued", "running", "succeeded", "failed", "cancelled", "recovered"]).optional(),
+      limit: z.number().int().min(0).max(100).default(100)
+    }
+  }, async ({ id, name, state, limit }) => {
     const ctx = await context(root);
-    return result(id ? ctx.operations.get(id) ?? null : ctx.operations.list());
+    if (id) return result(ctx.operations.get(id) ?? null);
+    return result(await ctx.operationsHistory({ ...(name ? { name } : {}), ...(state ? { state } : {}), limit }));
   });
 
   server.registerTool("change_intelligence", {
