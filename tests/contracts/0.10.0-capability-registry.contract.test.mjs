@@ -20,6 +20,7 @@ test("0.10 capability registry has unique identities", () => {
 test("0.10 capability registry conforms across declared surfaces", async () => {
   const sources = {};
   for (const [surface, path] of Object.entries(paths)) sources[surface] = await readFile(new URL(path, import.meta.url), "utf8");
+  sources.GUI += "\n" + await readFile(new URL("../../src/gui/client.ts", import.meta.url), "utf8");
   const failures = validateCapabilityConformance(sources);
   assert.deepEqual(failures, []);
 });
