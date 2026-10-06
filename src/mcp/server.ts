@@ -135,6 +135,28 @@ export function createGctgMcpServer(root: string) {
     return result(await new SnapshotCleanupService(ctx.store).apply(preview as never));
   });
 
+  server.registerTool("snapshot_accounting", {
+    title: "Snapshot Accounting",
+    description: "Report current GCTG snapshot count, size and configured limits.",
+    inputSchema: {}
+  }, async () => {
+    const ctx = await context(root);
+    const { SnapshotAccountingService } = await import("../application/history/snapshot-accounting-service.js");
+    const resolved = await ctx.resolveConfiguration();
+    return result(await new SnapshotAccountingService(ctx.store).account(resolved.configuration));
+  });
+
+  server.registerTool("snapshot_compaction", {
+    title: "Snapshot Compaction",
+    description: "Create a deterministic compaction plan while preserving supplied protected snapshot paths.",
+    inputSchema: { protectedPaths: z.array(z.string()).optional() }
+  }, async ({ protectedPaths }) => {
+    const ctx = await context(root);
+    const { SnapshotAccountingService } = await import("../application/history/snapshot-accounting-service.js");
+    const resolved = await ctx.resolveConfiguration();
+    return result(await new SnapshotAccountingService(ctx.store).planCompaction(resolved.configuration, protectedPaths ?? []));
+  });
+
   server.registerTool("change_intelligence", {
     title: "Change Intelligence",
     description: "Analyze a commit or branch through the unified change intelligence contract. Read-only and deterministic.",

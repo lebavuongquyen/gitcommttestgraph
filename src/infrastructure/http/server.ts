@@ -222,6 +222,21 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, await new SnapshotCleanupService(runtime.store).apply(body as never));
         return;
       }
+      if (url.pathname === "/api/snapshot-accounting") {
+        const { SnapshotAccountingService } = await import("../../application/history/snapshot-accounting-service.js");
+        const resolved = await runtime.resolveConfiguration();
+        send(response, 200, await new SnapshotAccountingService(runtime.store).account(resolved.configuration));
+        return;
+      }
+      if (url.pathname === "/api/snapshot-compaction") {
+        const body = request.method === "POST" ? await readJsonBody(request) : {};
+        const input = body && typeof body === "object" && !Array.isArray(body) ? body as Record<string, unknown> : {};
+        const protectedPaths = Array.isArray(input.protectedPaths) ? input.protectedPaths.filter(value => typeof value === "string") as string[] : [];
+        const { SnapshotAccountingService } = await import("../../application/history/snapshot-accounting-service.js");
+        const resolved = await runtime.resolveConfiguration();
+        send(response, 200, await new SnapshotAccountingService(runtime.store).planCompaction(resolved.configuration, protectedPaths));
+        return;
+      }
       if (url.pathname === "/api/branch-review") {
         const base = url.searchParams.get("base");
         if (!base) return send(response, 400, { error: "Missing base branch" });

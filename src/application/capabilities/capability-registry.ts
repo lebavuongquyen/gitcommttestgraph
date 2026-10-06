@@ -88,6 +88,16 @@ export const capabilityRegistry: readonly CapabilityDescriptor[] = Object.freeze
     surfaces: { MCP: 'registerTool("cleanup_apply"', HTTP: "/api/cleanup/apply" }
   },
   {
+    id: "snapshot_accounting",
+    applicationHandler: "SnapshotAccountingService",
+    surfaces: { MCP: 'registerTool("snapshot_accounting"', HTTP: "/api/snapshot-accounting" }
+  },
+  {
+    id: "snapshot_compaction",
+    applicationHandler: "SnapshotAccountingService.planCompaction",
+    surfaces: { MCP: 'registerTool("snapshot_compaction"', HTTP: "/api/snapshot-compaction" }
+  },
+  {
     id: "branch_review",
     applicationHandler: "BranchReviewService",
     surfaces: { GUI: 'capability(\\"branchReview\\"', MCP: 'registerTool("branch_review"', CLI: 'command === "branch-review"', HTTP: "/api/branch-review" }
