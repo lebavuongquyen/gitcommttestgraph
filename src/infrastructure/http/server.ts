@@ -190,6 +190,13 @@ export async function startServer(root: string, port: number): Promise<void> {
         });
         return;
       }
+      if (url.pathname === "/api/reachability") {
+        const commits = (url.searchParams.get("commits") ?? "").split(",").map(value => value.trim()).filter(Boolean);
+        if (!commits.length) return send(response, 400, { error: "Missing commits" });
+        const { ReachabilityService } = await import("../../application/history/reachability-service.js");
+        send(response, 200, await new ReachabilityService(git).analyze({ commits }));
+        return;
+      }
       if (url.pathname === "/api/branch-review") {
         const base = url.searchParams.get("base");
         if (!base) return send(response, 400, { error: "Missing base branch" });

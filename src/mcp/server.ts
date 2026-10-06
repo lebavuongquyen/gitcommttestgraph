@@ -94,6 +94,16 @@ export function createGctgMcpServer(root: string) {
     return result(await new BranchLifecycleService(ctx.git).analyze());
   });
 
+  server.registerTool("reachability", {
+    title: "Reachability",
+    description: "Determine whether supplied commits are reachable from current branch refs or have explicit protection evidence.",
+    inputSchema: { commits: z.array(z.string()).min(1), protectedCommits: z.array(z.string()).optional() }
+  }, async ({ commits, protectedCommits }) => {
+    const ctx = await context(root);
+    const { ReachabilityService } = await import("../application/history/reachability-service.js");
+    return result(await new ReachabilityService(ctx.git).analyze({ commits, ...(protectedCommits ? { protectedCommits } : {}) }));
+  });
+
   server.registerTool("change_intelligence", {
     title: "Change Intelligence",
     description: "Analyze a commit or branch through the unified change intelligence contract. Read-only and deterministic.",

@@ -464,3 +464,11 @@ See Git history for the previous release.
 - Added deleted and recreated branch evidence classification.
 - Exposed branch lifecycle analysis through HTTP and MCP.
 - Added focused tests and Fresher/Junior-oriented documentation.
+
+### H02 - Reachability Analyzer - 2026-10-07
+
+- Added deterministic commit reachability analysis against current branch refs.
+- Added explicit protected-commit evidence support.
+- Preserved uncertainty when Git evidence is unavailable.
+- Exposed reachability through HTTP and MCP.
+- Added focused tests and documentation.
