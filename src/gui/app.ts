@@ -90,15 +90,15 @@ function renderCommits(items){
 async function loadCommit(commit){
   $("status").textContent="Indexing "+commit.slice(0,8)+"…";
   try{
-  const [overview,graph,tests,testGaps,plan,feedback,intelligence]=await Promise.all([
+  const [overview,graph,tests,plan,feedback,intelligence]=await Promise.all([
     api("/api/overview?commit="+encodeURIComponent(commit)),
     api("/api/graph-view?commit="+encodeURIComponent(commit)),
     api("/api/test-impact?commit="+encodeURIComponent(commit)),
-    api("/api/test-gaps?commit="+encodeURIComponent(commit)),
     api("/api/execution-plan?commit="+encodeURIComponent(commit)),
     api("/api/execution-feedback?commit="+encodeURIComponent(commit)),
     api("/api/change-intelligence?commit="+encodeURIComponent(commit))
   ]);
+  const testGaps=await api("/api/test-gaps?commit="+encodeURIComponent(commit));
   const ecosystem=await api("/api/ecosystem?commit="+encodeURIComponent(commit));
   state.graph=graph;state.testGaps=testGaps;state.plan=plan;state.feedback=feedback;state.intelligence=intelligence;
   renderEcosystem(ecosystem);
