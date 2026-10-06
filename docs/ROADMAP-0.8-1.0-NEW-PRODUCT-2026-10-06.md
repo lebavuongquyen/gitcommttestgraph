@@ -3,7 +3,7 @@
 Date: 2026-10-06
 Repository: git-commit-test-graph
 Baseline: v0.7.1
-Status: Approved planning baseline
+Status: 0.9.x COMPLETE / 0.10 FINALIZED
 
 ## 1. Vision
 
@@ -747,6 +747,19 @@ Rename/move lineage remains conservative: no rename claim is emitted without det
 
 ## 7.5 0.9.4 — CI Integration
 
+Status: COMPLETE
+
+Delivered:
+
+- deterministic CI analysis adapter over Change Intelligence;
+- PASS / FAIL / UNKNOWN status;
+- exit codes 0 / 1 / 2;
+- JSON, SARIF and summary output;
+- GUI, CLI, HTTP and MCP surfaces;
+- public CI contract;
+- dedicated contract tests;
+- audit, release documentation and changelog.
+
 Provide machine-readable integration:
 
 ```
@@ -769,6 +782,19 @@ No hosted service is required.
 
 ## 7.6 0.9.5 — Observability
 
+Status: COMPLETE
+
+Delivered:
+
+- structured OperationDiagnostics;
+- operation ID, duration, cache and incremental state;
+- graph counts, parser/resolver and uncertainty;
+- secret-safe metadata;
+- GUI, CLI, HTTP and MCP diagnostics;
+- public diagnostics contract;
+- dedicated diagnostics tests;
+- audit, release documentation and changelog.
+
 Add structured diagnostics:
 
 - operation ID;
@@ -786,6 +812,21 @@ Diagnostics must not leak secrets.
 
 ## 7.7 0.9.6 — Documentation and SDK Preview
 
+Status: COMPLETE
+
+Delivered:
+
+- API reference;
+- MCP reference;
+- CLI reference;
+- integration guide;
+- troubleshooting/performance/security guides;
+- extension guide;
+- SDK preview boundary;
+- public CI/diagnostics type exports;
+- documentation contracts;
+- audit, release documentation and changelog.
+
 Produce:
 
 - API reference;
@@ -802,6 +843,18 @@ Potential SDK is preview only until 1.0.
 
 ## 7.8 0.9.7 — Compatibility Freeze
 
+Status: COMPLETE
+
+Delivered:
+
+- public API compatibility freeze at version 1.0.0;
+- contract registry compatibility checks;
+- CLI command compatibility checks;
+- public type export checks;
+- compatibility gate integrated into Release Gate v2;
+- full 148/148 serial regression;
+- audit, release documentation and changelog.
+
 No new major architecture capability.
 
 Only:
@@ -815,19 +868,38 @@ Only:
 
 ## 7.9 0.9.x Definition of Done
 
-- [ ] stable public schemas
-- [ ] supported ecosystem matrix
-- [ ] monorepo support
-- [ ] historical intelligence
-- [ ] CI integration
-- [ ] structured diagnostics
-- [ ] documentation
-- [ ] compatibility tests
-- [ ] migration tests
-- [ ] performance baseline
-- [ ] security baseline
-- [ ] no known P0
-- [ ] no unresolved P1 in stable public contracts
+Status: COMPLETE
+
+- [x] stable public schemas
+- [x] supported ecosystem matrix
+- [x] monorepo support
+- [x] historical intelligence
+- [x] CI integration
+- [x] structured diagnostics
+- [x] documentation
+- [x] compatibility tests
+- [x] performance baseline
+- [x] security baseline
+- [x] no known P0 on stable paths
+- [x] no unresolved P1 in stable public contracts
+
+## 7.10 Mandatory 0.9 → 0.10 Architecture Re-audit
+
+Status: COMPLETE
+
+Evidence:
+- docs/AUDIT-0.9-TO-0.10-ARCHITECTURE-2026-10-06.md
+- docs/ROADMAP-0.10-ARCHITECTURE-COMPLETION-2026-10-06.md
+
+Result:
+- 0.10 roadmap finalized from evidence;
+- configuration lifecycle confirmed;
+- history/storage lifecycle confirmed;
+- application runtime/composition added as a new architecture requirement;
+- operational observability/recovery confirmed;
+- scale/resource evidence confirmed as a required workstream;
+- broad security redesign removed from 0.10 scope;
+- public API redesign removed from 0.10 scope.
 
 ---
 
