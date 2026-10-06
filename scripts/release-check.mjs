@@ -5,7 +5,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";\nconst packageJsonPath = join(root, "package.json");
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const packageJsonPath = join(root, "package.json");
 const packageLockPath = join(root, "package-lock.json");
 
 function run(command, args, cwd = root) {
