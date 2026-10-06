@@ -2,6 +2,13 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.10.0] - Unreleased
+
+### R01 — Public Package Boundary
+- Made `git-commit-test-graph` and `git-commit-test-graph/api` resolve to the supported public SDK entrypoint.
+- Kept internal composition exports outside the package export map.
+- Added package-boundary contract tests that reject known infrastructure symbols from the public root.
+
 ## [0.9.8] - 2026-10-06
 
 ### 0.9 Revalidation and MCP Surface Parity
