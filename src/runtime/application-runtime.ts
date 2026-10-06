@@ -20,7 +20,7 @@ export class ApplicationRuntime {
   readonly semanticCache: JsonSemanticCache;
   readonly cache: JsonSemanticCache;
   readonly configurationService: ConfigurationService;
-  readonly configuration: Awaited<ReturnType<ConfigurationService["resolve"]>>["configuration"];
+  configuration: Awaited<ReturnType<ConfigurationService["resolve"]>>["configuration"];
   readonly analyzerVersion: string;
 
   private readonly indexer: IncrementalRepositoryIndexer;
@@ -102,6 +102,8 @@ export class ApplicationRuntime {
   }
 
   async updateConfiguration(configuration: unknown) {
-    return this.configurationService.update(this.repository.root, configuration);
+    const result = await this.configurationService.update(this.repository.root, configuration);
+    this.configuration = result.configuration;
+    return result;
   }
 }
