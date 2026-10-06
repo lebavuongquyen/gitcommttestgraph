@@ -3,10 +3,10 @@
   "version": "0.9.8",
   "description": "Deterministic semantic Git repository graph, test graph, and change-impact engine",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
+  "main": "./dist/public/index.js",
+  "types": "./dist/public/index.d.ts",
   "exports": {
-    ".": "./dist/index.js",
+    ".": "./dist/public/index.js",
     "./api": "./dist/public/index.js",
     "./package.json": "./package.json"
   },
@@ -27,7 +27,7 @@
     "check": "npm run typecheck && npm run build && npm test && npm run contract:check",
     "release:check": "node scripts/release-check.mjs",
     "performance:gate": "npm run build && node scripts/performance-gate.mjs",
-    "reliability:gate": "node scripts/reliability-gate.mjs",
+    "reliability:gate": "npm run reliability:gate",
     "configuration:gate": "node scripts/configuration-gate.mjs",
     "security:gate": "node scripts/security-gate.mjs",
     "compatibility:gate": "npm run build && node scripts/compatibility-gate.mjs"
@@ -49,4 +49,3 @@
     "typescript": "^5.9.2"
   }
 }
-
