@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeMonorepo } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeMonorepo, HistoricalIntelligenceService } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
@@ -45,6 +45,18 @@ try {
     const x = await context();
     const indexed = await indexAt(x.git, x.store, x.semanticCache, x.repository.root, c ?? await x.git.getHead());
     json(analyzeMonorepo(indexed.snapshot, process.argv.slice(4)));
+    process.exit(0);
+  }
+  if (command === "historical-intelligence") {
+    const from = process.argv[3];
+    const to = process.argv[4] ?? await (await context()).git.getHead();
+    const maxIndex = process.argv.indexOf("--max-commits");
+    const maxCommits = maxIndex >= 0 ? Number(process.argv[maxIndex + 1]) : 50;
+    if (!from) throw new Error("Usage: gctg historical-intelligence <fromCommit> [toCommit] [--max-commits N]");
+    if (!Number.isInteger(maxCommits) || maxCommits < 2 || maxCommits > 200) throw new Error("Usage: gctg historical-intelligence <fromCommit> [toCommit] [--max-commits 2..200]");
+    const x = await context();
+    const service = new HistoricalIntelligenceService(x.git, { load: async commit => (await indexAt(x.git, x.store, x.semanticCache, x.repository.root, commit)).snapshot });
+    json(await service.analyze({ repository: x.repository.root, fromCommit: from, toCommit: to, maxCommits }));
     process.exit(0);
   }
   if (command === "ecosystem") {

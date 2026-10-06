@@ -64,6 +64,12 @@ export const testImpactSchema = z.object({
   impacts: z.array(z.unknown())
 }).passthrough();
 export const executionPlanSchema = z.object({ schemaVersion: z.literal(1), workflow: z.string(), repository: z.string(), commit: z.string(), steps: z.array(z.unknown()) }).passthrough();
+export const historicalIntelligenceSchema = z.object({
+  schemaVersion: z.literal(1), repository: z.string(), fromCommit: z.string(), toCommit: z.string(),
+  commits: z.array(z.object({ hash: z.string(), parents: z.array(z.string()), timestamp: z.string(), message: z.string(), merge: z.boolean() }).passthrough()),
+  symbolTransitions: z.array(z.unknown()), dependencyTransitions: z.array(z.unknown()), testImpactTransitions: z.array(z.unknown()),
+  evidence: z.array(evidenceSchema), uncertainty: z.array(z.object({ code: z.string(), message: z.string(), confidence: z.enum(["EXACT", "HIGH", "MEDIUM", "LOW"]) }).passthrough()), deterministic: z.literal(true)
+}).passthrough();
 export const evidenceSchemaPublic = evidenceSchema;
 export const publicErrorSchema = z.object({ error: z.object({ code: z.string(), message: z.string(), details: z.record(z.string(), z.unknown()).optional() }).passthrough() }).passthrough();
 
@@ -74,6 +80,7 @@ export const publicContractRegistry = Object.freeze({
   impact: impactSchema,
   testImpact: testImpactSchema,
   executionPlan: executionPlanSchema,
+  historicalIntelligence: historicalIntelligenceSchema,
   evidence: evidenceSchemaPublic,
   error: publicErrorSchema
 });
@@ -84,6 +91,7 @@ export type ChangeIntelligenceContract = z.infer<typeof changeIntelligenceSchema
 export type ImpactContract = z.infer<typeof impactSchema>;
 export type TestImpactContract = z.infer<typeof testImpactSchema>;
 export type ExecutionPlanContract = z.infer<typeof executionPlanSchema>;
+export type HistoricalIntelligenceContract = z.infer<typeof historicalIntelligenceSchema>;
 export type EvidenceContract = z.infer<typeof evidenceSchemaPublic>;
 export type PublicErrorContract = z.infer<typeof publicErrorSchema>;
 

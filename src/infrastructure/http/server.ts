@@ -5,7 +5,7 @@ import {
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
@@ -152,6 +152,16 @@ export async function startServer(root: string, port: number): Promise<void> {
         const commit = url.searchParams.get("commit") ?? await git.getHead();
         const indexed = await indexAt(commit);
         send(response, 200, analyzeMonorepo(indexed.snapshot));
+        return;
+      }
+      if (url.pathname === "/api/historical-intelligence") {
+        const from = url.searchParams.get("from");
+        const to = url.searchParams.get("to") ?? await git.getHead();
+        const maxCommits = Number(url.searchParams.get("maxCommits") ?? 50);
+        if (!from) return send(response, 400, { error: "Missing from commit" });
+        if (!Number.isInteger(maxCommits) || maxCommits < 2 || maxCommits > 200) return send(response, 400, { error: "Invalid maxCommits" });
+        const service = new HistoricalIntelligenceService(git, { load: async commit => (await indexAt(commit)).snapshot });
+        send(response, 200, await service.analyze({ repository: repository.root, fromCommit: from, toCommit: to, maxCommits }));
         return;
       }
       if (url.pathname === "/api/ecosystem") {

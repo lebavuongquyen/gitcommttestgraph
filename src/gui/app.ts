@@ -44,7 +44,7 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 <div class="legend">Changed · Impact · Test</div><svg id="graph" viewBox="0 0 1000 700" role="img" aria-label="Code and test impact graph"></svg>
 </section>
 <section class="inspector"><div class="panel">
-<h3>Configuration</h3><div id="ecosystem" class="card"><div class="small">Loading repository ecosystem...</div></div><div id="monorepo" class="card"><div class="small">Loading monorepo intelligence...</div></div><div id="configuration" class="card"><div class="small">Loading configuration…</div></div><div class="section"><div class="section-head"><h3>Inspector</h3></div><div id="intelligence" class="empty">Loading change intelligence…</div><div id="inspector" class="empty">Select a node.</div>
+<h3>Configuration</h3><div id="ecosystem" class="card"><div class="small">Loading repository ecosystem...</div></div><div id="monorepo" class="card"><div class="small">Loading monorepo intelligence...</div></div><div id="historical" class="card"><div class="small">Loading historical intelligence...</div></div><div id="configuration" class="card"><div class="small">Loading configuration…</div></div><div class="section"><div class="section-head"><h3>Inspector</h3></div><div id="intelligence" class="empty">Loading change intelligence…</div><div id="inspector" class="empty">Select a node.</div>
 <div class="section"><div class="section-head"><h3>Branch review</h3></div><div id="branchReview" class="empty">Select a base/head branch and review.</div></div>
 <div class="section"><div class="section-head"><h3>Pull request intelligence</h3></div><div id="prReview" class="empty">Enter owner/repo and PR number to review a GitHub pull request.</div></div>
 <div class="section"><div class="section-head"><h3>Test impact</h3></div><div id="tests" class="empty">Select a commit to inspect impacted tests.</div></div>
@@ -52,7 +52,7 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 </div></section>
 </main>
 <script>
-const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,intelligence:null,running:false,branches:[],review:null,prReview:null,configuration:null};
+const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,intelligence:null,historical:null,running:false,branches:[],review:null,prReview:null,configuration:null};
 const $=id=>document.getElementById(id);
 async function api(path,options){const r=await fetch(path,options);if(!r.ok)throw new Error(await r.text());return r.json();}
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -102,6 +102,8 @@ async function loadCommit(commit){
   state.graph=graph;state.plan=plan;state.feedback=feedback;state.intelligence=intelligence;
   renderEcosystem(ecosystem);
   renderMonorepo(await api("/api/monorepo?commit="+encodeURIComponent(commit)));
+  const commitInfo=commitsForHistorical(commit);
+  if(commitInfo){state.historical=await api("/api/historical-intelligence?from="+encodeURIComponent(commitInfo.parent)+"&to="+encodeURIComponent(commit));renderHistorical(state.historical);}else renderHistorical(null);
   renderOverview(overview);renderIntelligence(intelligence);renderGraph(graph);renderTests(tests);renderExecution(plan,feedback);
   $("status").textContent=overview.repository+" · "+commit.slice(0,8);
   }catch(e){
@@ -148,6 +150,8 @@ function renderMonorepo(m){
   if(!m){$("monorepo").innerHTML="<div class=empty>No monorepo evidence.</div>";return;}
   $("monorepo").innerHTML="<div class=tag>"+(m.isMonorepo?"Monorepo":"Single package")+"</div><div class=metric><span>Packages</span><b>"+m.packageCount+"</b></div><div class=metric><span>Workspaces</span><b>"+m.workspaceCount+"</b></div>"+m.packages.slice(0,20).map(p=>"<div class=card><b>"+esc(p.name)+"</b><div class=small>"+esc(p.rootPath)+" · "+p.sourceFiles+" source files</div><div class=small>Dependencies: "+p.dependencies.length+" · Dependents: "+p.dependents.length+" · Tests: "+p.testProjects.length+"</div></div>").join("");
 }
+function commitsForHistorical(commit){const options=[...$("commit").options];const index=options.findIndex(item=>item.value===commit);return index>=0&&options[index+1]?{parent:options[index+1].value}:null;}
+function renderHistorical(h){if(!h){$("historical").innerHTML="<div class=empty>No historical transition.</div>";return;}$("historical").innerHTML="<div class=tag>Historical Intelligence</div><div class=metric><span>Window</span><b>"+esc(h.fromCommit.slice(0,8))+" → "+esc(h.toCommit.slice(0,8))+"</b></div><div class=metric><span>Symbols</span><b>"+h.symbolTransitions.length+"</b></div><div class=metric><span>Dependencies</span><b>"+h.dependencyTransitions.length+"</b></div><div class=metric><span>Test transitions</span><b>"+h.testImpactTransitions.length+"</b></div>"+h.symbolTransitions.slice(0,8).map(x=>"<div class=small>"+esc(x.kind)+" · "+esc(x.name)+"</div>").join("");}
 function renderOverview(o){
   $("inspector").innerHTML='<div class="card"><div class="metric"><span>Commit</span><b>'+esc(o.commit.slice(0,8))+'</b></div><div class="metric"><span>Files</span><b>'+o.changedFiles+'</b></div><div class="metric"><span>Changed symbols</span><b>'+o.changedSymbols+'</b></div><div class="metric"><span>Affected symbols</span><b>'+o.affectedSymbols+'</b></div><div class="metric"><span>Impacted tests</span><b>'+o.impactedTestCases+'</b></div></div><div class="card"><div class="small">'+esc(o.subject)+'</div></div>';
 }

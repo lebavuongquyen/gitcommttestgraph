@@ -10,3 +10,6 @@ export { analyzeRepositoryEcosystem } from "../application/repository/ecosystem-
 export { analyzeMonorepo } from "../application/repository/monorepo-service.js";
 export type { MonorepoAnalysis, MonorepoPackage, MonorepoWorkspace } from "../application/repository/monorepo-service.js";
 export type { RepositoryEcosystem, EcosystemCapability, EcosystemSupport } from "../application/repository/ecosystem-service.js";
+export type { HistoricalIntelligence, HistoricalCommit, HistoricalSymbolTransition, HistoricalDependencyTransition, HistoricalTestImpactTransition, HistoricalUncertainty } from "../domain/historical-intelligence.js";
+export { HistoricalIntelligenceService } from "../application/history/historical-intelligence-service.js";
+export type { HistoricalIntelligenceInput, HistoricalSnapshotLoader } from "../application/history/historical-intelligence-service.js";

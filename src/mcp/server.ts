@@ -7,7 +7,7 @@ import {
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
@@ -127,6 +127,16 @@ export function createGctgMcpServer(root: string) {
     const ctx = await context(root);
     const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
     return result(analyzeMonorepo(indexed.snapshot, changedNodeIds ?? []));
+  });
+
+  server.registerTool("historical_intelligence", {
+    title: "Historical Intelligence",
+    description: "Analyze deterministic semantic evolution between two Git commits, including symbol, dependency and test-impact transitions.",
+    inputSchema: { from: z.string().min(1), to: z.string().optional(), maxCommits: z.number().int().min(2).max(200).default(50) }
+  }, async ({ from, to, maxCommits }) => {
+    const ctx = await context(root);
+    const service = new HistoricalIntelligenceService(ctx.git, { load: async commit => (await indexAt(ctx, commit)).snapshot });
+    return result(await service.analyze({ repository: ctx.repository.root, fromCommit: from, toCommit: to ?? await ctx.git.getHead(), maxCommits }));
   });
 
   server.registerTool("repository_ecosystem", {

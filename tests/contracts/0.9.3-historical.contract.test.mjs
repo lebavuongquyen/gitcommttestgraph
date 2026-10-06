@@ -1,0 +1,8 @@
+import test from "node:test";
+import assert from "node:assert/strict";
+import { HistoricalIntelligenceService } from "../../dist/index.js";
+function snapshot(commit){return{schemaVersion:1,analyzerVersion:"test",repository:"repo",commit,configurationFingerprint:"fp",nodes:[],edges:[],metadata:{}};}
+function gitPort(){const commits={aaa111:{hash:"aaa111",parents:[],author:"a",committer:"c",timestamp:"2026-01-01T00:00:00Z",message:"A"},bbb222:{hash:"bbb222",parents:["aaa111"],author:"a",committer:"c",timestamp:"2026-01-02T00:00:00Z",message:"B"},ccc333:{hash:"ccc333",parents:["bbb222"],author:"a",committer:"c",timestamp:"2026-01-03T00:00:00Z",message:"C"}};return{getCommit:async ref=>commits[ref],getCommitsBetween:async()=>["bbb222","ccc333"]};}
+test("0.9.3 canonicalizes commit sequence",async()=>{const service=new HistoricalIntelligenceService(gitPort(),{load:async commit=>snapshot(commit)});const result=await service.analyze({repository:"repo",fromCommit:"aaa111",toCommit:"ccc333",maxCommits:10});assert.deepEqual(result.commits.map(x=>x.hash),["aaa111","bbb222","ccc333"]);});
+test("0.9.3 rejects oversized windows",async()=>{const service=new HistoricalIntelligenceService(gitPort(),{load:async commit=>snapshot(commit)});await assert.rejects(()=>service.analyze({repository:"repo",fromCommit:"aaa111",toCommit:"ccc333",maxCommits:2}),/exceeds maxCommits/);});
+test("0.9.3 output is deterministic",async()=>{const service=new HistoricalIntelligenceService(gitPort(),{load:async commit=>snapshot(commit)});const a=await service.analyze({repository:"repo",fromCommit:"aaa111",toCommit:"ccc333",maxCommits:10});const b=await service.analyze({repository:"repo",fromCommit:"aaa111",toCommit:"ccc333",maxCommits:10});assert.deepEqual(a,b);});

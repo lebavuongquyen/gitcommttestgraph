@@ -721,20 +721,29 @@ Package-filtered execution enhancements are intentionally deferred to later exec
 
 ## 7.4 0.9.3 — Historical Intelligence
 
-Improve:
+Status: COMPLETE
 
-- multi-commit analysis;
-- regression windows;
-- semantic evolution;
-- symbol history;
-- dependency history;
-- test-impact history.
+Delivered:
 
-Potential query:
+- deterministic multi-commit historical analysis;
+- canonical short/full Git reference handling;
+- bounded regression windows with fail-closed limits;
+- semantic symbol transitions;
+- dependency relationship transitions;
+- test-impact transitions;
+- merge-commit uncertainty evidence;
+- GUI, CLI, HTTP and MCP surfaces;
+- public API historicalIntelligence contract;
+- dedicated 7/7 application and surface contracts;
+- audit, release documentation and changelog.
+
+Potential query now supported by the model:
 
 ```
 Why did this test become affected between A and B?
 ```
+
+Rename/move lineage remains conservative: no rename claim is emitted without deterministic evidence.
 
 ## 7.5 0.9.4 — CI Integration
 

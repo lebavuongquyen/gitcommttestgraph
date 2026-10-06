@@ -2,6 +2,28 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.9.3] - 2026-10-06
+
+### Historical Intelligence
+- Added deterministic multi-commit historical analysis over commit-scoped graph snapshots.
+- Added symbol, dependency and test-impact transition models.
+- Added canonical short/full Git reference normalization.
+- Added bounded historical windows with fail-closed behavior.
+- Added explicit merge-commit uncertainty evidence.
+- Added deterministic evidence ordering and deduplication.
+
+### Surfaces
+- Added CLI command gctg historical-intelligence.
+- Added HTTP endpoint /api/historical-intelligence.
+- Added MCP tool historical_intelligence.
+- Added GUI Historical Intelligence panel.
+- Added public API historicalIntelligence contract.
+
+### Quality
+- Added 3 application historical contract tests.
+- Added 4 CLI/HTTP/MCP/GUI surface contract tests.
+- Dedicated 0.9.3 contracts: 7/7 PASS.
+
 ## [0.9.2] - 2026-10-06
 
 ### Monorepo Intelligence
