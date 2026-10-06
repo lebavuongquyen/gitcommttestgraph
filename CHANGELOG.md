@@ -442,3 +442,10 @@ See Git history for the previous release.
 - Added a secure value provider application port.
 - Prevented classified configuration fields from being accepted by ordinary configuration validation.
 - Added unit coverage for classification, nested redaction and validation safety.
+
+### C03 - Effective Configuration Explanation - 2026-10-06
+
+- Added a small explanation model for effective configuration values.
+- Made configuration precedence explicit: DEFAULT, REPOSITORY, then RUNTIME.
+- Added winning-source attribution and source locations for nested configuration values.
+- Added targeted tests and Fresher/Junior-oriented documentation without changing resolution behavior.
