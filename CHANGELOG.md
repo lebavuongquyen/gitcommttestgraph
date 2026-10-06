@@ -436,3 +436,9 @@ See Git history for the previous release.
 [executed on device: QuyenLe (f538f86d-fbfa-478e-a5df-d3f9a375cbf0)]
 
 [executed on device: QuyenLe (f538f86d-fbfa-478e-a5df-d3f9a375cbf0)]
+### C02 - Configuration Safety Boundary - 2026-10-06
+
+- Added protected-value classification and recursive diagnostic redaction.
+- Added a secure value provider application port.
+- Prevented classified configuration fields from being accepted by ordinary configuration validation.
+- Added unit coverage for classification, nested redaction and validation safety.
