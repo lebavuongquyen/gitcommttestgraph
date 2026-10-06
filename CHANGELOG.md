@@ -3,6 +3,13 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### C01 - Configuration Migration Framework - 2026-10-06
+
+- Added a small configuration migration registry for future schema upgrades.
+- Added deterministic schema-version handling and fail-closed rejection of unsupported future versions.
+- Added backup-before-write behavior for migrated repository configuration.
+- Added migration evidence to resolved configuration results.
+- Added unit coverage for current, future, migrated and backup scenarios.
 ### R10 - GUI State and Workflow Hardening - 2026-10-06
 
 - Added a typed GUI state boundary covering load, stale/error and execution lifecycle states.

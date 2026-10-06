@@ -1,5 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { copyFile, mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import type { ConfigurationStore } from "../../application/ports/configuration.js";
 import { assertSafeRepositoryPath } from "../../domain/security/policy.js";
 
@@ -21,6 +20,13 @@ export class JsonConfigurationStore implements ConfigurationStore {
     await mkdir(directory, { recursive: true });
     await writeFile(temporary, JSON.stringify(configuration, null, 2) + "\n", "utf8");
     await rename(temporary, path);
+  }
+
+  async backup(repositoryRoot: string): Promise<string> {
+    const source = assertSafeRepositoryPath(repositoryRoot, ".gctg/config.json");
+    const target = assertSafeRepositoryPath(repositoryRoot, ".gctg/config.json.bak");
+    await copyFile(source, target);
+    return target;
   }
 }
 

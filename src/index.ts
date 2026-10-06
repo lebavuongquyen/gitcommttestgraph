@@ -83,3 +83,4 @@ export * from "./application/intelligence/diagnostics-service.js";
 export * from "./application/review/pull-request-review-service.js";
 export * from "./application/review/branch-review-service.js";
 export * from "./version.js";
+export * from "./application/configuration/configuration-migration.js";
