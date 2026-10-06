@@ -1315,16 +1315,45 @@ First:
 
 ### M01 — Release Quality Gate v2
 
+Status: COMPLETE
+
 Build the executable gate from the audit findings.
 
 ### M02 — Public contract test framework
+
+Status: COMPLETE
 
 Add:
 
 - MCP contract tests;
 - HTTP integration tests;
 - CLI contract tests;
-- GUI HTTP smoke.
+- GUI HTTP smoke;
+- reusable cross-surface contract helpers.
+
+Mandatory development standard:
+
+> No Surface Without Gate.
+
+Every feature surface exposed through CLI, HTTP/API, MCP or GUI must have an executable quality gate before that surface is accepted. See `docs/QUALITY-GATES.md`.
+
+### M03 — Unified Change model
+
+Status: NEXT
+
+Implement the application-level abstraction.
+
+### M04 — Unified Change Intelligence
+
+Status: BLOCKED UNTIL M03
+
+Expose it through:
+
+- GUI;
+- MCP;
+- CLI/API.
+
+Each exposed surface must have its own M04 quality gate.
 
 ### M03 — Unified Change model
 
