@@ -20,6 +20,12 @@ All notable changes to git-commit-test-graph are documented here.
 - The new gate caught the missing GUI test-gap surface; the GUI now exposes test-gap analysis.
 - Preserved existing GUI contract behavior while adding the test-gap view.
 
+### R04 — Storage Capability Boundaries
+- Split graph storage into snapshot and node/query application capabilities while retaining the existing GraphStore compatibility contract.
+- Added explicit graph storage capability composition for infrastructure adapters.
+- Split semantic cache into reader and writer capabilities.
+- Added storage capability contract tests for the JSON adapters.
+
 ## [0.9.8] - 2026-10-06
 
 ### 0.9 Revalidation and MCP Surface Parity
