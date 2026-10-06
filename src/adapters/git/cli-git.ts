@@ -1,6 +1,6 @@
 import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
-import type { BranchRef, ChangedPath, Commit, CommitDiff } from "../../domain/git/model.js";
+import type { BranchLifecycleKind, BranchRef, ChangedPath, Commit, CommitDiff } from "../../domain/git/model.js";
 import type { GitRepositoryPort } from "../../application/ports/git.js";
 import { GitOperationError, InvalidCommitError } from "../../domain/errors.js";
 import { createChildEnvironment, sanitizeErrorMessage, validateGitPath, validateGitReference } from "../../domain/security/policy.js";
@@ -37,6 +37,25 @@ export class CliGitRepository implements GitRepositoryPort {
       const [name, commit, head, upstream] = line.split("|");
       const remote = name?.startsWith("origin/") ? "origin" : undefined;
       return { name: name ?? "", commit: commit ?? "", current: head === "*", ...(remote ? { remote } : {}), ...(upstream ? { remote: upstream.split("/")[0] } : {}) };
+    });
+  }
+
+  async listBranchLifecycleEvidence() {
+    const output = await this.run(["reflog", "show", "--all", "--date=iso-strict", "--format=%gd|%H|%gs|%cd"]);
+    return output.split("\n").filter(Boolean).map(line => {
+      const [ref, commit, subject, timestamp] = line.split("|");
+      const name = ref?.replace(/^refs\/(heads|remotes)\//, "") ?? "";
+      const kind: BranchLifecycleKind = subject?.includes("branch: Created") ? "created"
+        : subject?.includes("branch: renamed") ? "recreated"
+        : subject?.includes("update by push") && subject.includes("delete") ? "deleted"
+        : "updated";
+      return {
+        name,
+        kind,
+        commit: commit ?? "",
+        timestamp: timestamp ?? "",
+        source: "reflog" as const
+      };
     });
   }
 

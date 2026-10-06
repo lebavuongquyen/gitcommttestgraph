@@ -5,6 +5,7 @@ export interface GitRepositoryPort {
   ensureCommit(commit: string, remoteUrl?: string): Promise<void>;
   getCurrentBranch(): Promise<string>;
   listBranches(): Promise<readonly import("../../domain/git/model.js").BranchRef[]>;
+  readonly listBranchLifecycleEvidence?: () => Promise<readonly import("../../domain/git/model.js").BranchLifecycleEvidence[]>;
   getMergeBase(base: string, head: string): Promise<string>;
   getCommitsBetween(base: string, head: string): Promise<readonly string[]>;
   getCommit(hash: string): Promise<Commit>;

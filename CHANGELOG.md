@@ -457,3 +457,10 @@ See Git history for the previous release.
 - Added configuration history access through the application runtime.
 - Exposed history and reload operations through the existing MCP configuration tool.
 - Added persistence tests and Fresher/Junior-oriented documentation.
+
+### H01 - Branch Lifecycle Model - 2026-10-07
+
+- Added read-only branch lifecycle evidence based on current refs and available reflog data.
+- Added deleted and recreated branch evidence classification.
+- Exposed branch lifecycle analysis through HTTP and MCP.
+- Added focused tests and Fresher/Junior-oriented documentation.

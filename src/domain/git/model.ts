@@ -25,3 +25,13 @@ export interface BranchRef {
   readonly current: boolean;
   readonly remote?: string;
 }
+
+export type BranchLifecycleKind = "created" | "updated" | "deleted" | "recreated";
+
+export interface BranchLifecycleEvidence {
+  readonly name: string;
+  readonly kind: BranchLifecycleKind;
+  readonly commit: string;
+  readonly timestamp: string;
+  readonly source: "reflog";
+}

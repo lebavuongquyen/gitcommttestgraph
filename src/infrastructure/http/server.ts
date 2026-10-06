@@ -178,6 +178,11 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, await git.listCommits(Number(url.searchParams.get("limit") ?? 20)));
         return;
       }
+      if (url.pathname === "/api/branch-lifecycle") {
+        const { BranchLifecycleService } = await import("../../application/history/branch-lifecycle-service.js");
+        send(response, 200, await new BranchLifecycleService(git).analyze());
+        return;
+      }
       if (url.pathname === "/api/branches") {
         send(response, 200, {
           current: await git.getCurrentBranch(),

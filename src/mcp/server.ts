@@ -84,6 +84,16 @@ export function createGctgMcpServer(root: string) {
     return result(await ctx.resolveConfiguration());
   });
 
+  server.registerTool("branch_lifecycle", {
+    title: "Branch Lifecycle",
+    description: "Observe current branch refs and available reflog lifecycle evidence without modifying Git history.",
+    inputSchema: {}
+  }, async () => {
+    const ctx = await context(root);
+    const { BranchLifecycleService } = await import("../application/history/branch-lifecycle-service.js");
+    return result(await new BranchLifecycleService(ctx.git).analyze());
+  });
+
   server.registerTool("change_intelligence", {
     title: "Change Intelligence",
     description: "Analyze a commit or branch through the unified change intelligence contract. Read-only and deterministic.",
