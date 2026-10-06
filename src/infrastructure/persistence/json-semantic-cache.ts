@@ -1,9 +1,10 @@
 import { dirname, join } from "node:path";
 import { mkdir, readFile, rename, rm, writeFile } from "node:fs/promises";
 import type { SemanticCache } from "../../application/ports/semantic-cache.js";
+import type { SemanticStorage } from "../../application/ports/semantic-storage.js";
 import type { SourceAnalysis } from "../../application/ports/source-analyzer.js";
 
-export class JsonSemanticCache implements SemanticCache {
+export class JsonSemanticCache implements SemanticCache, SemanticStorage {
   constructor(private readonly root: string) {}
 
   async get(key: string): Promise<SourceAnalysis | null> {
