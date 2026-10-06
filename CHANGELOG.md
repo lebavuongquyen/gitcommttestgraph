@@ -2,6 +2,16 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.9.2] - 2026-10-06
+
+### Monorepo Intelligence
+- Added unified monorepo analysis for workspace boundaries and package topology.
+- Added package dependency and reverse-dependent reporting.
+- Added package source ownership and package-specific test-project reporting.
+- Added package-level impact propagation through verified dependency edges.
+- Added GUI, CLI, HTTP and MCP surfaces.
+- Added permanent 0.9.2 contract coverage.
+
 ## [0.9.1] - 2026-10-06
 
 ### Repository Ecosystem

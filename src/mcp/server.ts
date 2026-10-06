@@ -7,7 +7,7 @@ import {
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
@@ -117,6 +117,16 @@ export function createGctgMcpServer(root: string) {
       ...(base ? { base } : {}),
       ...(head ? { head } : {})
     }));
+  });
+
+  server.registerTool("monorepo_intelligence", {
+    title: "Monorepo Intelligence",
+    description: "Analyze workspace boundaries, package dependencies, package-level impact and package test projects for a repository commit.",
+    inputSchema: { commit: z.string().optional(), changedNodeIds: z.array(z.string()).optional() }
+  }, async ({ commit, changedNodeIds }) => {
+    const ctx = await context(root);
+    const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
+    return result(analyzeMonorepo(indexed.snapshot, changedNodeIds ?? []));
   });
 
   server.registerTool("repository_ecosystem", {

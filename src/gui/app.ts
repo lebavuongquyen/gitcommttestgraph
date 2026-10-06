@@ -44,7 +44,7 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 <div class="legend">Changed · Impact · Test</div><svg id="graph" viewBox="0 0 1000 700" role="img" aria-label="Code and test impact graph"></svg>
 </section>
 <section class="inspector"><div class="panel">
-<h3>Configuration</h3><div id="ecosystem" class="card"><div class="small">Loading repository ecosystem...</div></div><div id="configuration" class="card"><div class="small">Loading configuration…</div></div><div class="section"><div class="section-head"><h3>Inspector</h3></div><div id="intelligence" class="empty">Loading change intelligence…</div><div id="inspector" class="empty">Select a node.</div>
+<h3>Configuration</h3><div id="ecosystem" class="card"><div class="small">Loading repository ecosystem...</div></div><div id="monorepo" class="card"><div class="small">Loading monorepo intelligence...</div></div><div id="configuration" class="card"><div class="small">Loading configuration…</div></div><div class="section"><div class="section-head"><h3>Inspector</h3></div><div id="intelligence" class="empty">Loading change intelligence…</div><div id="inspector" class="empty">Select a node.</div>
 <div class="section"><div class="section-head"><h3>Branch review</h3></div><div id="branchReview" class="empty">Select a base/head branch and review.</div></div>
 <div class="section"><div class="section-head"><h3>Pull request intelligence</h3></div><div id="prReview" class="empty">Enter owner/repo and PR number to review a GitHub pull request.</div></div>
 <div class="section"><div class="section-head"><h3>Test impact</h3></div><div id="tests" class="empty">Select a commit to inspect impacted tests.</div></div>
@@ -101,6 +101,7 @@ async function loadCommit(commit){
   const ecosystem=await api("/api/ecosystem?commit="+encodeURIComponent(commit));
   state.graph=graph;state.plan=plan;state.feedback=feedback;state.intelligence=intelligence;
   renderEcosystem(ecosystem);
+  renderMonorepo(await api("/api/monorepo?commit="+encodeURIComponent(commit)));
   renderOverview(overview);renderIntelligence(intelligence);renderGraph(graph);renderTests(tests);renderExecution(plan,feedback);
   $("status").textContent=overview.repository+" · "+commit.slice(0,8);
   }catch(e){
@@ -142,6 +143,10 @@ function renderEcosystem(e){
   if(!e){$("ecosystem").innerHTML='<div class="empty">No ecosystem evidence.</div>';return;}
   const items=[...(e.packageManagers||[]),...(e.languages||[]),...(e.testFrameworks||[])];
   $("ecosystem").innerHTML='<div class="tag">Support · '+esc(e.support)+'</div>'+items.map(x=>'<div class="metric"><span>'+esc(x.category)+' · '+esc(x.name)+'</span><b>'+esc(x.support)+'</b></div>').join('')+(e.unsupported||[]).map(x=>'<div class="small">Unknown/unsupported: '+esc(x.name)+' · '+esc(x.reason)+'</div>').join('');
+}
+function renderMonorepo(m){
+  if(!m){$("monorepo").innerHTML="<div class=empty>No monorepo evidence.</div>";return;}
+  $("monorepo").innerHTML="<div class=tag>"+(m.isMonorepo?"Monorepo":"Single package")+"</div><div class=metric><span>Packages</span><b>"+m.packageCount+"</b></div><div class=metric><span>Workspaces</span><b>"+m.workspaceCount+"</b></div>"+m.packages.slice(0,20).map(p=>"<div class=card><b>"+esc(p.name)+"</b><div class=small>"+esc(p.rootPath)+" · "+p.sourceFiles+" source files</div><div class=small>Dependencies: "+p.dependencies.length+" · Dependents: "+p.dependents.length+" · Tests: "+p.testProjects.length+"</div></div>").join("");
 }
 function renderOverview(o){
   $("inspector").innerHTML='<div class="card"><div class="metric"><span>Commit</span><b>'+esc(o.commit.slice(0,8))+'</b></div><div class="metric"><span>Files</span><b>'+o.changedFiles+'</b></div><div class="metric"><span>Changed symbols</span><b>'+o.changedSymbols+'</b></div><div class="metric"><span>Affected symbols</span><b>'+o.affectedSymbols+'</b></div><div class="metric"><span>Impacted tests</span><b>'+o.impactedTestCases+'</b></div></div><div class="card"><div class="small">'+esc(o.subject)+'</div></div>';

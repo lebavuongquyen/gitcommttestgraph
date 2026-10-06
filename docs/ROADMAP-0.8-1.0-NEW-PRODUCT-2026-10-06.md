@@ -701,15 +701,23 @@ They must never silently become false-positive impact results.
 
 ## 7.3 0.9.2 — Monorepo Intelligence
 
-Support:
+Status: COMPLETE
 
-- workspace boundaries;
-- package dependencies;
-- package-level impact;
-- cross-package symbol relationships;
-- package-specific tests;
-- filtered test execution;
-- package ownership metadata when available.
+Delivered:
+
+- workspace/package topology read model;
+- package dependencies and reverse dependents;
+- package-level source ownership;
+- package-specific test-project metadata;
+- package-level impact propagation;
+- deterministic package topology;
+- no invented cross-package dependencies;
+- GUI, CLI, HTTP and MCP surfaces;
+- public API capability;
+- permanent 0.9.2 contract coverage;
+- audit and release documentation.
+
+Package-filtered execution enhancements are intentionally deferred to later execution/CI work; 0.9.2 establishes the verified intelligence foundation first.
 
 ## 7.4 0.9.3 — Historical Intelligence
 

@@ -33,6 +33,7 @@ export * from "./adapters/languages/typescript/semantic-analyzer.js";
 export * from "./infrastructure/persistence/json-graph-store.js";
 export * from "./application/indexing/index-repository.js";
 export * from "./application/repository/ecosystem-service.js";
+export * from "./application/repository/monorepo-service.js";
 export * from "./application/impact/impact-engine.js";
 export * from "./application/analysis/graph-diff.js";
 export * from "./application/tests/test-registry.js";
