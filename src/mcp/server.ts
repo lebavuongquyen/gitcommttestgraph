@@ -7,7 +7,7 @@ import {
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
@@ -117,6 +117,16 @@ export function createGctgMcpServer(root: string) {
       ...(base ? { base } : {}),
       ...(head ? { head } : {})
     }));
+  });
+
+  server.registerTool("repository_ecosystem", {
+    title: "Repository Ecosystem",
+    description: "Detect package managers, languages and test frameworks for a repository commit. Unsupported or unknown environments are reported explicitly and never treated as positive intelligence.",
+    inputSchema: { commit: z.string().optional() }
+  }, async ({ commit }) => {
+    const ctx = await context(root);
+    const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
+    return result(analyzeRepositoryEcosystem(indexed.snapshot));
   });
 
   server.registerTool("repository_status", {

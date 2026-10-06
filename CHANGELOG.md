@@ -1,6 +1,18 @@
 # Changelog
 
-All notable changes to `git-commit-test-graph` are documented here.
+All notable changes to git-commit-test-graph are documented here.
+
+## [0.9.1] - 2026-10-06
+
+### Repository Ecosystem
+- Added explicit repository ecosystem analysis for npm, pnpm, yarn, bun, TypeScript, JavaScript, Node test, Jest, Vitest, Playwright and generic scripts.
+- Added explicit UNKNOWN handling for unsupported or unverified ecosystems.
+- Added GUI, CLI, HTTP and MCP surfaces for ecosystem analysis.
+- Added permanent ecosystem contract coverage.
+
+### Documentation
+- Added docs/AUDIT-0.9.1-REPOSITORY-ECOSYSTEM-2026-10-06.md.
+- Added docs/releases/0.9.1.md.
 
 ## [0.9.0] - 2026-10-06
 

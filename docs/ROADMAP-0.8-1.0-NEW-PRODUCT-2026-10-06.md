@@ -664,6 +664,8 @@ Each gets an explicit schema version.
 
 ## 7.2 0.9.1 — Repository Ecosystem
 
+Status: COMPLETE
+
 Improve adapters:
 
 - npm;
@@ -678,9 +680,22 @@ Improve adapters:
 - Playwright;
 - generic scripts.
 
+Delivered:
+
+- RepositoryEcosystem application capability;
+- explicit support and confidence classification;
+- UNKNOWN results for unsupported or unverified ecosystems;
+- deterministic evidence/reason output;
+- GUI ecosystem panel;
+- CLI ecosystem command;
+- HTTP /api/ecosystem endpoint;
+- MCP repository_ecosystem tool;
+- permanent 0.9.1 unit and surface contract tests;
+- audit, release documentation and changelog.
+
 Priority is correctness over quantity.
 
-Unsupported environments must produce explicit UNKNOWN/UNSUPPORTED results.
+Unsupported environments must produce explicit UNKNOWN results.
 
 They must never silently become false-positive impact results.
 

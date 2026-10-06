@@ -5,7 +5,7 @@ import {
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
@@ -146,6 +146,12 @@ export async function startServer(root: string, port: number): Promise<void> {
         const update = await configurationService.update(repository.root, await readJsonBody(request));
         configuration = update.configuration;
         send(response, 200, update);
+        return;
+      }
+      if (url.pathname === "/api/ecosystem") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const indexed = await indexAt(commit);
+        send(response, 200, analyzeRepositoryEcosystem(indexed.snapshot));
         return;
       }
       if (url.pathname === "/api/status") {

@@ -6,3 +6,5 @@ export type { TestImpact, TestImpactSummary } from "../domain/impact/test-impact
 export type { ExecutionPlan } from "../domain/workflow/execution-plan.js";
 export type { Evidence, Confidence, Provenance } from "../domain/evidence/model.js";
 export type { GctgConfiguration, ResolvedConfiguration, ConfigurationUpdateResult } from "../domain/configuration/model.js";
+export { analyzeRepositoryEcosystem } from "../application/repository/ecosystem-service.js";
+export type { RepositoryEcosystem, EcosystemCapability, EcosystemSupport } from "../application/repository/ecosystem-service.js";

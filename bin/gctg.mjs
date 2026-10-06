@@ -40,6 +40,13 @@ try {
     json(await new ConfigurationService(new JsonConfigurationStore()).resolve(root));
     process.exit(0);
   }
+  if (command === "ecosystem") {
+    const { repository, git, store, semanticCache } = await context();
+    const commit = process.argv[3] ?? await git.getHead();
+    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    json((await import("../dist/application/repository/ecosystem-service.js")).analyzeRepositoryEcosystem(result.snapshot));
+    process.exit(0);
+  }
   if (command === "status") {
     const { repository, git } = await context();
     json({ root: repository.root, head: await git.getHead(), workspaceFiles: repository.workspaceFiles });
@@ -297,7 +304,7 @@ try {
     console.log("gctg server listening on http://127.0.0.1:" + port);
     await new Promise(() => {});
   }
-  console.log("Usage: gctg [--version] | status | commits [limit] | branches | change-intelligence [COMMIT <commit>] | branch-review <base> [head] | pr-review <owner/repo> <number> | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] | serve [port]");
+  console.log("Usage: gctg [--version] | config | ecosystem [commit] | status | commits [limit] | branches | change-intelligence [COMMIT <commit>] | branch-review <base> [head] | pr-review <owner/repo> <number> | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] | serve [port]");
   process.exit(command === "help" ? 0 : 2);
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);
