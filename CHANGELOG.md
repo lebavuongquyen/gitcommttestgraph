@@ -26,6 +26,11 @@ All notable changes to git-commit-test-graph are documented here.
 - Split semantic cache into reader and writer capabilities.
 - Added storage capability contract tests for the JSON adapters.
 
+### R05 — GUI Architecture Foundation
+- Separated the server-rendered GUI document shell from the browser controller.
+- Kept GUI behavior and HTTP routes compatible while moving API orchestration into a dedicated GUI client module.
+- Added GUI architecture contracts preventing direct application, domain and infrastructure dependencies in GUI code.
+
 ## [0.9.8] - 2026-10-06
 
 ### 0.9 Revalidation and MCP Surface Parity
