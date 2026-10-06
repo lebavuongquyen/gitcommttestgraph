@@ -1,5 +1,6 @@
 export * from "./domain/git/model.js";
 export * from "./domain/change-set.js";
+export * from "./domain/change-intelligence.js";
 export * from "./domain/pull-request/model.js";
 export * from "./domain/review/model.js";
 export * from "./domain/evidence/model.js";
@@ -64,6 +65,8 @@ export * from "./domain/agent/index.js";
 export * from "./application/agent/agent-task-service.js";
 export * from "./application/change/branch-change-set-service.js";
 export * from "./application/change/pull-request-change-set-service.js";
+export * from "./application/intelligence/change-intelligence-service.js";
+export * from "./application/intelligence/change-intelligence-query-service.js";
 export * from "./application/review/pull-request-review-service.js";
 export * from "./application/review/branch-review-service.js";
 export * from "./version.js";

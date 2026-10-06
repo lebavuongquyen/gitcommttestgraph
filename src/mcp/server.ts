@@ -6,7 +6,8 @@ import {
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer,
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
-  BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider
+  BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
+  ChangeIntelligenceQueryService
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
@@ -75,6 +76,30 @@ export function createGctgMcpServer(root: string) {
     name: "git-commit-test-graph",
     version: serverVersion,
     description: "Graph-first Git, code, test-impact and execution intelligence for software-engineering agents."
+  });
+
+  server.registerTool("change_intelligence", {
+    title: "Change Intelligence",
+    description: "Analyze a commit or branch through the unified change intelligence contract. Read-only and deterministic.",
+    inputSchema: {
+      source: z.enum(["COMMIT", "BRANCH"]).default("COMMIT"),
+      commit: z.string().optional(),
+      base: z.string().optional(),
+      head: z.string().optional()
+    }
+  }, async ({ source, commit, base, head }) => {
+    const ctx = await context(root);
+    const intelligence = new ChangeIntelligenceQueryService(
+      ctx.repository.root,
+      ctx.git,
+      { index: (hash: string) => indexAt(ctx, hash) }
+    );
+    return result(await intelligence.analyze({
+      source,
+      ...(commit ? { commit } : {}),
+      ...(base ? { base } : {}),
+      ...(head ? { head } : {})
+    }));
   });
 
   server.registerTool("repository_status", {
@@ -212,33 +237,6 @@ export function createGctgMcpServer(root: string) {
     const impact = new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds: symbolIds, coverageLinks: gaps.coverageLinks });
     const plan = buildExecutionPlan({ repository: indexed.snapshot.repository, commit: indexed.snapshot.commit, nodes: indexed.snapshot.nodes, edges: indexed.snapshot.edges, impacts: impact.impacts });
     return result({ plan, rendered: serializeExecutionPlan(plan, format) });
-  });
-
-  server.registerTool("change_intelligence", {
-    title: "Analyze Change Intelligence",
-    description: "Produce one compact agent context bundle: changed symbols, semantic impact, test impact, execution plan and prior runtime feedback.",
-    inputSchema: { commit: z.string().optional() }
-  }, async ({ commit }) => {
-    const ctx = await context(root);
-    const target = commit ?? await ctx.git.getHead();
-    const indexed = await indexAt(ctx, target);
-    const commitInfo = await ctx.git.getCommit(target);
-    let changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
-    let diff = null;
-    const parentCommit = commitInfo.parents?.[0];
-    if (parentCommit) {
-      const parent = await indexAt(ctx, parentCommit);
-      diff = diffSnapshots(parent.snapshot, indexed.snapshot);
-      const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
-      changedSymbolIds = indexed.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
-    }
-    const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds });
-    const impact = new ImpactEngine().analyze(indexed.snapshot, { changedNodeIds: changedSymbolIds, targetTypes: ["Symbol"] as NodeType[] });
-    const testImpact = new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds, coverageLinks: gaps.coverageLinks });
-    const plan = buildExecutionPlan({ repository: indexed.snapshot.repository, commit: indexed.snapshot.commit, nodes: indexed.snapshot.nodes, edges: indexed.snapshot.edges, impacts: testImpact.impacts });
-    const feedbackStore = new JsonTestResultStore(ctx.repository.root + "/.gctg/results");
-    const feedback = await feedbackStore.get(`latest:${ctx.repository.root}:${target}`);
-    return result({ commit: target, changedSymbolIds, diff, impact, testImpact, executionPlan: plan, priorExecution: feedback });
   });
 
   server.registerTool("execution_feedback", {

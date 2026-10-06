@@ -4,7 +4,8 @@ import {
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactQueryService, ImpactEngine, TestGapAnalyzer,
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
-  BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider
+  BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
+  ChangeIntelligenceQueryService
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
@@ -134,6 +135,20 @@ export async function startServer(root: string, port: number): Promise<void> {
         const number = Number(url.searchParams.get("number"));
         if (!ownerRepo || !Number.isInteger(number) || number < 1) return send(response, 400, { error: "Missing ownerRepo or valid number" });
         send(response, 200, await buildPullRequestReview(ownerRepo, number));
+        return;
+      }
+      if (url.pathname === "/api/change-intelligence") {
+        const source = (url.searchParams.get("source") ?? "COMMIT").toUpperCase() as "COMMIT" | "BRANCH";
+        const commit = url.searchParams.get("commit") ?? undefined;
+        const base = url.searchParams.get("base") ?? undefined;
+        const head = url.searchParams.get("head") ?? undefined;
+        const intelligence = new ChangeIntelligenceQueryService(repository.root, git, { index: indexAt });
+        send(response, 200, await intelligence.analyze({
+          source,
+          ...(commit ? { commit } : {}),
+          ...(base ? { base } : {}),
+          ...(head ? { head } : {})
+        }));
         return;
       }
       if (url.pathname === "/api/overview") {

@@ -2,6 +2,33 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.8.0] - 2026-10-06
+
+### Added
+- Unified Change Intelligence domain and application model.
+- Deterministic commit and branch change normalization.
+- Unified changed-path, changed-symbol, removed-symbol and downstream-impact analysis.
+- Explicit risk, reasons, uncertainty and evidence in the unified result.
+- Unified test-gap, test-impact and execution-plan result.
+- CLI command gctg change-intelligence.
+- HTTP endpoint /api/change-intelligence.
+- MCP tool change_intelligence.
+- GUI Change Intelligence cockpit.
+- Public contract test framework and executable M04 Quality Gate.
+- Mandatory No Surface Without Gate development standard.
+
+### Quality
+- 5/5 M04 contract gates passed.
+- CLI, HTTP, MCP and GUI gates passed.
+- Cross-surface semantic equivalence passed.
+- Full regression suite: 68/68 tests passed.
+- Typecheck and build passed.
+
+### Documentation
+- Added docs/QUALITY-GATES.md.
+- Added docs/releases/0.8.0.md.
+- Updated the 0.8–1.0 roadmap with M01/M02 completion and M04 gate requirements.
+
 ## [0.7.1] - 2026-10-06
 
 ### Fixed

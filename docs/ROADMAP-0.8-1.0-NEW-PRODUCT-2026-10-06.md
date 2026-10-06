@@ -1345,7 +1345,7 @@ Implement the application-level abstraction.
 
 ### M04 — Unified Change Intelligence
 
-Status: BLOCKED UNTIL M03
+Status: COMPLETE
 
 Expose it through:
 
@@ -1353,7 +1353,30 @@ Expose it through:
 - MCP;
 - CLI/API.
 
-Each exposed surface must have its own M04 quality gate.
+Completed with one shared application contract and independent executable gates for each exposed surface.
+
+M04 acceptance evidence:
+
+- domain/application semantics verified;
+- CLI gate passed;
+- HTTP/API gate passed;
+- MCP gate passed;
+- GUI real HTTP gate passed;
+- cross-surface semantic equivalence passed;
+- full regression passed;
+- deterministic result contract passed.
+
+See docs/QUALITY-GATES.md and docs/releases/0.8.0.md.
+
+### M05 — 0.8.0 acceptance
+
+Status: IN PROGRESS
+
+Run Release Gate v2 on the final 0.8.0 release commit.
+
+Acceptance must include clean install, typecheck, build, full tests, public contract tests, M04 gate, package manifest, documentation, changelog, version consistency and clean Git state.
+
+Only after the final gate passes should v0.8.0 be tagged and pushed.
 
 ### M03 — Unified Change model
 

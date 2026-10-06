@@ -44,7 +44,7 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 <div class="legend">Changed · Impact · Test</div><svg id="graph" viewBox="0 0 1000 700" role="img" aria-label="Code and test impact graph"></svg>
 </section>
 <section class="inspector"><div class="panel">
-<h3>Inspector</h3><div id="inspector" class="empty">Select a node.</div>
+<h3>Inspector</h3><div id="intelligence" class="empty">Loading change intelligence…</div><div id="inspector" class="empty">Select a node.</div>
 <div class="section"><div class="section-head"><h3>Branch review</h3></div><div id="branchReview" class="empty">Select a base/head branch and review.</div></div>
 <div class="section"><div class="section-head"><h3>Pull request intelligence</h3></div><div id="prReview" class="empty">Enter owner/repo and PR number to review a GitHub pull request.</div></div>
 <div class="section"><div class="section-head"><h3>Test impact</h3></div><div id="tests" class="empty">Select a commit to inspect impacted tests.</div></div>
@@ -52,7 +52,7 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 </div></section>
 </main>
 <script>
-const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,running:false,branches:[],review:null,prReview:null};
+const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,intelligence:null,running:false,branches:[],review:null,prReview:null};
 const $=id=>document.getElementById(id);
 async function api(path,options){const r=await fetch(path,options);if(!r.ok)throw new Error(await r.text());return r.json();}
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -84,10 +84,11 @@ async function loadCommit(commit){
     api("/api/graph-view?commit="+encodeURIComponent(commit)),
     api("/api/test-impact?commit="+encodeURIComponent(commit)),
     api("/api/execution-plan?commit="+encodeURIComponent(commit)),
-    api("/api/execution-feedback?commit="+encodeURIComponent(commit))
+    api("/api/execution-feedback?commit="+encodeURIComponent(commit)),
+    api("/api/change-intelligence?commit="+encodeURIComponent(commit))
   ]);
-  state.graph=graph;state.plan=plan;state.feedback=feedback;
-  renderOverview(overview);renderGraph(graph);renderTests(tests);renderExecution(plan,feedback);
+  state.graph=graph;state.plan=plan;state.feedback=feedback;state.intelligence=intelligence;
+  renderOverview(overview);renderIntelligence(intelligence);renderGraph(graph);renderTests(tests);renderExecution(plan,feedback);
   $("status").textContent=overview.repository+" · "+commit.slice(0,8);
 }
 async function reviewBranch(){
@@ -113,6 +114,11 @@ async function reviewPullRequest(){
 function renderPullRequestReview(r){
   if(!r)return;const p=r.pullRequest,c=r.changeSet;
   $("prReview").innerHTML='<div class="card"><div class="tag">'+esc(r.decision)+'</div><div class="tag">Risk · '+esc(r.risk)+'</div><div class="metric"><span>PR</span><b>#'+p.number+'</b></div><div class="metric"><span>Title</span><b>'+esc(p.title)+'</b></div><div class="metric"><span>Author</span><b>'+esc(p.author||"unknown")+'</b></div><div class="metric"><span>Base → Head</span><b>'+esc(c.base)+' → '+esc(c.head)+'</b></div><div class="metric"><span>Commits</span><b>'+c.commits.length+'</b></div><div class="metric"><span>Changed symbols</span><b>'+r.changedSymbolIds.length+'</b></div><div class="metric"><span>Removed symbols</span><b>'+r.removedSymbolIds.length+'</b></div><div class="metric"><span>Impacted tests</span><b>'+r.testImpact.impactedTestCases+'</b></div></div>'+(r.reasons||[]).map(x=>'<div class="card">'+esc(x)+'</div>').join("")+(r.uncertainty||[]).map(x=>'<div class="card small">Uncertainty · '+esc(x)+'</div>').join("");
+}
+function renderIntelligence(r){
+  const i=r?.intelligence;
+  if(!i){$("intelligence").innerHTML='<div class="empty">No change intelligence.</div>';return;}
+  $("intelligence").innerHTML='<div class="card"><div class="tag">Change Intelligence</div><div class="tag">Risk · '+esc(i.risk)+'</div><div class="metric"><span>Source</span><b>'+esc(i.source.source)+'</b></div><div class="metric"><span>Changed paths</span><b>'+i.changedPathCount+'</b></div><div class="metric"><span>Changed symbols</span><b>'+i.changedSymbolIds.length+'</b></div><div class="metric"><span>Removed symbols</span><b>'+i.removedSymbolIds.length+'</b></div><div class="metric"><span>Affected symbols</span><b>'+i.affectedSymbolIds.length+'</b></div><div class="metric"><span>Impacted tests</span><b>'+i.testImpact.impactedTestCases+'</b></div></div>'+(i.reasons||[]).map(x=>'<div class="card small">'+esc(x)+'</div>').join("")+(i.uncertainty||[]).map(x=>'<div class="card small">Uncertainty · '+esc(x.message)+'</div>').join("");
 }
 function renderOverview(o){
   $("inspector").innerHTML='<div class="card"><div class="metric"><span>Commit</span><b>'+esc(o.commit.slice(0,8))+'</b></div><div class="metric"><span>Files</span><b>'+o.changedFiles+'</b></div><div class="metric"><span>Changed symbols</span><b>'+o.changedSymbols+'</b></div><div class="metric"><span>Affected symbols</span><b>'+o.affectedSymbols+'</b></div><div class="metric"><span>Impacted tests</span><b>'+o.impactedTestCases+'</b></div></div><div class="card"><div class="small">'+esc(o.subject)+'</div></div>';
