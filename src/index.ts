@@ -91,6 +91,7 @@ export * from "./domain/failure.js";
 export * from "./domain/progress.js";
 export * from "./application/operations/progress-service.js";
 export * from "./application/operations/health-service.js";
+export * from "./application/operations/diagnostic-bundle-service.js";
 export * from "./application/operations/operation-service.js";
 export * from "./application/operations/operation-history-service.js";
 export * from "./application/ports/operation-history.js";

@@ -511,6 +511,14 @@ See Git history for the previous release.
 - Exposed progress through HTTP and MCP.
 - Added focused tests and documentation.
 
+### O06 - Diagnostic Bundle - 2026-10-07
+
+- Added a machine-readable diagnostic bundle combining health, bounded operation history, configuration provenance, storage accounting and reproducibility metadata.
+- Exposed the bundle through HTTP /api/diagnostic-bundle and MCP diagnostic_bundle.
+- Preserved the existing secret-safe boundaries.
+- Added focused unit and cross-surface contract coverage.
+- Added docs/0.10.2-O06-DIAGNOSTIC-BUNDLE.md.
+
 ### O05 - Failure Taxonomy - 2026-10-07
 
 - Added deterministic validation, Git, analysis, storage, corruption, resource, execution, external-provider and recovery failure categories.

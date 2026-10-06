@@ -167,6 +167,16 @@ export function createGctgMcpServer(root: string) {
     return result(await new HealthService().check(ctx));
   });
 
+  server.registerTool("diagnostic_bundle", {
+    title: "Diagnostic Bundle",
+    description: "Return a machine-readable, secret-safe diagnostic bundle containing health, recent operations, configuration provenance, storage accounting and reproducibility metadata.",
+    inputSchema: {}
+  }, async () => {
+    const ctx = await context(root);
+    const { buildDiagnosticBundle } = await import("../application/operations/diagnostic-bundle-service.js");
+    return result(await buildDiagnosticBundle(ctx));
+  });
+
   server.registerTool("progress", {
     title: "Progress",
     description: "Inspect deterministic progress stages for a runtime operation.",
