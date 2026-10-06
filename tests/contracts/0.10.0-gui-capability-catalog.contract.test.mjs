@@ -7,10 +7,17 @@ import {
   toGuiExecutionViewModel,toGuiChangeIntelligenceViewModel
 } from "../../dist/gui/view-models.js";
 
-test("0.10 R08 GUI capability catalog covers every browser route", async () => {
+test("0.10 R09 GUI capability catalog is the browser routing source of truth", async () => {
   const client = await readFile(new URL("../../src/gui/client.ts", import.meta.url), "utf8");
-  for (const descriptor of guiCapabilityContracts) assert.match(client, new RegExp(descriptor.path.replaceAll("/", "\\/")));
+  assert.match(client, /guiCapabilityContracts/);
+  assert.doesNotMatch(client, /GUI_CAPABILITIES=\\{/);
+  for (const descriptor of guiCapabilityContracts) {
+    assert.equal(typeof descriptor.browserKey, "string");
+    assert.ok(descriptor.browserKey.length > 0);
+    assert.match(client, new RegExp(descriptor.browserKey));
+  }
   assert.equal(new Set(guiCapabilityContracts.map(x => x.path)).size, guiCapabilityContracts.length);
+  assert.equal(new Set(guiCapabilityContracts.map(x => x.browserKey)).size, guiCapabilityContracts.length);
 });
 
 test("0.10 R08 GUI capability catalog has no duplicate ids", () => {

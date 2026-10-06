@@ -3,6 +3,19 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### R09 - GUI Capability Routing Single Source of Truth - 2026-10-06
+
+- Made the typed GUI capability catalog the single source of truth for browser capability routing.
+- Added explicit browser keys to GUI capability descriptors and generated the browser route map from those descriptors.
+- Added R09 contract coverage for unique browser keys and rejection of hard-coded GUI API route catalogs.
+- Updated GUI architecture contracts to validate catalog-driven routing rather than raw route literals.
+
+### R08 - Complete GUI Capability Catalog - 2026-10-06
+
+- Completed the typed GUI catalog for all 20 browser API capabilities.
+- Added secondary GUI presentation ViewModel target contracts for the remaining intelligence panels.
+- Added catalog completeness and duplicate-id/path contract coverage.
+
 ### R07 - GUI View Models - 2026-10-06
 
 - Added pure GUI view-model adapters for status, commits, graph, execution, and change intelligence.

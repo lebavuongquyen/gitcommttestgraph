@@ -8,21 +8,22 @@ export type GuiCapabilityId =
 export interface GuiCapabilityDescriptor {
   readonly id: GuiCapabilityId;
   readonly path: string;
+  readonly browserKey: string;
 }
 
 const GUI_CAPABILITY_PATHS = [
-  ["repository_status","/api/status"],["configuration","/api/config"],["repository_ecosystem","/api/ecosystem"],
-  ["monorepo_intelligence","/api/monorepo"],["historical_intelligence","/api/historical-intelligence"],
-  ["ci_analysis","/api/ci"],["diagnostics","/api/diagnostics"],["change_intelligence","/api/change-intelligence"],
-  ["test_gaps","/api/test-gaps"],["test_impact","/api/test-impact"],["execution_plan","/api/execution-plan"],
-  ["branch_review","/api/branch-review"],["pull_request_review","/api/pull-request-review"],
-  ["commits","/api/commits"],["branches","/api/branches"],["node","/api/node"],
-  ["execution_feedback","/api/execution-feedback"],["run_execution_plan","/api/run-execution-plan"],
-  ["overview","/api/overview"],["graph_view","/api/graph-view"]
+  ["repository_status","/api/status","status"],["configuration","/api/config","config"],["repository_ecosystem","/api/ecosystem","ecosystem"],
+  ["monorepo_intelligence","/api/monorepo","monorepo"],["historical_intelligence","/api/historical-intelligence","historical"],
+  ["ci_analysis","/api/ci","ci"],["diagnostics","/api/diagnostics","diagnostics"],["change_intelligence","/api/change-intelligence","changeIntelligence"],
+  ["test_gaps","/api/test-gaps","testGaps"],["test_impact","/api/test-impact","testImpact"],["execution_plan","/api/execution-plan","executionPlan"],
+  ["branch_review","/api/branch-review","branchReview"],["pull_request_review","/api/pull-request-review","pullRequestReview"],
+  ["commits","/api/commits","commits"],["branches","/api/branches","branches"],["node","/api/node","node"],
+  ["execution_feedback","/api/execution-feedback","executionFeedback"],["run_execution_plan","/api/run-execution-plan","runExecutionPlan"],
+  ["overview","/api/overview","overview"],["graph_view","/api/graph-view","graphView"]
 ] as const;
 
 export const guiCapabilityContracts: readonly GuiCapabilityDescriptor[] =
-  Object.freeze(GUI_CAPABILITY_PATHS.map(([id,path]) => ({id,path})));
+  Object.freeze(GUI_CAPABILITY_PATHS.map(([id,path,browserKey]) => ({id,path,browserKey})));
 
 export type {
   GuiStatusViewModel, GuiCommitViewModel, GuiGraphViewModel, GuiExecutionViewModel,

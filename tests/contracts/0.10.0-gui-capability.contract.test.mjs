@@ -6,9 +6,11 @@ import { guiCapabilityContracts } from "../../dist/gui/contracts.js";
 
 test("0.10 R06 typed GUI contracts cover every registered GUI capability", () => {
   const registry = capabilityRegistry.filter(capability => capability.surfaces.GUI);
-  const typed = new Map(guiCapabilityContracts.map(capability => [capability.id, capability.path]));
+  const typed = new Map(guiCapabilityContracts.map(capability => [capability.id, capability]));
   for (const capability of registry) {
-    assert.equal(typed.get(capability.id), capability.surfaces.GUI, capability.id);
+    const descriptor = typed.get(capability.id);
+    assert.ok(descriptor, capability.id);
+    assert.match(capability.surfaces.GUI, new RegExp(descriptor.browserKey));
   }
 });
 

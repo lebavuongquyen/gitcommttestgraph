@@ -17,13 +17,15 @@ test("0.10 R05 GUI browser controller is isolated from application and infrastru
   const source = await readFile(clientPath, "utf8");
   assert.doesNotMatch(source, /from ["']\.\.\/(?:application|domain|infrastructure)\//);
   assert.doesNotMatch(source, /(?:ImpactEngine|TestGapAnalyzer|TestImpactAnalyzer|BranchReviewService|PullRequestReviewService|ChangeIntelligenceQueryService|DiagnosticsService|HistoricalIntelligenceService)/);
-  assert.match(source, /\/api\//);
+  assert.match(source, /guiCapabilityContracts/);
+  assert.match(source, /GUI_BROWSER_CAPABILITIES/);
+  assert.doesNotMatch(source, /\/api\//);
 });
 
 test("0.10 R05 GUI boundary keeps API orchestration in the browser controller", async () => {
   const app = await readFile(appPath, "utf8");
   const client = await readFile(clientPath, "utf8");
-  const apiCount = (client.match(/\/api\//g) ?? []).length;
+  const apiCount = (client.match(/api\(capability\(/g) ?? []).length;
   assert.ok(apiCount >= 10);
   assert.equal((app.match(/\/api\//g) ?? []).length, 0);
 });
