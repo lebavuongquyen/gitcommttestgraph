@@ -6,7 +6,7 @@ import {
   RepositoryIndexer, IncrementalRepositoryIndexer, ImpactEngine, TestGapAnalyzer, TestImpactAnalyzer,
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
-  BranchChangeSetService, BranchReviewService
+  BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
@@ -126,7 +126,39 @@ export function createGctgMcpServer(root: string) {
     return result(new BranchReviewService().analyze({
       changeSet,
       current: indexed.snapshot,
-      changedSymbolIds
+      changedSymbolIds,
+      removedSymbolIds
+    }));
+  });
+
+  server.registerTool("pull_request_review", {
+    title: "Review Pull Request",
+    description: "Fetch pull request metadata, analyze its exact Git base/head change set, semantic impact, test impact and execution readiness. Read-only.",
+    inputSchema: {
+      ownerRepo: z.string().min(3),
+      number: z.number().int().positive()
+    }
+  }, async ({ ownerRepo, number }) => {
+    const ctx = await context(root);
+    const pullRequest = await new GitHubPullRequestProvider().get(ownerRepo, number);
+    if (!pullRequest.base || !pullRequest.head) throw new Error("Pull request metadata does not contain base/head refs");
+    const changeSet = await new PullRequestChangeSetService(ctx.git).build({
+      repository: ctx.repository.root,
+      pullRequest,
+      base: pullRequest.base,
+      head: pullRequest.head
+    });
+    const indexed = await indexAt(ctx, changeSet.head);
+    const baseIndexed = await indexAt(ctx, changeSet.mergeBase);
+    const diff = diffSnapshots(baseIndexed.snapshot, indexed.snapshot);
+    const changedSymbolIds = changedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
+    const removedSymbolIds = removedSymbolIdsFromDiff(baseIndexed.snapshot, indexed.snapshot, diff);
+    return result(new PullRequestReviewService().analyze({
+      changeSet,
+      pullRequest,
+      current: indexed.snapshot,
+      changedSymbolIds,
+      removedSymbolIds
     }));
   });
 

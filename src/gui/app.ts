@@ -14,7 +14,7 @@ export function renderGui(): string {
 <style>
 :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1020;color:#e8ecf7}
 *{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0%,#172448 0,#0b1020 42%);overflow:hidden}
-button,select{font:inherit;color:inherit;background:#141c33;border:1px solid #2c3858;border-radius:8px;padding:8px 10px}
+button,select,input{font:inherit;color:inherit;background:#141c33;border:1px solid #2c3858;border-radius:8px;padding:8px 10px}
 button{cursor:pointer}button:hover{border-color:#6f8fe8}button:disabled{opacity:.5;cursor:not-allowed}select{min-width:280px}
 header{height:64px;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid #202b46;background:#0d1428cc;backdrop-filter:blur(12px)}
 .brand{font-weight:800;letter-spacing:.2px;margin-right:10px}.status{font-size:12px;color:#94a3c7}.spacer{flex:1}
@@ -36,7 +36,7 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 </style>
 </head>
 <body>
-<header><div class="brand">Git Commit Test Graph</div><select id="commit"></select><select id="baseBranch"></select><select id="headBranch"></select><button id="reviewBranch" class="primary">Review branch</button><button id="refresh">Refresh</button><span class="spacer"></span><span id="status" class="status">Loading…</span></header>
+<header><div class="brand">Git Commit Test Graph</div><select id="commit"></select><select id="baseBranch"></select><select id="headBranch"></select><button id="reviewBranch" class="primary">Review branch</button><input id="prRepo" placeholder="owner/repo" size="14"><input id="prNumber" placeholder="PR #" size="5" inputmode="numeric"><button id="reviewPr" class="primary">Review PR</button><button id="refresh">Refresh</button><span class="spacer"></span><span id="status" class="status">Loading…</span></header>
 <main>
 <aside><div class="panel"><h3>Recent commits</h3><div id="commits"></div></div></aside>
 <section class="canvas">
@@ -46,12 +46,13 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 <section class="inspector"><div class="panel">
 <h3>Inspector</h3><div id="inspector" class="empty">Select a node.</div>
 <div class="section"><div class="section-head"><h3>Branch review</h3></div><div id="branchReview" class="empty">Select a base/head branch and review.</div></div>
+<div class="section"><div class="section-head"><h3>Pull request intelligence</h3></div><div id="prReview" class="empty">Enter owner/repo and PR number to review a GitHub pull request.</div></div>
 <div class="section"><div class="section-head"><h3>Test impact</h3></div><div id="tests" class="empty">Select a commit to inspect impacted tests.</div></div>
 <div class="section"><div class="section-head"><h3>Execution</h3><button id="runPlan" class="primary">Run impacted tests</button></div><div id="execution" class="empty">Loading execution plan…</div></div>
 </div></section>
 </main>
 <script>
-const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,running:false,branches:[],review:null};
+const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,running:false,branches:[],review:null,prReview:null};
 const $=id=>document.getElementById(id);
 async function api(path,options){const r=await fetch(path,options);if(!r.ok)throw new Error(await r.text());return r.json();}
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
@@ -102,6 +103,17 @@ function renderBranchReview(r){
   const evidence=(c.commitEvidence||[]).map(x=>'<div class="card"><b>'+esc(x.commit.slice(0,8))+'</b><div class="small">'+esc(x.subject)+'</div><div class="small">'+x.changedPaths.length+' changed path(s)</div></div>').join("");
   $("branchReview").innerHTML='<div class="card"><div class="tag">'+esc(r.decision)+'</div><div class="tag">Risk � '+esc(r.risk)+'</div><div class="metric"><span>Branch</span><b>'+esc(c.head)+'</b></div><div class="metric"><span>Base</span><b>'+esc(c.base)+'</b></div><div class="metric"><span>Merge base</span><b>'+esc(c.mergeBase.slice(0,8))+'</b></div><div class="metric"><span>Commits</span><b>'+c.commits.length+'</b></div><div class="metric"><span>Changed symbols</span><b>'+r.changedSymbolIds.length+'</b></div><div class="metric"><span>Removed symbols</span><b>'+(r.removedSymbolIds||[]).length+'</b></div><div class="metric"><span>Affected symbols</span><b>'+r.affectedSymbolIds.length+'</b></div><div class="metric"><span>Impacted tests</span><b>'+r.testImpact.impactedTestCases+'</b></div></div><div class="section"><div class="section-head"><h3>Commit evidence</h3></div>'+evidence+'</div>'+(r.reasons||[]).map(x=>'<div class="card">'+esc(x)+'</div>').join("")+(r.uncertainty||[]).map(x=>'<div class="card small">Uncertainty � '+esc(x)+'</div>').join("");
 }
+async function reviewPullRequest(){
+  const ownerRepo=$("prRepo").value.trim(), number=Number($("prNumber").value);
+  if(!ownerRepo||!Number.isInteger(number)||number<1)return;
+  $("status").textContent="Reviewing PR #"+number+"…";
+  try{state.prReview=await api("/api/pull-request-review?ownerRepo="+encodeURIComponent(ownerRepo)+"&number="+number);renderPullRequestReview(state.prReview);$("status").textContent="PR #"+number+" · "+state.prReview.decision;}
+  catch(e){$("status").textContent=e.message;$("prReview").innerHTML='<div class="empty">'+esc(e.message)+'</div>';}
+}
+function renderPullRequestReview(r){
+  if(!r)return;const p=r.pullRequest,c=r.changeSet;
+  $("prReview").innerHTML='<div class="card"><div class="tag">'+esc(r.decision)+'</div><div class="tag">Risk · '+esc(r.risk)+'</div><div class="metric"><span>PR</span><b>#'+p.number+'</b></div><div class="metric"><span>Title</span><b>'+esc(p.title)+'</b></div><div class="metric"><span>Author</span><b>'+esc(p.author||"unknown")+'</b></div><div class="metric"><span>Base → Head</span><b>'+esc(c.base)+' → '+esc(c.head)+'</b></div><div class="metric"><span>Commits</span><b>'+c.commits.length+'</b></div><div class="metric"><span>Changed symbols</span><b>'+r.changedSymbolIds.length+'</b></div><div class="metric"><span>Removed symbols</span><b>'+r.removedSymbolIds.length+'</b></div><div class="metric"><span>Impacted tests</span><b>'+r.testImpact.impactedTestCases+'</b></div></div>'+(r.reasons||[]).map(x=>'<div class="card">'+esc(x)+'</div>').join("")+(r.uncertainty||[]).map(x=>'<div class="card small">Uncertainty · '+esc(x)+'</div>').join("");
+}
 function renderOverview(o){
   $("inspector").innerHTML='<div class="card"><div class="metric"><span>Commit</span><b>'+esc(o.commit.slice(0,8))+'</b></div><div class="metric"><span>Files</span><b>'+o.changedFiles+'</b></div><div class="metric"><span>Changed symbols</span><b>'+o.changedSymbols+'</b></div><div class="metric"><span>Affected symbols</span><b>'+o.affectedSymbols+'</b></div><div class="metric"><span>Impacted tests</span><b>'+o.impactedTestCases+'</b></div></div><div class="card"><div class="small">'+esc(o.subject)+'</div></div>';
 }
@@ -149,6 +161,7 @@ async function runPlan(){
 }
 $("commit").onchange=e=>{state.commit=e.target.value;loadCommit(state.commit);};
 $("reviewBranch").onclick=reviewBranch;
+$("reviewPr").onclick=reviewPullRequest;
 $("refresh").onclick=()=>load();
 $("runPlan").onclick=runPlan;
 $("zoomIn").onclick=()=>{state.scale=Math.min(2,state.scale+.1);renderGraph(state.graph);};

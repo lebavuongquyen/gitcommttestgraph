@@ -2,6 +2,31 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.7.0] - 2026-10-06
+
+### Added
+- Pull Request Intelligence as a first-class change source.
+- PullRequestChangeSetService with deterministic merge-base, commit range and commit-level evidence.
+- Provider boundary and GitHub REST metadata adapter.
+- Pull request review/check state, mergeability and deterministic risk decision.
+- Semantic changed-symbol, removed-symbol, downstream-impact, test-gap, test-impact and execution-plan integration.
+- MCP tool `pull_request_review`.
+- HTTP endpoint `/api/pull-request-review`.
+- GUI Pull Request Intelligence cockpit.
+- CLI command `gctg pr-review <owner/repo> <number>`.
+- Unit and GUI acceptance coverage.
+- 0.7.0 roadmap and release documentation.
+
+### Changed
+- TypeScript and Node typings are consistently classified as development dependencies for reproducible installation and builds.
+- README and MCP architecture documentation now describe Pull Request Intelligence.
+
+### Quality
+- Full typecheck, build and 53-test suite pass.
+- GitHub provider metadata mapping is covered by tests.
+- GUI PR review controls are covered by acceptance assertions.
+- Release gate and diff checks are required.
+
 ## [0.6.1] - 2026-10-06
 
 ### Fixed
@@ -20,7 +45,6 @@ All notable changes to `git-commit-test-graph` are documented here.
 - Full typecheck, build and 48-test suite pass.
 - HTTP and CLI branch-review smoke tests pass.
 - Release gate is required and documented.
-
 
 ## [0.6.0] - 2026-10-06
 
@@ -79,7 +103,7 @@ All notable changes to `git-commit-test-graph` are documented here.
 
 ### Quality
 - GUI foundation is deterministic and project-agnostic.
-- The visual graph intentionally focuses on the change-impact neighborhood instead of rendering thousands of repository nodes at once.
+- The visual graph intentionally focuses on the change-impact neighborhood instead of rendering thousands of graph nodes at once.
 - No source repository is modified by the GUI.
 
 ## [0.3.8] - 2026-10-04
