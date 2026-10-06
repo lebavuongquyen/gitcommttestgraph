@@ -1,34 +1,19 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService } from "../dist/index.js";
+import { ApplicationRuntime } from "../dist/runtime/application-runtime.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
 const root = process.cwd();
 const analyzerVersion = packageJson.version;
-const configuration = (await new ConfigurationService(new JsonConfigurationStore()).resolve(root)).configuration;
 const json = value => console.log(JSON.stringify(value, null, 2));
 
 async function context() {
-  const repository = await discoverRepository(root);
-  const git = new CliGitRepository(repository.root);
-  const store = new JsonGraphStore(repository.root + "/.gctg/graph");
-  const semanticCache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
-  return { repository, git, store, semanticCache };
+  return ApplicationRuntime.create(root, { analyzerVersion });
 }
-async function indexAt(git, store, semanticCache, repository, commit) {
-  const fullIndexer = new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store, semanticCache);
-  const incremental = new IncrementalRepositoryIndexer(
-    git,
-    fullIndexer,
-    (repo, hash, version, fingerprint) => store.getSnapshot(repo, hash, version, fingerprint)
-  );
-  const release = await new IndexLock(repository + "/.gctg/index.lock").acquire();
-  try {
-    return await incremental.index({ repository, commit, configuration, analyzerVersion });
-  } finally {
-    await release();
-  }
+async function indexAt(runtime, commit) {
+  return runtime.index(commit);
 }
 
 try {
@@ -37,13 +22,13 @@ try {
     process.exit(0);
   }
   if (command === "config") {
-    json(await new ConfigurationService(new JsonConfigurationStore()).resolve(root));
+    json(await (await context()).resolveConfiguration());
     process.exit(0);
   }
   if (command === "monorepo") {
     const c = process.argv[3];
     const x = await context();
-    const indexed = await indexAt(x.git, x.store, x.semanticCache, x.repository.root, c ?? await x.git.getHead());
+    const indexed = await indexAt(x, c ?? await x.git.getHead());
     json(analyzeMonorepo(indexed.snapshot, process.argv.slice(4)));
     process.exit(0);
   }
@@ -53,7 +38,7 @@ try {
     const target = commit ?? await x.git.getHead();
     const diagnostics = new DiagnosticsService();
     const operation = diagnostics.begin("index", x.repository.root, target);
-    const indexed = await indexAt(x.git, x.store, x.semanticCache, x.repository.root, target);
+    const indexed = await indexAt(x, target);
     json(diagnostics.complete("index", operation, x.repository.root, analyzerVersion, indexed));
     process.exit(0);
   }
@@ -63,7 +48,7 @@ try {
     const format = formatIndex >= 0 ? process.argv[formatIndex + 1] : "json";
     if (!["COMMIT", "BRANCH"].includes(source) || !["json", "sarif", "summary"].includes(format)) throw new Error("Usage: gctg ci [COMMIT <commit>|BRANCH <base> [head]] [--format json|sarif|summary]");
     const x = await context();
-    const intelligence = new ChangeIntelligenceQueryService(x.repository.root, x.git, { index: hash => indexAt(x.git, x.store, x.semanticCache, x.repository.root, hash) });
+    const intelligence = new ChangeIntelligenceQueryService(x.repository.root, x.git, { index: hash => indexAt(x, hash) });
     const result = new CiAnalysisService().analyze(await intelligence.analyze({ source, ...(source === "COMMIT" && process.argv[4] ? { commit: process.argv[4] } : {}), ...(source === "BRANCH" && process.argv[4] ? { base: process.argv[4], ...(process.argv[5] ? { head: process.argv[5] } : {}) } : {}) }));
     process.stdout.write(new CiAnalysisService().serialize(result, format));
     process.exit(result.exitCode);
@@ -76,14 +61,15 @@ try {
     if (!from) throw new Error("Usage: gctg historical-intelligence <fromCommit> [toCommit] [--max-commits N]");
     if (!Number.isInteger(maxCommits) || maxCommits < 2 || maxCommits > 200) throw new Error("Usage: gctg historical-intelligence <fromCommit> [toCommit] [--max-commits 2..200]");
     const x = await context();
-    const service = new HistoricalIntelligenceService(x.git, { load: async commit => (await indexAt(x.git, x.store, x.semanticCache, x.repository.root, commit)).snapshot });
+    const service = new HistoricalIntelligenceService(x.git, { load: async commit => (await indexAt(x, commit)).snapshot });
     json(await service.analyze({ repository: x.repository.root, fromCommit: from, toCommit: to, maxCommits }));
     process.exit(0);
   }
   if (command === "ecosystem") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     json((await import("../dist/application/repository/ecosystem-service.js")).analyzeRepositoryEcosystem(result.snapshot));
     process.exit(0);
   }
@@ -98,49 +84,54 @@ try {
     process.exit(0);
   }
   if (command === "index") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     json({ commit, reused: result.reused, nodes: result.snapshot.nodes.length, edges: result.snapshot.edges.length, metadata: result.snapshot.metadata });
     process.exit(0);
   }
   if (command === "graph") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     const type = process.argv[4];
     json(type ? result.snapshot.nodes.filter(node => node.type === type) : result.snapshot);
     process.exit(0);
   }
   if (command === "diff") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const from = process.argv[3];
     const to = process.argv[4] ?? await git.getHead();
     if (!from) throw new Error("Usage: gctg diff <fromCommit> <toCommit>");
-    const a = await indexAt(git, store, semanticCache, repository.root, from);
-    const b = await indexAt(git, store, semanticCache, repository.root, to);
+    const a = await indexAt(runtime, from);
+    const b = await indexAt(runtime, to);
     json(diffSnapshots(a.snapshot, b.snapshot));
     process.exit(0);
   }
   if (command === "impact") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
     const ids = process.argv.slice(4);
     if (!ids.length) throw new Error("Usage: gctg impact <commit> <nodeId> [nodeId...]");
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     json(new ImpactQueryService(store).analyze(result.snapshot, { changedNodeIds: ids }));
     process.exit(0);
   }
   if (command === "test-gaps") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
     const packageId = process.argv.includes("--package") ? process.argv[process.argv.indexOf("--package") + 1] : undefined;
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     const currentNodeIds = new Set(result.snapshot.nodes.map(node => node.id));
     let changedNodeIds = [];
     const commitInfo = await git.getCommit(commit);
     if (commitInfo.parents?.length) {
-      const parent = await indexAt(git, store, semanticCache, repository.root, commitInfo.parents[0]);
+      const parent = await indexAt(runtime, commitInfo.parents[0]);
       const diff = diffSnapshots(parent.snapshot, result.snapshot);
       changedNodeIds = [...new Set([...diff.addedNodes, ...diff.changedNodes])].filter(id => currentNodeIds.has(id));
     }
@@ -151,10 +142,11 @@ try {
     process.exit(0);
   }
   if (command === "test-impact") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
     const packageId = process.argv.includes("--package") ? process.argv[process.argv.indexOf("--package") + 1] : undefined;
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     const commitInfo = await git.getCommit(commit);
     let changedSymbolIds = result.snapshot.nodes
       .filter(node => node.type === "Symbol")
@@ -166,7 +158,7 @@ try {
       })
       .map(node => node.id);
     if (commitInfo.parents?.length) {
-      const parent = await indexAt(git, store, semanticCache, repository.root, commitInfo.parents[0]);
+      const parent = await indexAt(runtime, commitInfo.parents[0]);
       const diff = diffSnapshots(parent.snapshot, result.snapshot);
       const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
       changedSymbolIds = result.snapshot.nodes
@@ -183,15 +175,16 @@ try {
     process.exit(0);
   }
   if (command === "pr-review") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const ownerRepo = process.argv[3];
     const number = Number(process.argv[4]);
     if (!ownerRepo || !Number.isInteger(number) || number < 1) throw new Error("Usage: gctg pr-review <owner/repo> <number>");
     const pullRequest = await new GitHubPullRequestProvider().get(ownerRepo, number);
     if (!pullRequest.base || !pullRequest.head) throw new Error("Pull request metadata does not contain base/head refs");
     const changeSet = await new PullRequestChangeSetService(git).build({ repository: repository.root, pullRequest, base: pullRequest.base, head: pullRequest.head });
-    const result = await indexAt(git, store, semanticCache, repository.root, changeSet.head);
-    const baseResult = await indexAt(git, store, semanticCache, repository.root, changeSet.mergeBase);
+    const result = await indexAt(runtime, changeSet.head);
+    const baseResult = await indexAt(runtime, changeSet.mergeBase);
     const diff = diffSnapshots(baseResult.snapshot, result.snapshot);
     const changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol" && new Set([...diff.addedNodes, ...diff.changedNodes]).has(node.id)).map(node => node.id);
     const removedSymbolIds = (await import("../dist/application/analysis/graph-diff.js")).removedSymbolIdsFromDiff(baseResult.snapshot, result.snapshot, diff);
@@ -204,13 +197,14 @@ try {
     process.exit(0);
   }
   if (command === "change-intelligence") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const source = (process.argv[3] ?? "COMMIT").toUpperCase();
     if (!["COMMIT", "BRANCH"].includes(source)) throw new Error("Usage: gctg change-intelligence [COMMIT <commit>] | [BRANCH <base> [head]]");
     const commit = process.argv[4];
     const base = process.argv[4];
     const head = process.argv[5];
-    const indexer = { index: (hash) => indexAt(git, store, semanticCache, repository.root, hash) };
+    const indexer = { index: (hash) => indexAt(runtime, hash) };
     const intelligence = new ChangeIntelligenceQueryService(repository.root, git, indexer);
     json(await intelligence.analyze({
       source,
@@ -220,13 +214,14 @@ try {
     process.exit(0);
   }
   if (command === "branch-review") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const base = process.argv[3];
     const head = process.argv[4] ?? await git.getCurrentBranch();
     if (!base) throw new Error("Usage: gctg branch-review <base> [head]");
     const changeSet = await new BranchChangeSetService(git).build({ repository: repository.root, base, head });
-    const result = await indexAt(git, store, semanticCache, repository.root, changeSet.head);
-    const baseResult = await indexAt(git, store, semanticCache, repository.root, changeSet.mergeBase);
+    const result = await indexAt(runtime, changeSet.head);
+    const baseResult = await indexAt(runtime, changeSet.mergeBase);
     const diff = diffSnapshots(baseResult.snapshot, result.snapshot);
     const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
     const changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
@@ -234,13 +229,14 @@ try {
     process.exit(0);
   }
   if (command === "workflow") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     const commitInfo = await git.getCommit(commit);
     let changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
     if (commitInfo.parents?.length) {
-      const parent = await indexAt(git, store, semanticCache, repository.root, commitInfo.parents[0]);
+      const parent = await indexAt(runtime, commitInfo.parents[0]);
       const diff = diffSnapshots(parent.snapshot, result.snapshot);
       const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
       changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
@@ -259,16 +255,17 @@ try {
     process.exit(0);
   }
   if (command === "execution-plan") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
     const formatIndex = process.argv.indexOf("--format");
     const format = formatIndex >= 0 ? process.argv[formatIndex + 1] : "json";
     if (!["json", "yaml", "md", "mermaid"].includes(format)) throw new Error("Usage: gctg execution-plan [commit] --format json|yaml|md|mermaid");
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     const commitInfo = await git.getCommit(commit);
     let changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
     if (commitInfo.parents?.length) {
-      const parent = await indexAt(git, store, semanticCache, repository.root, commitInfo.parents[0]);
+      const parent = await indexAt(runtime, commitInfo.parents[0]);
       const diff = diffSnapshots(parent.snapshot, result.snapshot);
       const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
       changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
@@ -280,13 +277,14 @@ try {
     process.exit(0);
   }
   if (command === "run-plan") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     const commitInfo = await git.getCommit(commit);
     let changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol").map(node => node.id);
     if (commitInfo.parents?.length) {
-      const parent = await indexAt(git, store, semanticCache, repository.root, commitInfo.parents[0]);
+      const parent = await indexAt(runtime, commitInfo.parents[0]);
       const diff = diffSnapshots(parent.snapshot, result.snapshot);
       const changedIds = new Set([...diff.addedNodes, ...diff.changedNodes]);
       changedSymbolIds = result.snapshot.nodes.filter(node => node.type === "Symbol" && changedIds.has(node.id)).map(node => node.id);
@@ -321,9 +319,10 @@ try {
     process.exit(0);
   }
   if (command === "tests") {
-    const { repository, git, store, semanticCache } = await context();
+    const runtime = await context();
+    const { repository, git, store, semanticCache } = runtime;
     const commit = process.argv[3] ?? await git.getHead();
-    const result = await indexAt(git, store, semanticCache, repository.root, commit);
+    const result = await indexAt(runtime, commit);
     json(result.snapshot.nodes.filter(node => ["TestProject", "TestFile", "TestCase"].includes(node.type)));
     process.exit(0);
   }
