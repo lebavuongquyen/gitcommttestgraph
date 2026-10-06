@@ -3,6 +3,14 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### R10 - GUI State and Workflow Hardening - 2026-10-06
+
+- Added a typed GUI state boundary covering load, stale/error and execution lifecycle states.
+- Added deterministic state-transition contract tests and browser-safe state delivery.
+- Updated the browser controller to consume explicit GUI state transitions for loading, selection and execution.
+- Corrected known mojibake presentation strings in the GUI controller.
+- Preserved the existing capability catalog, view-model and HTTP contracts.
+
 ### R09 - GUI Capability Routing Single Source of Truth - 2026-10-06
 
 - Made the typed GUI capability catalog the single source of truth for browser capability routing.
