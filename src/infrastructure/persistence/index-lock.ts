@@ -1,4 +1,5 @@
-import { mkdir, open, readFile, rm } from "node:fs/promises";
+import { mkdir, open, readFile, rename, rm } from "node:fs/promises";
+import { randomUUID } from "node:crypto";
 import { dirname } from "node:path";
 
 export interface IndexLockOptions {
@@ -19,36 +20,57 @@ export class IndexLock {
 
     while (true) {
       try {
+        const ownerId = randomUUID();
         const handle = await open(this.path, "wx");
-        await handle.writeFile(JSON.stringify({ pid: process.pid, createdAt: new Date().toISOString() }), "utf8");
-        await handle.close();
+        try {
+          await handle.writeFile(JSON.stringify({ ownerId, pid: process.pid, createdAt: new Date().toISOString() }), "utf8");
+        } finally {
+          await handle.close();
+        }
         let released = false;
         return async () => {
           if (released) return;
           released = true;
-          await rm(this.path, { force: true });
+          await this.release(ownerId);
         };
       } catch (error) {
         if (!isAlreadyExists(error)) throw error;
-        if (await this.isStale(staleAfterMs)) {
-          await rm(this.path, { force: true });
-          continue;
-        }
+        if (await this.takeOverIfStale(staleAfterMs)) continue;
         if (Date.now() >= deadline) throw new Error("Timed out waiting for index lock: " + this.path);
         await delay(retryDelayMs);
       }
     }
   }
 
-  private async isStale(staleAfterMs: number): Promise<boolean> {
+  private async takeOverIfStale(staleAfterMs: number): Promise<boolean> {
     try {
       const raw = await readFile(this.path, "utf8");
       const value = JSON.parse(raw) as { createdAt?: unknown };
       const createdAt = typeof value.createdAt === "string" ? Date.parse(value.createdAt) : NaN;
-      return !Number.isFinite(createdAt) || Date.now() - createdAt > staleAfterMs;
-    } catch {
+      if (Number.isFinite(createdAt) && Date.now() - createdAt <= staleAfterMs) return false;
+      const stalePath = this.path + ".stale-" + randomUUID();
+      try {
+        await rename(this.path, stalePath);
+      } catch (error) {
+        if (isAlreadyExists(error)) return false;
+        const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+        if (code === "ENOENT") return false;
+        throw error;
+      }
+      await rm(stalePath, { force: true });
       return true;
+    } catch {
+      return false;
     }
+  }
+
+  private async release(ownerId: string): Promise<void> {
+    try {
+      const raw = await readFile(this.path, "utf8");
+      const value = JSON.parse(raw) as { ownerId?: unknown };
+      if (value.ownerId !== ownerId) return;
+      await rm(this.path, { force: true });
+    } catch {}
   }
 }
 

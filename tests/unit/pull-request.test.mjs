@@ -111,6 +111,46 @@ test("GitHub provider rejects invalid repository identifiers", async () => {
   await assert.rejects(() => new GitHubPullRequestProvider("token").get("acme/app/unsafe", 7), /Invalid GitHub pull request identifier/);
 });
 
+test("GitHub provider accepts an exact pagination safety boundary", async () => {
+  const original = globalThis.fetch;
+  let reviewPages = 0;
+  globalThis.fetch = async url => {
+    const value = String(url);
+    if (value.includes("/pulls/7") && !value.includes("/reviews")) {
+      return { ok: true, json: async () => ({ number: 7, title: "Boundary", base: { ref: "main", sha: "base" }, head: { ref: "feature", sha: "head", repo: { full_name: "acme/app" } } }) };
+    }
+    if (value.includes("/reviews?")) {
+      reviewPages += 1;
+      if (reviewPages <= 100) return { ok: true, json: async () => Array.from({ length: 100 }, () => ({ user: { login: "reviewer" }, state: "COMMENTED", commit_id: "head" })) };
+      return { ok: true, json: async () => [] };
+    }
+    if (value.includes("/check-runs?")) return { ok: true, json: async () => ({ check_runs: [] }) };
+    throw new Error("Unexpected GitHub request: " + value);
+  };
+  try {
+    const result = await new GitHubPullRequestProvider("token").get("acme/app", 7);
+    assert.equal(result.reviewers.length, 1);
+    assert.equal(reviewPages, 101);
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
+test("GitHub provider normalizes network failures to Git operation errors", async () => {
+  const original = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("network down");
+  };
+  try {
+    await assert.rejects(
+      () => new GitHubPullRequestProvider("token").get("acme/app", 7),
+      error => error?.code === "GIT_OPERATION_FAILED" && /network error/.test(error.message)
+    );
+  } finally {
+    globalThis.fetch = original;
+  }
+});
+
 test("pull request review resolves downstream consumers of removed symbols from the base graph", () => {
   const changeSet = {
     repository: "fixture", source: "PULL_REQUEST", base: "base", head: "head", mergeBase: "base",

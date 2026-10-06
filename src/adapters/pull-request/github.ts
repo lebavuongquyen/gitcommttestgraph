@@ -1,4 +1,5 @@
 import type { PullRequestProvider, PullRequestContext } from "../../application/ports/pull-request.js";
+import { GitOperationError } from "../../domain/errors.js";
 import type { PullRequestCheck, PullRequestReviewEvidence, PullRequestReviewState } from "../../domain/pull-request/model.js";
 
 export class GitHubPullRequestProvider implements PullRequestProvider {
@@ -18,21 +19,30 @@ export class GitHubPullRequestProvider implements PullRequestProvider {
     if (this.token) headers.authorization = "Bearer " + this.token;
 
     const getJson = async (path: string) => {
-      const response = await fetch(this.apiBase + path, { headers });
-      if (!response.ok) throw new Error("GitHub pull request lookup failed: " + response.status + " " + response.statusText);
-      return response.json() as Promise<any>;
+      let response: Response;
+      try {
+        response = await fetch(this.apiBase + path, { headers });
+      } catch (error) {
+        throw new GitOperationError("GitHub pull request lookup failed: network error", error);
+      }
+      if (!response.ok) throw new GitOperationError("GitHub pull request lookup failed: " + response.status + " " + response.statusText);
+      try {
+        return await response.json() as any;
+      } catch (error) {
+        throw new GitOperationError("GitHub pull request lookup failed: invalid JSON response", error);
+      }
     };
 
     const getAll = async (path: string): Promise<any[]> => {
       const result: any[] = [];
-      for (let page = 1; page <= 100; page += 1) {
+      for (let page = 1; page <= 101; page += 1) {
         const items = await getJson(path + (path.includes("?") ? "&" : "?") + "per_page=100&page=" + page);
-        if (!Array.isArray(items)) break;
+        if (!Array.isArray(items)) throw new GitOperationError("GitHub pagination returned a non-array response");
         result.push(...items);
-        if (items.length < 100) break;
+        if (result.length > 10000) throw new GitOperationError("GitHub pagination exceeded safety limit");
+        if (items.length < 100) return result;
       }
-      if (result.length >= 10000) throw new Error("GitHub pagination exceeded safety limit");
-      return result;
+      throw new GitOperationError("GitHub pagination exceeded safety limit");
     };
 
     const data = await getJson("/repos/" + ownerRepo + "/pulls/" + number);
@@ -68,10 +78,14 @@ export class GitHubPullRequestProvider implements PullRequestProvider {
     const reviewCommitId = approvedAtHead?.commitId ?? reviewEvidence.find(review => review.state === "APPROVED")?.commitId;
 
     const checkRuns: any[] = [];
-    for (let page = 1; page <= 100; page += 1) {
+    for (let page = 1; page <= 101; page += 1) {
       const pageData = await getJson("/repos/" + ownerRepo + "/commits/" + String(data.head?.sha ?? "") + "/check-runs?per_page=100&page=" + page);
-      const pageRuns = Array.isArray(pageData?.check_runs) ? pageData.check_runs : [];
+      if (!pageData || typeof pageData !== "object" || !Array.isArray(pageData.check_runs)) {
+        throw new GitOperationError("GitHub check-runs pagination returned an invalid response");
+      }
+      const pageRuns = pageData.check_runs;
       checkRuns.push(...pageRuns);
+      if (checkRuns.length > 10000) throw new GitOperationError("GitHub check-runs pagination exceeded safety limit");
       if (pageRuns.length < 100) break;
     }
     const checks: PullRequestCheck[] = checkRuns.map((item: any) => ({

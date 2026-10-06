@@ -120,6 +120,11 @@ try {
     console.log("PASS performance gate");
   }
 
+  if (compareVersion(parsedVersion, parseVersion("0.8.3")) >= 0) {
+    run(npmCommand, ["run", "reliability:gate"], cleanRepo);
+    console.log("PASS reliability gate");
+  }
+
   const packOutput = runCapture(npmCommand, ["pack", "--dry-run", "--json"], cleanRepo);
   const pack = JSON.parse(packOutput)[0];
   assert(pack && Array.isArray(pack.files), "package dry-run produced file manifest");

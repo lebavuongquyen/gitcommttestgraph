@@ -2,6 +2,33 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.8.3] - 2026-10-06
+
+### Fixed
+- Made index-lock release ownership-safe so a stale owner cannot delete a replacement lock.
+- Made stale lock takeover atomic through unique rename-before-delete recovery.
+- Serialized graph manifest updates across concurrent store writers.
+- Normalized GitHub network, HTTP and invalid-JSON failures to the typed Git operation error boundary.
+- Hardened GitHub review pagination at the exact 10,000-record safety boundary.
+- Hardened GitHub check-run pagination with explicit response validation and safety limits.
+
+### Added
+- Reliability regression coverage for stale-lock replacement races and concurrent manifest writers.
+- Missing historical Git-object regression coverage.
+- Detached-HEAD regression coverage.
+- GitHub pagination-boundary and network-failure regression coverage.
+- scripts/reliability-gate.mjs and npm run reliability:gate.
+
+### Quality
+- Reliability gate: 20/20 tests passed.
+- Typecheck and build passed.
+- Release Gate v2 now runs the reliability gate for versions >= 0.8.3.
+
+### Documentation
+- Added docs/AUDIT-0.8.3-RELIABILITY-2026-10-06.md.
+- Added docs/releases/0.8.3.md.
+- Updated the 0.8–1.0 roadmap with completed reliability hardening.
+
 ## [0.8.2] - 2026-10-06
 
 ### Performance

@@ -21,6 +21,14 @@ test("graph store writes atomically and rejects malformed snapshots", async () =
   try {
     await store.saveSnapshot(snapshot);
     assert.deepEqual(await store.getSnapshot("repo", "abc", "test", "fp"), snapshot);
+
+    const storeA = new JsonGraphStore(root);
+    const storeB = new JsonGraphStore(root);
+    const snapshotB = { ...snapshot, commit: "def", nodes: [{ id: "m", type: "Repository", attributes: {} }] };
+    await Promise.all([storeA.saveSnapshot(snapshot), storeB.saveSnapshot(snapshotB)]);
+    const concurrent = await new JsonGraphStore(root).query({ nodeType: "Repository" });
+    assert.deepEqual(concurrent.nodes.map(node => node.id).sort(), ["m", "n"]);
+
     const listed = await store.query({ nodeType: "Repository" });
     assert.deepEqual(listed.nodes.map(node => node.id), ["n"]);
     const path = join(root, Buffer.from("repo").toString("base64url"), "test", "fp", "bad.json");
@@ -48,6 +56,13 @@ test("index lock serializes concurrent writers and recovers stale locks", async 
     await writeFile(lockPath, JSON.stringify({ pid: 1, createdAt: new Date(Date.now() - 60_000).toISOString() }));
     const staleRelease = await new IndexLock(lockPath, { staleAfterMs: 10, timeoutMs: 200 }).acquire();
     await staleRelease();
+
+    const ownerRelease = await new IndexLock(lockPath, { staleAfterMs: 10, timeoutMs: 200 }).acquire();
+    await writeFile(lockPath, JSON.stringify({ ownerId: "stale-owner", pid: 1, createdAt: new Date(Date.now() - 60_000).toISOString() }));
+    const recoveredRelease = await new IndexLock(lockPath, { staleAfterMs: 10, timeoutMs: 200 }).acquire();
+    await ownerRelease();
+    assert.ok(await import("node:fs/promises").then(fs => fs.access(lockPath).then(() => true).catch(() => false)));
+    await recoveredRelease();
   } finally {
     const { rm } = await import("node:fs/promises");
     await rm(root, { recursive: true, force: true });

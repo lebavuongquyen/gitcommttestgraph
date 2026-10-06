@@ -76,6 +76,40 @@ test("batch historical file reads preserve content and paths", async () => {
   }
 });
 
+test("missing historical objects fail explicitly", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-"));
+  try {
+    await exec("git", ["init"], { cwd: root });
+    await exec("git", ["config", "user.email", "test@example.com"], { cwd: root });
+    await exec("git", ["config", "user.name", "GCTG Test"], { cwd: root });
+    await writeFile(join(root, "sample.ts"), "export const value = 1;\n");
+    await exec("git", ["add", "."], { cwd: root });
+    await exec("git", ["commit", "-m", "one"], { cwd: root });
+    const git = new CliGitRepository(root);
+    await assert.rejects(() => git.readFileAtCommit("HEAD", "missing.ts"), error => error?.code === "GIT_OPERATION_FAILED");
+    await assert.rejects(() => git.ensureCommit("deadbeef"), error => error?.code === "INVALID_COMMIT");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test("detached HEAD reports no current branch without inventing one", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-"));
+  try {
+    await exec("git", ["init", "-b", "main"], { cwd: root });
+    await exec("git", ["config", "user.email", "test@example.com"], { cwd: root });
+    await exec("git", ["config", "user.name", "GCTG Test"], { cwd: root });
+    await writeFile(join(root, "sample.ts"), "export const value = 1;\n");
+    await exec("git", ["add", "."], { cwd: root });
+    await exec("git", ["commit", "-m", "one"], { cwd: root });
+    const commit = (await exec("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
+    await exec("git", ["switch", "--detach", commit], { cwd: root });
+    assert.equal(await new CliGitRepository(root).getCurrentBranch(), "");
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("historical file content is read from the selected commit", async () => {
   const root = await mkdtemp(join(tmpdir(), "gctg-"));
   try {

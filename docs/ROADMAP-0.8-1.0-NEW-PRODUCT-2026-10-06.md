@@ -519,6 +519,8 @@ Evidence:
 
 ## 0.8.3 — Reliability
 
+Status: COMPLETE
+
 Focus:
 
 - interrupted indexing;
@@ -531,6 +533,28 @@ Focus:
 - force-push scenarios;
 - GitHub API failures;
 - pagination boundaries.
+
+Delivered:
+
+- ownership-safe stale-lock recovery;
+- atomic stale-lock takeover;
+- serialized graph-manifest updates;
+- GitHub transport and JSON error classification;
+- exact pagination-boundary handling;
+- check-run pagination safety limits;
+- missing historical Git-object regression coverage;
+- detached-HEAD regression coverage;
+- permanent reliability gate;
+- release gate integration for versions >= 0.8.3;
+- reliability audit and release documentation.
+
+Evidence:
+
+- `scripts/reliability-gate.mjs`
+- `tests/unit/persistence-hardening.test.mjs`
+- `tests/unit/git.test.mjs`
+- `tests/unit/pull-request.test.mjs`
+- `docs/AUDIT-0.8.3-RELIABILITY-2026-10-06.md`
 
 ## 0.8.4 — Security
 

@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import type { GraphNode, GraphSnapshot } from "../../domain/graph/model.js";
 import type { GraphQueryRequest, GraphQueryResult, GraphStore } from "../../application/ports/graph-store.js";
 import { IndexCorruptError } from "../../domain/errors.js";
+import { IndexLock } from "./index-lock.js";
 
 interface SnapshotManifestEntry {
   readonly repository: string;
@@ -13,9 +14,12 @@ interface SnapshotManifestEntry {
 }
 
 export class JsonGraphStore implements GraphStore {
-  private manifestPromise?: Promise<SnapshotManifestEntry[]>;
+  private manifestPromise: Promise<SnapshotManifestEntry[]> | undefined;
+  private readonly manifestLock: IndexLock;
 
-  constructor(private readonly directory: string) {}
+  constructor(private readonly directory: string) {
+    this.manifestLock = new IndexLock(join(directory, "manifest.lock"));
+  }
 
   async saveSnapshot(snapshot: GraphSnapshot): Promise<void> {
     validateSnapshot(snapshot);
@@ -24,10 +28,16 @@ export class JsonGraphStore implements GraphStore {
     const temp = path + "." + process.pid + "." + Date.now() + ".tmp";
     await writeFile(temp, JSON.stringify(snapshot), "utf8");
     await rename(temp, path);
-    const entries = await this.readManifest();
-    const filtered = entries.filter(entry => entry.path !== path);
-    filtered.push({ repository: snapshot.repository, commit: snapshot.commit, analyzerVersion: snapshot.analyzerVersion, configurationFingerprint: snapshot.configurationFingerprint, path });
-    await this.writeManifest(filtered.sort((a, b) => a.path.localeCompare(b.path)));
+    const release = await this.manifestLock.acquire();
+    try {
+      this.manifestPromise = undefined;
+      const entries = await this.readManifest();
+      const filtered = entries.filter(entry => entry.path !== path);
+      filtered.push({ repository: snapshot.repository, commit: snapshot.commit, analyzerVersion: snapshot.analyzerVersion, configurationFingerprint: snapshot.configurationFingerprint, path });
+      await this.writeManifest(filtered.sort((a, b) => a.path.localeCompare(b.path)));
+    } finally {
+      await release();
+    }
   }
 
   async getSnapshot(repository: string, commit: string, analyzerVersion: string, configurationFingerprint: string): Promise<GraphSnapshot | null> {
