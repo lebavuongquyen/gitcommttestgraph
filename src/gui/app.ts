@@ -90,7 +90,7 @@ function renderCommits(items){
 async function loadCommit(commit){
   $("status").textContent="Indexing "+commit.slice(0,8)+"…";
   try{
-  const [overview,graph,tests,plan,feedback,intelligence]=await Promise.all([
+  const [overview,graph,tests,testGaps,plan,feedback,intelligence]=await Promise.all([
     api("/api/overview?commit="+encodeURIComponent(commit)),
     api("/api/graph-view?commit="+encodeURIComponent(commit)),
     api("/api/test-impact?commit="+encodeURIComponent(commit)),
