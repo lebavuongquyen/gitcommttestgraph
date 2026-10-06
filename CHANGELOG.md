@@ -2,6 +2,22 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.9.5] - 2026-10-06
+
+### Observability
+- Added structured OperationDiagnostics.
+- Added operation IDs, duration, cache/incremental state, graph counts and uncertainty counts.
+- Added secret-safe parser/resolver and indexing metadata.
+- Added GUI diagnostics card.
+- Added CLI gctg diagnostics.
+- Added HTTP /api/diagnostics.
+- Added MCP diagnostics.
+- Added public diagnostics contract.
+
+### Quality
+- Added 6 dedicated 0.9.5 diagnostics tests.
+
+
 ## [0.9.4] - 2026-10-06
 
 ### CI Integration

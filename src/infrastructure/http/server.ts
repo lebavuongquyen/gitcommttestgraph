@@ -5,7 +5,7 @@ import {
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
@@ -152,6 +152,14 @@ export async function startServer(root: string, port: number): Promise<void> {
         const commit = url.searchParams.get("commit") ?? await git.getHead();
         const indexed = await indexAt(commit);
         send(response, 200, analyzeMonorepo(indexed.snapshot));
+        return;
+      }
+      if (url.pathname === "/api/diagnostics") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const diagnostics = new DiagnosticsService();
+        const operation = diagnostics.begin("index", repository.root, commit);
+        const indexed = await indexAt(commit);
+        send(response, 200, diagnostics.complete("index", operation, repository.root, analyzerVersion, indexed));
         return;
       }
       if (url.pathname === "/api/ci") {

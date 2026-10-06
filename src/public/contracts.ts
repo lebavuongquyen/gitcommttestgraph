@@ -64,6 +64,7 @@ export const testImpactSchema = z.object({
   impacts: z.array(z.unknown())
 }).passthrough();
 export const executionPlanSchema = z.object({ schemaVersion: z.literal(1), workflow: z.string(), repository: z.string(), commit: z.string(), steps: z.array(z.unknown()) }).passthrough();
+export const diagnosticsSchema = z.object({ schemaVersion: z.literal(1), operationId: z.string(), operation: z.string(), repository: z.string(), commit: z.string(), analyzerVersion: z.string(), durationMs: z.number().nonnegative(), cache: z.object({ hit: z.boolean(), incremental: z.boolean() }), graph: z.object({ nodes: z.number().int().nonnegative(), edges: z.number().int().nonnegative() }), parser: z.string(), resolver: z.string(), uncertaintyCount: z.number().int().nonnegative(), metadata: z.record(z.string(), z.unknown()), deterministic: z.literal(true) }).passthrough();
 export const ciAnalysisSchema = z.object({ schemaVersion: z.literal(1), repository: z.string(), commit: z.string(), status: z.enum(["PASS", "FAIL", "UNKNOWN"]), exitCode: z.union([z.literal(0), z.literal(1), z.literal(2)]), risk: z.enum(["LOW", "MEDIUM", "HIGH", "UNKNOWN"]), reasons: z.array(z.string()), uncertainty: z.array(z.object({ code: z.string(), message: z.string() })), changedPathCount: z.number(), changedSymbolCount: z.number(), impactedTestCases: z.number(), deterministic: z.literal(true) }).passthrough();
 export const historicalIntelligenceSchema = z.object({
   schemaVersion: z.literal(1), repository: z.string(), fromCommit: z.string(), toCommit: z.string(),
@@ -83,6 +84,7 @@ export const publicContractRegistry = Object.freeze({
   executionPlan: executionPlanSchema,
   historicalIntelligence: historicalIntelligenceSchema,
   ciAnalysis: ciAnalysisSchema,
+  diagnostics: diagnosticsSchema,
   evidence: evidenceSchemaPublic,
   error: publicErrorSchema
 });

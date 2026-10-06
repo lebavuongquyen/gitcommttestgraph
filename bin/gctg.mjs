@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
@@ -45,6 +45,16 @@ try {
     const x = await context();
     const indexed = await indexAt(x.git, x.store, x.semanticCache, x.repository.root, c ?? await x.git.getHead());
     json(analyzeMonorepo(indexed.snapshot, process.argv.slice(4)));
+    process.exit(0);
+  }
+  if (command === "diagnostics") {
+    const commit = process.argv[3];
+    const x = await context();
+    const target = commit ?? await x.git.getHead();
+    const diagnostics = new DiagnosticsService();
+    const operation = diagnostics.begin("index", x.repository.root, target);
+    const indexed = await indexAt(x.git, x.store, x.semanticCache, x.repository.root, target);
+    json(diagnostics.complete("index", operation, x.repository.root, analyzerVersion, indexed));
     process.exit(0);
   }
   if (command === "ci") {

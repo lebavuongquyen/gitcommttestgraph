@@ -7,7 +7,7 @@ import {
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
@@ -127,6 +127,19 @@ export function createGctgMcpServer(root: string) {
     const ctx = await context(root);
     const indexed = await indexAt(ctx, commit ?? await ctx.git.getHead());
     return result(analyzeMonorepo(indexed.snapshot, changedNodeIds ?? []));
+  });
+
+  server.registerTool("diagnostics", {
+    title: "Structured Diagnostics",
+    description: "Return structured, secret-safe diagnostics for a repository index operation.",
+    inputSchema: { commit: z.string().optional() }
+  }, async ({ commit }) => {
+    const ctx = await context(root);
+    const target = commit ?? await ctx.git.getHead();
+    const diagnostics = new DiagnosticsService();
+    const operation = diagnostics.begin("index", ctx.repository.root, target);
+    const indexed = await indexAt(ctx, target);
+    return result(diagnostics.complete("index", operation, ctx.repository.root, serverVersion, indexed));
   });
 
   server.registerTool("ci_analysis", {
