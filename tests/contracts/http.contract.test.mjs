@@ -18,6 +18,16 @@ test("HTTP public contract: status endpoint returns JSON", async () => {
   });
 });
 
+test("HTTP public contract: configuration returns resolved settings", async () => {
+  await withHttpServer(root, 37876, async base => {
+    const response = await fetch(base + "/api/config");
+    assert.equal(response.status, 200);
+    const value = await response.json();
+    assert.equal(value.configuration.schemaVersion, 1);
+    assert.ok(Array.isArray(value.sources));
+  });
+});
+
 test("HTTP public contract: missing node id is a client error", async () => {
   await withHttpServer(root, 37872, async base => {
     const response = await fetch(base + "/api/node");

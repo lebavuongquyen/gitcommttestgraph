@@ -44,7 +44,7 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 <div class="legend">Changed · Impact · Test</div><svg id="graph" viewBox="0 0 1000 700" role="img" aria-label="Code and test impact graph"></svg>
 </section>
 <section class="inspector"><div class="panel">
-<h3>Inspector</h3><div id="intelligence" class="empty">Loading change intelligence…</div><div id="inspector" class="empty">Select a node.</div>
+<h3>Configuration</h3><div id="configuration" class="card"><div class="small">Loading configuration…</div></div><div class="section"><div class="section-head"><h3>Inspector</h3></div><div id="intelligence" class="empty">Loading change intelligence…</div><div id="inspector" class="empty">Select a node.</div>
 <div class="section"><div class="section-head"><h3>Branch review</h3></div><div id="branchReview" class="empty">Select a base/head branch and review.</div></div>
 <div class="section"><div class="section-head"><h3>Pull request intelligence</h3></div><div id="prReview" class="empty">Enter owner/repo and PR number to review a GitHub pull request.</div></div>
 <div class="section"><div class="section-head"><h3>Test impact</h3></div><div id="tests" class="empty">Select a commit to inspect impacted tests.</div></div>
@@ -52,15 +52,25 @@ pre{white-space:pre-wrap;overflow:auto;font-size:11px;line-height:1.45;color:#b9
 </div></section>
 </main>
 <script>
-const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,intelligence:null,running:false,branches:[],review:null,prReview:null};
+const state={commit:"",graph:null,scale:1,selected:null,plan:null,feedback:null,intelligence:null,running:false,branches:[],review:null,prReview:null,configuration:null};
 const $=id=>document.getElementById(id);
 async function api(path,options){const r=await fetch(path,options);if(!r.ok)throw new Error(await r.text());return r.json();}
 function esc(v){return String(v??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));}
 function commandText(command){return command?.executable?command.executable+" "+(command.args||[]).join(" "):"No command";}
 async function load(){
   const status=await api("/api/status"); $("status").textContent=status.root+" · "+status.head.slice(0,8);
-  const [commits,branches]=await Promise.all([api("/api/commits?limit=30"),api("/api/branches")]); renderCommits(commits); renderBranches(branches);
+  const [commits,branches,configuration]=await Promise.all([api("/api/commits?limit=30"),api("/api/branches"),api("/api/config")]); renderCommits(commits); renderBranches(branches); state.configuration=configuration; renderConfiguration(configuration);
   const selected=state.commit||status.head; state.commit=selected; $("commit").value=selected; await loadCommit(selected);
+}
+function renderConfiguration(data){
+  const config=data?.configuration;
+  if(!config){$("configuration").innerHTML='<div class="empty">No configuration.</div>';return;}
+  $("configuration").innerHTML='<div class="metric"><span>Source</span><b>'+esc((data.sources||[]).at(-1)?.kind||"DEFAULT")+'</b></div><div class="metric"><span>Deleted branch grace</span><b>'+config.historyRetention.deletedBranchGracePeriodDays+' days</b></div><div class="metric"><span>Max workers</span><b>'+config.performance.maxWorkers+'</b></div><div class="metric"><span>Cleanup</span><b>'+esc(config.cleanup.mode)+(config.cleanup.autoApply?" · auto":" · preview")+'</b></div><details><summary>Edit JSON</summary><textarea id="configurationJson" style="width:100%;height:220px;margin-top:8px;font-family:ui-monospace,monospace"></textarea><button id="saveConfiguration" class="primary" style="margin-top:8px">Save configuration</button></details>';
+  $("configurationJson").value=JSON.stringify(config,null,2);
+  $("saveConfiguration").onclick=saveConfiguration;
+}
+async function saveConfiguration(){
+  try{const value=JSON.parse($("configurationJson").value);const result=await api("/api/config",{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify(value)});state.configuration={configuration:result.configuration,sources:[{kind:result.source,location:result.location}]};renderConfiguration(state.configuration);$("status").textContent="Configuration saved";}catch(e){$("status").textContent=e.message;alert(e.message);}
 }
 function renderBranches(data){
   state.branches=data.branches||[];

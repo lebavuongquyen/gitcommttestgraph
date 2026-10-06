@@ -7,14 +7,13 @@ import {
   buildExecutionPlan, serializeExecutionPlan, IndexLock, runProcess, ExecutionPlanRunner,
   buildWorkflowExecutionFeedback, JsonTestResultStore, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, AgentTaskService,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore
 } from "../index.js";
 import type { AgentTaskPolicy } from "../domain/agent/model.js";
 import type { NodeType } from "../domain/graph/model.js";
 import { GCTG_VERSION } from "../version.js";
 
 const serverVersion = GCTG_VERSION;
-const configuration = {};
 const agentTasks = new AgentTaskService();
 
 async function context(root: string) {
@@ -22,7 +21,8 @@ async function context(root: string) {
   const git = new CliGitRepository(repository.root);
   const store = new JsonGraphStore(repository.root + "/.gctg/graph");
   const cache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
-  return { repository, git, store, cache };
+  const configuration = (await new ConfigurationService(new JsonConfigurationStore()).resolve(repository.root)).configuration;
+  return { repository, git, store, cache, configuration };
 }
 
 async function indexAt(ctx: Awaited<ReturnType<typeof context>>, commit: string) {
@@ -30,7 +30,7 @@ async function indexAt(ctx: Awaited<ReturnType<typeof context>>, commit: string)
   const incremental = new IncrementalRepositoryIndexer(ctx.git, full, (repo, hash, version, fingerprint) => ctx.store.getSnapshot(repo, hash, version, fingerprint));
   const release = await new IndexLock(ctx.repository.root + "/.gctg/index.lock").acquire();
   try {
-    return await incremental.index({ repository: ctx.repository.root, commit, configuration, analyzerVersion: serverVersion });
+    return await incremental.index({ repository: ctx.repository.root, commit, configuration: ctx.configuration, analyzerVersion: serverVersion });
   } finally {
     await release();
   }
@@ -76,6 +76,23 @@ export function createGctgMcpServer(root: string) {
     name: "git-commit-test-graph",
     version: serverVersion,
     description: "Graph-first Git, code, test-impact and execution intelligence for software-engineering agents."
+  });
+
+  server.registerTool("configuration", {
+    title: "Configuration",
+    description: "Read or update the repository GCTG configuration. Updates are validated and persisted as .gctg/config.json.",
+    inputSchema: {
+      operation: z.enum(["get", "update"]).default("get"),
+      configuration: z.unknown().optional()
+    }
+  }, async ({ operation, configuration }) => {
+    const ctx = await context(root);
+    const service = new ConfigurationService(new JsonConfigurationStore());
+    if (operation === "update") {
+      if (configuration === undefined) throw new Error("configuration is required for update.");
+      return result(await service.update(ctx.repository.root, configuration));
+    }
+    return result(await service.resolve(ctx.repository.root));
   });
 
   server.registerTool("change_intelligence", {

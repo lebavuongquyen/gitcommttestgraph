@@ -5,16 +5,16 @@ import {
   TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService
+  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
 
-const configuration = {};
 const analyzerVersion = GCTG_VERSION;
 
 export async function startServer(root: string, port: number): Promise<void> {
   const repository = await discoverRepository(root);
+  let configuration = (await new ConfigurationService(new JsonConfigurationStore()).resolve(repository.root)).configuration;
   const git = new CliGitRepository(repository.root);
   const store = new JsonGraphStore(repository.root + "/.gctg/graph");
   const cache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
@@ -95,9 +95,16 @@ export async function startServer(root: string, port: number): Promise<void> {
     return new PullRequestReviewService().analyze({ changeSet, pullRequest, current: indexed.snapshot, base: baseIndexed.snapshot, changedSymbolIds, removedSymbolIds });
   };
 
+  const configurationService = new ConfigurationService(new JsonConfigurationStore());
   const send = (response: import("node:http").ServerResponse, status: number, value: unknown) => {
     response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     response.end(JSON.stringify(value));
+  };
+  const readJsonBody = async (request: import("node:http").IncomingMessage): Promise<unknown> => {
+    const chunks: Buffer[] = [];
+    for await (const chunk of request) chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    if (!chunks.length) throw new Error("Request body is required.");
+    return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
   };
 
   const server = createServer(async (request, response) => {
@@ -106,6 +113,16 @@ export async function startServer(root: string, port: number): Promise<void> {
       if (url.pathname === "/") {
         response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
         response.end(renderGui());
+        return;
+      }
+      if (url.pathname === "/api/config" && request.method === "GET") {
+        send(response, 200, await configurationService.resolve(repository.root));
+        return;
+      }
+      if (url.pathname === "/api/config" && request.method === "POST") {
+        const update = await configurationService.update(repository.root, await readJsonBody(request));
+        configuration = update.configuration;
+        send(response, 200, update);
         return;
       }
       if (url.pathname === "/api/status") {

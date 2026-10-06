@@ -31,3 +31,15 @@ test("MCP public contract: repository_status is callable", async () => {
   assert.equal(typeof payload.root, "string");
   assert.equal(typeof payload.head, "string");
 });
+
+test("MCP public contract: configuration is callable", async () => {
+  const { responses } = await mcpRequest(root, [
+    { method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "gctg-contract-test", version: "1.0.0" } } },
+    { method: "notifications/initialized", params: {} },
+    { method: "tools/call", params: { name: "configuration", arguments: { operation: "get" } } }
+  ]);
+  assert.equal(responses[2].error, undefined);
+  const payload = JSON.parse(responses[2].result.content[0].text);
+  assert.equal(payload.configuration.schemaVersion, 1);
+  assert.ok(Array.isArray(payload.sources));
+});

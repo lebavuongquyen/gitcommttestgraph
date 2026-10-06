@@ -15,6 +15,8 @@ test("GUI HTTP smoke: browser entry and API are reachable through the real serve
     assert.match(html, /Git Commit Test Graph/);
     assert.match(html, /Recent commits/);
     assert.ok(html.includes("/api/graph-view"));
+    assert.ok(html.includes("/api/config"));
+    assert.ok(html.includes("Configuration"));
     const api = await fetch(base + "/api/status");
     assert.equal(api.status, 200);
     assert.match(api.headers.get("content-type") ?? "", /application\/json/);

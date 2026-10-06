@@ -1,12 +1,12 @@
 #!/usr/bin/env node
 import { readFile } from "node:fs/promises";
-import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService } from "../dist/index.js";
+import { discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache, JsonTestResultStore, RepositoryIndexer, IncrementalRepositoryIndexer, GraphQueryService, ImpactQueryService, TestGapAnalyzer, TestImpactAnalyzer, ImpactEngine, buildWorkflowGraph, buildExecutionPlan, serializeExecutionPlan, ExecutionPlanRunner, buildWorkflowExecutionFeedback, diffSnapshots, configurationFingerprint, runProcess, IndexLock, BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider, ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore } from "../dist/index.js";
 
 const packageJson = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const command = process.argv[2] ?? "help";
 const root = process.cwd();
 const analyzerVersion = packageJson.version;
-const configuration = {};
+const configuration = (await new ConfigurationService(new JsonConfigurationStore()).resolve(root)).configuration;
 const json = value => console.log(JSON.stringify(value, null, 2));
 
 async function context() {
@@ -34,6 +34,10 @@ async function indexAt(git, store, semanticCache, repository, commit) {
 try {
   if (command === "--version" || command === "-v") {
     console.log(packageJson.version);
+    process.exit(0);
+  }
+  if (command === "config") {
+    json(await new ConfigurationService(new JsonConfigurationStore()).resolve(root));
     process.exit(0);
   }
   if (command === "status") {
