@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
-import { capabilityRegistry, validateCapabilityConformance } from "../../src/application/capabilities/capability-registry.ts";
+import { capabilityRegistry, validateCapabilityConformance } from "../../dist/application/capabilities/capability-registry.js";
 
 const paths = {
   GUI: "../../src/gui/app.ts",
