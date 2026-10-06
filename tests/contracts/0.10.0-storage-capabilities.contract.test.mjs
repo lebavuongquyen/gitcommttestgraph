@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { JsonGraphStore } from "../../dist/infrastructure/persistence/json-graph-store.js";
 import { JsonSemanticCache } from "../../dist/infrastructure/persistence/json-semantic-cache.js";
-import { GraphStorage } from "../../dist/application/ports/graph-store-capabilities.js";
 
 test("0.10 JSON graph store implements capability-based storage", () => {
   const store = new JsonGraphStore(".gctg-test");
@@ -12,7 +11,6 @@ test("0.10 JSON graph store implements capability-based storage", () => {
   assert.equal(typeof store.query, "function");
   assert.equal(store.snapshots, store);
   assert.equal(store.nodes, store);
-  void GraphStorage;
 });
 
 test("0.10 JSON semantic cache implements reader and writer capabilities", () => {
