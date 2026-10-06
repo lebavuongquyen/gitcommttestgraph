@@ -5,7 +5,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const root = dirname(dirname(fileURLToPath(import.meta.url)));
-const packageJsonPath = join(root, "package.json");
+const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";\nconst packageJsonPath = join(root, "package.json");
 const packageLockPath = join(root, "package-lock.json");
 
 function run(command, args, cwd = root) {
@@ -102,12 +102,12 @@ try {
   const cleanStatus = runCapture("git", ["status", "--porcelain"], cleanRepo);
   assert(cleanStatus === "", "clean clone has no uncommitted files");
 
-  run("npm", ["ci", "--ignore-scripts"], cleanRepo);
-  run("npm", ["run", "typecheck"], cleanRepo);
-  run("npm", ["run", "build"], cleanRepo);
-  run("npm", ["test"], cleanRepo);
+  run(npmCommand, ["ci", "--ignore-scripts"], cleanRepo);
+  run(npmCommand, ["run", "typecheck"], cleanRepo);
+  run(npmCommand, ["run", "build"], cleanRepo);
+  run(npmCommand, ["test"], cleanRepo);
 
-  const packOutput = runCapture("npm", ["pack", "--dry-run", "--json"], cleanRepo);
+  const packOutput = runCapture(npmCommand, ["pack", "--dry-run", "--json"], cleanRepo);
   const pack = JSON.parse(packOutput)[0];
   assert(pack && Array.isArray(pack.files), "package dry-run produced file manifest");
   const names = pack.files.map(file => file.path);
