@@ -1,43 +1,25 @@
 import { createServer } from "node:http";
 import {
-  discoverRepository, CliGitRepository, TypeScriptProjectAnalyzer, JsonGraphStore, JsonSemanticCache,
-  RepositoryIndexer, IncrementalRepositoryIndexer, ImpactQueryService, ImpactEngine, TestGapAnalyzer,
-  TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff, configurationFingerprint, IndexLock,
+  ImpactQueryService, ImpactEngine, TestGapAnalyzer,
+  TestImpactAnalyzer, buildExecutionPlan, diffSnapshots, changedSymbolIdsFromDiff, removedSymbolIdsFromDiff,
   JsonTestResultStore, ExecutionPlanRunner, runProcess, buildWorkflowExecutionFeedback,
   BranchChangeSetService, BranchReviewService, PullRequestChangeSetService, PullRequestReviewService, GitHubPullRequestProvider,
-  ChangeIntelligenceQueryService, ConfigurationService, JsonConfigurationStore, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService
+  ChangeIntelligenceQueryService, analyzeRepositoryEcosystem, analyzeMonorepo, HistoricalIntelligenceService, CiAnalysisService, DiagnosticsService
 } from "../../index.js";
 import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
+import { ApplicationRuntime } from "../../runtime/application-runtime.js";
 import { SECURITY_POLICY, sanitizeErrorMessage } from "../../domain/security/policy.js";
 
 const analyzerVersion = GCTG_VERSION;
 
 export async function startServer(root: string, port: number): Promise<void> {
-  const repository = await discoverRepository(root);
-  let configuration = (await new ConfigurationService(new JsonConfigurationStore()).resolve(repository.root)).configuration;
-  const git = new CliGitRepository(repository.root);
-  const store = new JsonGraphStore(repository.root + "/.gctg/graph");
-  const cache = new JsonSemanticCache(repository.root + "/.gctg/cache/semantic");
-  const fullIndexer = new RepositoryIndexer(git, new TypeScriptProjectAnalyzer(), store, cache);
-  const indexAt = async (commit: string) => {
-    const incremental = new IncrementalRepositoryIndexer(
-      git,
-      fullIndexer,
-      (repo, hash, version, fingerprint) => store.getSnapshot(repo, hash, version, fingerprint)
-    );
-    const release = await new IndexLock(repository.root + "/.gctg/index.lock").acquire();
-    try {
-      return await incremental.index({
-        repository: repository.root,
-        commit,
-        configuration,
-        analyzerVersion
-      });
-    } finally {
-      await release();
-    }
-  };
+  const runtime = await ApplicationRuntime.create(root, { analyzerVersion });
+  const repository = runtime.repository;
+  const git = runtime.git;
+  const store = runtime.store;
+  const cache = runtime.cache;
+  const indexAt = async (commit: string) => runtime.index(commit);
 
   const changedSymbols = async (commit: string, snapshot: Awaited<ReturnType<typeof indexAt>>["snapshot"]) => {
     const info = await git.getCommit(commit);
@@ -96,7 +78,6 @@ export async function startServer(root: string, port: number): Promise<void> {
     return new PullRequestReviewService().analyze({ changeSet, pullRequest, current: indexed.snapshot, base: baseIndexed.snapshot, changedSymbolIds, removedSymbolIds });
   };
 
-  const configurationService = new ConfigurationService(new JsonConfigurationStore());
   const send = (response: import("node:http").ServerResponse, status: number, value: unknown) => {
     response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" });
     response.end(JSON.stringify(value));
@@ -139,12 +120,11 @@ export async function startServer(root: string, port: number): Promise<void> {
         return;
       }
       if (url.pathname === "/api/config" && request.method === "GET") {
-        send(response, 200, await configurationService.resolve(repository.root));
+        send(response, 200, await runtime.resolveConfiguration());
         return;
       }
       if (url.pathname === "/api/config" && request.method === "POST") {
-        const update = await configurationService.update(repository.root, await readJsonBody(request));
-        configuration = update.configuration;
+        const update = await runtime.updateConfiguration(await readJsonBody(request));
         send(response, 200, update);
         return;
       }
