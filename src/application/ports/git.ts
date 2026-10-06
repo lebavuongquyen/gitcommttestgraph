@@ -11,5 +11,6 @@ export interface GitRepositoryPort {
   getChangedPaths(hash: string): Promise<readonly ChangedPath[]>;
   getDiff(fromCommit: string, toCommit: string): Promise<CommitDiff>;
   readFileAtCommit(commit: string, path: string): Promise<string>;
+  readonly readFilesAtCommit?: (commit: string, paths: readonly string[]) => Promise<ReadonlyMap<string, string>>;
   listFilesAtCommit(commit: string): Promise<readonly string[]>;
 }

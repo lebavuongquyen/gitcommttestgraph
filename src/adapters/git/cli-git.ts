@@ -1,4 +1,4 @@
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 import type { BranchRef, ChangedPath, Commit, CommitDiff } from "../../domain/git/model.js";
 import type { GitRepositoryPort } from "../../application/ports/git.js";
@@ -82,9 +82,59 @@ export class CliGitRepository implements GitRepositoryPort {
     return this.run(["show", `${commit}:${path}`]);
   }
 
+  async readFilesAtCommit(commit: string, paths: readonly string[]): Promise<ReadonlyMap<string, string>> {
+    const safe = paths.filter(path => !/[\r\n]/.test(path));
+    const result = new Map<string, string>();
+    for (const [path, content] of await this.readFilesBatch(commit, safe)) result.set(path, content);
+    for (const path of paths) if (!result.has(path)) result.set(path, await this.readFileAtCommit(commit, path));
+    return result;
+  }
+
   async listFilesAtCommit(commit: string): Promise<readonly string[]> {
     const output = await this.run(["ls-tree", "-r", "--name-only", commit]);
     return output.split("\n").map(x => x.trim()).filter(Boolean);
+  }
+
+  private async readFilesBatch(commit: string, paths: readonly string[]): Promise<ReadonlyArray<readonly [string, string]>> {
+    if (paths.length === 0) return [];
+    return new Promise((resolve, reject) => {
+      const child = spawn("git", ["cat-file", "--batch"], { cwd: this.root, env: { ...process.env } });
+      const chunks: Buffer[] = [];
+      const errors: Buffer[] = [];
+      child.stdout.on("data", chunk => chunks.push(Buffer.from(chunk)));
+      child.stderr.on("data", chunk => errors.push(Buffer.from(chunk)));
+      child.on("error", error => reject(new GitOperationError("Git batch read failed: " + error.message, error)));
+      child.on("close", code => {
+        if (code !== 0) {
+          reject(new GitOperationError("Git batch read failed: " + Buffer.concat(errors).toString("utf8").trim()));
+          return;
+        }
+        try {
+          const buffer = Buffer.concat(chunks);
+          const values: Array<readonly [string, string]> = [];
+          let offset = 0;
+          for (const path of paths) {
+            const headerEnd = buffer.indexOf(10, offset);
+            if (headerEnd < 0) throw new Error("Invalid git cat-file batch header");
+            const header = buffer.subarray(offset, headerEnd).toString("utf8");
+            const parts = header.split(" ");
+            if (parts.length < 3) throw new Error("Invalid git cat-file batch response");
+            const type = parts[1];
+            const size = Number(parts[2]);
+            offset = headerEnd + 1;
+            if (type === "missing" || !Number.isFinite(size)) throw new Error("Git object missing for " + path);
+            const end = offset + size;
+            if (end > buffer.length) throw new Error("Invalid git cat-file batch payload");
+            values.push([path, buffer.subarray(offset, end).toString("utf8")]);
+            offset = end + 1;
+          }
+          resolve(values);
+        } catch (error) {
+          reject(new GitOperationError("Git batch read parse failed", error));
+        }
+      });
+      child.stdin.end(paths.map(path => commit + ":" + path + "\n").join(""));
+    });
   }
 
   private async run(args: readonly string[]): Promise<string> {

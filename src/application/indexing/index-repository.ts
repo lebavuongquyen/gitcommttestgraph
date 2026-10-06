@@ -83,12 +83,14 @@ export class RepositoryIndexer {
       }
     }
 
+    const sourceContents = await readSourceContents(this.git, options.commit, files.filter(isSource));
     for (const path of files) {
       const kind = classified.get(normalize(path));
       if (kind === FileKind.TEST) testFileCount++;
       if (kind === FileKind.CONFIG || kind === FileKind.LANGUAGE_CONFIG || kind === FileKind.BUILD_CONFIG || kind === FileKind.TEST_CONFIG || kind === FileKind.RUNTIME_CONFIG || kind === FileKind.WORKSPACE_CONFIG) configFileCount++;
       if (!isSource(path)) continue;
-      const content = await this.git.readFileAtCommit(options.commit, path);
+      const content = sourceContents.get(normalize(path));
+      if (content === undefined) throw new Error("Missing source content for " + path);
       const pkg = packageInfo.packages.find(item => isInsidePackage(path, item.rootPath));
       sourceInputs.push({ path, content, ...(pkg ? { packageId: pkg.id } : {}) });
     }
@@ -245,6 +247,12 @@ function isInsidePackage(path: string, rootPath: string): boolean {
 function isSource(path: string): boolean {
   if (/(^|\/)(node_modules|\.git|dist|build|coverage|\.next)(\/)/.test(path)) return false;
   return /\.(ts|tsx|js|jsx|mjs|cjs)$/.test(path);
+}
+
+async function readSourceContents(git: GitRepositoryPort, commit: string, paths: readonly string[]): Promise<Map<string, string>> {
+  if (git.readFilesAtCommit) return new Map(await git.readFilesAtCommit(commit, paths));
+  const entries = await Promise.all(paths.map(async path => [normalize(path), await git.readFileAtCommit(commit, path)] as const));
+  return new Map(entries);
 }
 
 async function discoverPackageEntrypoints(git: GitRepositoryPort, packages: readonly IndexedPackage[], commit: string): Promise<Record<string, string>> {

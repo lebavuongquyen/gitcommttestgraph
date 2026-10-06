@@ -115,6 +115,11 @@ try {
   run(npmCommand, ["run", "build"], cleanRepo);
   run(npmCommand, ["test"], cleanRepo);
 
+  if (compareVersion(parsedVersion, parseVersion("0.8.2")) >= 0) {
+    run(npmCommand, ["run", "performance:gate"], cleanRepo);
+    console.log("PASS performance gate");
+  }
+
   const packOutput = runCapture(npmCommand, ["pack", "--dry-run", "--json"], cleanRepo);
   const pack = JSON.parse(packOutput)[0];
   assert(pack && Array.isArray(pack.files), "package dry-run produced file manifest");

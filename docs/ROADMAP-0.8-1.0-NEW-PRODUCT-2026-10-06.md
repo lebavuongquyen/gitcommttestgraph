@@ -481,6 +481,8 @@ Evidence:
 
 ## 0.8.2 — Performance
 
+Status: COMPLETE
+
 Focus:
 
 - incremental indexing;
@@ -490,14 +492,30 @@ Focus:
 - memory pressure;
 - graph query latency.
 
-Required benchmark classes:
+Delivered:
 
-- small repository;
-- medium monorepo;
-- large-history repository;
-- repeated historical query;
-- cold index;
-- warm index.
+- executable performance gate;
+- small, medium and large repository benchmark classes;
+- cold and warm index measurements;
+- repeated historical query measurements;
+- large-history measurements;
+- real Git sequential-vs-batch source-read benchmark;
+- optional batched Git read capability;
+- CLI Git implementation using `git cat-file --batch`;
+- safe fallback for adapters without batch support.
+
+Measured release evidence:
+
+- 300-file sequential Git read: ~9,917 ms;
+- 300-file batch Git read: ~106 ms;
+- measured speedup: ~93.99x;
+- performance gate: PASS.
+
+Evidence:
+
+- `scripts/performance-gate.mjs`
+- `tests/unit/git.test.mjs`
+- `docs/releases/0.8.2.md`
 
 ## 0.8.3 — Reliability
 
@@ -1425,22 +1443,35 @@ See `docs/releases/0.8.1.md`.
 
 ### M07 — 0.8.2 performance hardening
 
+Status: COMPLETE
+
+Implemented benchmark-first performance hardening.
+
+Acceptance evidence:
+
+- cold index benchmark;
+- warm historical query benchmark;
+- repeated historical query benchmark;
+- small repository benchmark;
+- medium repository benchmark;
+- large repository benchmark;
+- large-history benchmark;
+- real Git source-read benchmark;
+- 300-file batch-read speedup of ~93.99x;
+- executable regression thresholds;
+- typecheck/build;
+- Git batch-read unit regression;
+- release documentation and changelog.
+
+No performance optimization was accepted without a reproducible baseline and regression threshold.
+
+See `scripts/performance-gate.mjs` and `docs/releases/0.8.2.md`.
+
+### M08 — 0.8.3 reliability hardening
+
 Status: NEXT
 
-First establish benchmark gates before changing indexing behavior.
-
-Required benchmark classes:
-
-- cold index;
-- warm historical query;
-- repeated historical query;
-- small repository;
-- medium monorepo;
-- large-history repository;
-- memory pressure;
-- graph query latency.
-
-No performance optimization is accepted without a reproducible baseline and regression threshold.
+Attack failure modes before adding further intelligence features.
 
 ---
 

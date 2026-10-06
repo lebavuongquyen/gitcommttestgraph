@@ -55,6 +55,27 @@ test("commit changed paths are recursive for branch evidence", async () => {
   }
 });
 
+test("batch historical file reads preserve content and paths", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-"));
+  try {
+    await exec("git", ["init"], { cwd: root });
+    await exec("git", ["config", "user.email", "test@example.com"], { cwd: root });
+    await exec("git", ["config", "user.name", "GCTG Test"], { cwd: root });
+    await mkdir(join(root, "src"), { recursive: true });
+    await writeFile(join(root, "src", "one.ts"), "export const one = 1;\n");
+    await writeFile(join(root, "src", "two.ts"), "export const two = 2;\n");
+    await exec("git", ["add", "."], { cwd: root });
+    await exec("git", ["commit", "-m", "batch"], { cwd: root });
+    const commit = (await exec("git", ["rev-parse", "HEAD"], { cwd: root })).stdout.trim();
+    const files = await new CliGitRepository(root).readFilesAtCommit(commit, ["src/one.ts", "src/two.ts"]);
+    assert.equal(files.get("src/one.ts"), "export const one = 1;\n");
+    assert.equal(files.get("src/two.ts"), "export const two = 2;\n");
+    assert.equal(files.size, 2);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
 test("historical file content is read from the selected commit", async () => {
   const root = await mkdtemp(join(tmpdir(), "gctg-"));
   try {

@@ -2,6 +2,26 @@
 
 All notable changes to `git-commit-test-graph` are documented here.
 
+## [0.8.2] - 2026-10-06
+
+### Performance
+- Added a reproducible 0.8.2 performance gate covering small, medium and large synthetic repositories.
+- Added cold-index, warm-index, repeated historical query and large-history measurements.
+- Added a real Git batch-read benchmark for 300 historical source files.
+- Added batched historical file loading through Git `cat-file --batch`.
+- Repository indexing now uses the batched source-read capability when the Git adapter provides it, with a safe fallback to individual reads.
+
+### Quality
+- Git batch historical reads preserve exact path/content mapping.
+- 300-file real Git benchmark improved historical source reads from approximately 9.9s sequentially to approximately 0.1s batched on the release environment, about 94x faster.
+- 0.8.2 performance gate passed.
+- Typecheck and build passed.
+- Full regression suite remains required by Release Gate v2.
+
+### Documentation
+- Added `docs/releases/0.8.2.md`.
+- Updated the 0.8–1.0 roadmap with completed performance hardening.
+
 ## [0.8.1] - 2026-10-06
 
 ### Added
@@ -177,5 +197,7 @@ All notable changes to `git-commit-test-graph` are documented here.
 ## [0.3.8] - 2026-10-04
 
 See Git history for the previous release.
+
+[executed on device: QuyenLe (f538f86d-fbfa-478e-a5df-d3f9a375cbf0)]
 
 [executed on device: QuyenLe (f538f86d-fbfa-478e-a5df-d3f9a375cbf0)]
