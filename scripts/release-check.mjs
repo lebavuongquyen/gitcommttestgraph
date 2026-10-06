@@ -11,7 +11,7 @@ const packageLockPath = join(root, "package-lock.json");
 
 function run(command, args, cwd = root) {
   console.log("\n$ " + command + " " + args.join(" "));
-  execFileSync(command, args, { cwd, stdio: "inherit" });
+  execFileSync(command, args, { cwd, stdio: "inherit", shell: process.platform === "win32" });
 }
 
 function runCapture(command, args, cwd = root) {
