@@ -2,7 +2,7 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
-## [0.10.0] - Unreleased
+## [0.10.0] - 2026-10-07
 ### Release-gate hardening - 2026-10-07
 - Fixed the reliability gate package script recursion so release validation invokes the actual reliability-gate script.
 - Added port-scoped Windows cleanup for HTTP contract servers so orphaned GUI test servers cannot contaminate later tests.
