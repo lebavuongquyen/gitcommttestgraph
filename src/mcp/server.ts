@@ -187,6 +187,22 @@ export function createGctgMcpServer(root: string) {
     return result(await new ConsistencyChecker(ctx.store).check());
   });
 
+  server.registerTool("backup_restore", {
+    title: "Backup / Restore",
+    description: "Create, inspect or restore a checksum-protected backup of GCTG-owned repository state without modifying Git history.",
+    inputSchema: { operation: z.enum(["create", "inspect", "restore"]).default("create"), backupPath: z.string().optional() }
+  }, async ({ operation, backupPath }) => {
+    const ctx = await context(root);
+    const { BackupRestoreService } = await import("../application/recovery/backup-restore-service.js");
+    const service = new BackupRestoreService();
+    if (operation === "create") {
+      const target = backupPath ?? ctx.repository.root + "/.gctg/backups/gctg-backup-" + Date.now() + ".json";
+      return result({ operation, backupPath: target, manifest: await service.create(ctx.repository.root, target) });
+    }
+    if (!backupPath) throw new Error("backupPath is required for inspect or restore.");
+    const manifest = operation === "inspect" ? await service.inspect(backupPath) : await service.restore(ctx.repository.root, backupPath);
+    return result({ operation, backupPath, manifest });
+  });
   server.registerTool("progress", {
     title: "Progress",
     description: "Inspect deterministic progress stages for a runtime operation.",

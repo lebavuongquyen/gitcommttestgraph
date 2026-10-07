@@ -10,6 +10,7 @@ import { renderGui } from "../../gui/app.js";
 import { GCTG_VERSION } from "../../version.js";
 import { ApplicationRuntime } from "../../runtime/application-runtime.js";
 import { SECURITY_POLICY, sanitizeErrorMessage } from "../../domain/security/policy.js";
+import { BackupRestoreService } from "../../application/recovery/backup-restore-service.js";
 
 const analyzerVersion = GCTG_VERSION;
 
@@ -184,6 +185,27 @@ export async function startServer(root: string, port: number): Promise<void> {
         const { ConsistencyChecker } = await import("../../application/recovery/consistency-checker.js");
         send(response, 200, await new ConsistencyChecker(runtime.store).check());
         return;
+      }
+      if (url.pathname === "/api/recovery" && request.method === "GET") {
+        send(response, 200, { supported: true, format: "gctg-backup", schemaVersion: 1 });
+        return;
+      }
+      if (url.pathname === "/api/recovery" && request.method === "POST") {
+        const body = await readJsonBody(request) as { operation?: string; backupPath?: string };
+        const operation = body.operation ?? "create";
+        const service = new BackupRestoreService();
+        if (operation === "create") {
+          const backupPath = body.backupPath ?? repository.root + "/.gctg/backups/gctg-backup-" + Date.now() + ".json";
+          send(response, 200, { operation, backupPath, manifest: await service.create(repository.root, backupPath) });
+          return;
+        }
+        if (operation === "inspect" || operation === "restore") {
+          if (typeof body.backupPath !== "string" || !body.backupPath) return send(response, 400, { error: "backupPath is required" });
+          const manifest = operation === "inspect" ? await service.inspect(body.backupPath) : await service.restore(repository.root, body.backupPath);
+          send(response, 200, { operation, backupPath: body.backupPath, manifest });
+          return;
+        }
+        return send(response, 400, { error: "operation must be create, inspect or restore" });
       }
       if (url.pathname === "/api/operations") {
         const limit = url.searchParams.get("limit");

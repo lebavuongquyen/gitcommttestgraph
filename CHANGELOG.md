@@ -3,6 +3,15 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### RCV02 - Backup / Restore - 2026-10-07
+
+- Added checksum-protected portable backups for GCTG-owned state.
+- Made backup policy explicit for config, history, graph, results and semantic cache while excluding lock and temporary artifacts.
+- Added atomic staged restore with pre-restore checksum validation and no Git history mutation.
+- Exposed backup/inspect/restore through the GUI, HTTP `/api/recovery` and MCP `backup_restore`.
+- Added focused unit coverage and `docs/0.10.2-RCV02-BACKUP-RESTORE.md`.
+
+
 ### C01 - Configuration Migration Framework - 2026-10-06
 
 - Added a small configuration migration registry for future schema upgrades.

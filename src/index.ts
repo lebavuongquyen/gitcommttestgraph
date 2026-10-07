@@ -44,6 +44,8 @@ export * from "./application/history/retention-planner.js";
 export * from "./application/ports/snapshot-maintenance.js";
 export * from "./application/ports/snapshot-consistency.js";
 export * from "./application/recovery/consistency-checker.js";
+export * from "./application/recovery/backup-restore-service.js";
+export * from "./application/ports/recovery-backup.js";
 export * from "./application/history/snapshot-cleanup-service.js";
 export * from "./application/history/snapshot-accounting-service.js";
 export * from "./application/impact/impact-engine.js";

@@ -3,7 +3,7 @@ export type GuiCapabilityId =
   | "historical_intelligence" | "ci_analysis" | "diagnostics" | "change_intelligence"
   | "test_gaps" | "test_impact" | "execution_plan" | "branch_review" | "pull_request_review"
   | "commits" | "branches" | "node" | "execution_feedback" | "run_execution_plan"
-  | "overview" | "graph_view";
+  | "overview" | "graph_view" | "recovery";
 
 export interface GuiCapabilityDescriptor {
   readonly id: GuiCapabilityId;
@@ -19,7 +19,7 @@ const GUI_CAPABILITY_PATHS = [
   ["branch_review","/api/branch-review","branchReview"],["pull_request_review","/api/pull-request-review","pullRequestReview"],
   ["commits","/api/commits","commits"],["branches","/api/branches","branches"],["node","/api/node","node"],
   ["execution_feedback","/api/execution-feedback","executionFeedback"],["run_execution_plan","/api/run-execution-plan","runExecutionPlan"],
-  ["overview","/api/overview","overview"],["graph_view","/api/graph-view","graphView"]
+  ["overview","/api/overview","overview"],["graph_view","/api/graph-view","graphView"],["recovery","/api/recovery","recovery"]
 ] as const;
 
 export const guiCapabilityContracts: readonly GuiCapabilityDescriptor[] =
