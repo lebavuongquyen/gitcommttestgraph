@@ -36,7 +36,7 @@ export class OperationService {
   }
 
   list(): readonly OperationRecord[] {
-    return [...this.records.values()].sort((a, b) => a.startedAt.localeCompare(b.startedAt) || a.id.localeCompare(b.id));
+    return [...this.records.values()];
   }
 
   private transition(id: string, state: OperationState, finished = false, error?: string, failureCategory?: FailureCategory): OperationRecord {

@@ -9,6 +9,7 @@
 - Improved GUI responsiveness across desktop, tablet and mobile widths.
 - Prevented the main GUI layout from being clipped by fixed-height and fixed-column assumptions.
 - Preserved the existing GUI-first capability surface and 0.10.x architecture.
+- Hardened operation-history ordering so operations created within the same timestamp retain insertion order instead of being reordered by UUID comparison.
 
 ## [0.10.2] - 2026-10-07
 
