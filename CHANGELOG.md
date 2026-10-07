@@ -1,4 +1,16 @@
-# Changelog\n\n## [0.10.2] - 2026-10-07
+# Changelog
+
+## [0.10.3] - 2026-10-07
+
+### GUI stability and usability
+- Fixed a GUI crash caused by the browser graph renderer expecting an older graph-node shape than the public graph API returns.
+- Normalized graph nodes in the GUI view-model layer from the public `type` and `attributes.kind/name/path` fields.
+- Added regression coverage for the current public graph schema.
+- Improved GUI responsiveness across desktop, tablet and mobile widths.
+- Prevented the main GUI layout from being clipped by fixed-height and fixed-column assumptions.
+- Preserved the existing GUI-first capability surface and 0.10.x architecture.
+
+## [0.10.2] - 2026-10-07
 
 ### CLI distribution
 - Completed the public `gctg` CLI entry point for npm and pnpm global installation.

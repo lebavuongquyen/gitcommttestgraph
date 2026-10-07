@@ -15,13 +15,17 @@ export function renderGui(): string {
 <title>Git Commit Test Graph</title>
 <style>
 :root{color-scheme:dark;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#0b1020;color:#e8ecf7}
-*{box-sizing:border-box}body{margin:0;min-height:100vh;background:radial-gradient(circle at 20% 0%,#172448 0,#0b1020 42%);overflow:hidden}
-button,select,input{font:inherit;color:inherit;background:#141c33;border:1px solid #2c3858;border-radius:8px;padding:8px 10px}
-button{cursor:pointer}button:hover{border-color:#6f8fe8}button:disabled{opacity:.5;cursor:not-allowed}select{min-width:280px}
-header{height:64px;display:flex;align-items:center;gap:14px;padding:0 18px;border-bottom:1px solid #202b46;background:#0d1428cc;backdrop-filter:blur(12px)}
-.brand{font-weight:800;letter-spacing:.2px;margin-right:10px}.status{font-size:12px;color:#94a3c7}.spacer{flex:1}
-main{height:calc(100vh - 64px);display:grid;grid-template-columns:250px minmax(0,1fr) 360px}
-aside,.inspector{border-right:1px solid #202b46;background:#0d1428aa;overflow:auto}.inspector{border-right:0;border-left:1px solid #202b46}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:radial-gradient(circle at 20% 0%,#172448 0,#0b1020 42%);color:#e8ecf7}body{min-height:100vh;overflow:auto}
+button,select,input{font:inherit;color:inherit;background:#141c33;border:1px solid #2c3858;border-radius:8px;padding:8px 10px;min-width:0}
+button{cursor:pointer}button:hover{border-color:#6f8fe8}button:disabled{opacity:.5;cursor:not-allowed}select{min-width:0;max-width:100%}
+header{min-height:64px;display:flex;align-items:center;gap:10px;padding:10px 18px;border-bottom:1px solid #202b46;background:#0d1428cc;backdrop-filter:blur(12px);flex-wrap:wrap}
+.brand{font-weight:800;letter-spacing:.2px;margin-right:10px;white-space:nowrap}.status{font-size:12px;color:#94a3c7;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.spacer{flex:1}
+main{min-height:calc(100vh - 64px);display:grid;grid-template-columns:minmax(220px,250px) minmax(0,1fr) minmax(300px,360px)}
+aside,.inspector{border-right:1px solid #202b46;background:#0d1428aa;overflow:auto;min-width:0}.inspector{border-right:0;border-left:1px solid #202b46}
+@media (max-width:1200px){main{grid-template-columns:220px minmax(0,1fr)}.inspector{grid-column:1 / -1;border-left:0;border-top:1px solid #202b46;max-height:none}.inspector .panel{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.inspector .section{min-width:0}.inspector .panel>h3{grid-column:1 / -1}.inspector .section-head{margin-top:0}}
+@media (max-width:760px){header{align-items:stretch;padding:10px}.brand{width:100%;margin-right:0}header select,header input,header button{flex:1 1 140px}.status{width:100%;order:10}.spacer{display:none}main{display:flex;flex-direction:column;min-height:0}aside{order:1;max-height:260px;border-right:0;border-bottom:1px solid #202b46}.canvas{order:2;min-height:520px}.inspector{order:3;max-height:none}.inspector .panel{display:block}.panel{padding:10px}.toolbar{left:10px;top:10px}.legend{right:10px;top:10px;max-width:45vw}.section{margin-top:12px}}
+@media (max-width:420px){header select,header input,header button{flex-basis:100%}.canvas{min-height:440px}.legend{display:none}.commit{padding:8px}}
+
 .panel{padding:14px}.panel h3{margin:0 0 10px;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:#8291b5}
 .commit{display:block;width:100%;text-align:left;margin:6px 0;padding:9px;border:1px solid transparent;background:transparent}
 .commit:hover,.commit.active{background:#182340;border-color:#33466e}.commit .sha{font-family:ui-monospace,monospace;font-size:11px;color:#8da7e8}.commit .subject{font-size:12px;margin-top:3px;line-height:1.35}

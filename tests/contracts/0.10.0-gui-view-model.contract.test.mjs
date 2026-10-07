@@ -39,6 +39,22 @@ test("0.10 R07 graph adapter keeps only presentation-safe fields", () => {
   });
 });
 
+test("0.10 R07 graph adapter normalizes the public graph schema", () => {
+  assert.deepEqual(toGuiGraphViewModel({
+    schemaVersion: "1.0.0",
+    repository: "E:/repo",
+    commit: "abc",
+    nodes: [{ id: "n1", type: "Symbol", attributes: { kind: "function", name: "App", changed: true } }],
+    edges: []
+  }), {
+    schemaVersion: "1.0.0",
+    repository: "E:/repo",
+    commit: "abc",
+    nodes: [{ id: "n1", kind: "function", label: "App", attributes: { kind: "function", name: "App", changed: true } }],
+    edges: []
+  });
+});
+
 test("0.10 R07 execution adapter separates plan view model from transport feedback", () => {
   assert.deepEqual(toGuiExecutionViewModel({
     steps: [{ id: "s1", affectedTestCaseIds: ["t1"], command: { executable: "npm", args: ["test"] } }]

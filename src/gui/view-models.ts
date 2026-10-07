@@ -67,7 +67,10 @@ export function toGuiGraphViewModel(value: unknown): GuiGraphViewModel {
   const source = asRecord(value);
   const nodes = asArray(source.nodes).map(item => {
     const node = asRecord(item);
-    return { id: asString(node.id), kind: asString(node.kind), label: asString(node.label), attributes: asRecord(node.attributes) };
+    const attributes = asRecord(node.attributes);
+    const kind = asString(attributes.kind) || asString(node.type) || asString(node.kind);
+    const label = asString(attributes.name) || asString(attributes.path) || asString(node.label) || kind;
+    return { id: asString(node.id), kind, label, attributes };
   });
   const edges = asArray(source.edges).map(item => {
     const edge = asRecord(item);
@@ -88,13 +91,4 @@ export function toGuiChangeIntelligenceViewModel(value: unknown): GuiChangeIntel
   const source = asRecord(value);
   return { intelligence: source.intelligence ?? null };
 }
-export const GUI_VIEW_MODEL_SCRIPT = `
-function guiRecord(value){return value&&typeof value==="object"?value:{};}
-function guiArray(value){return Array.isArray(value)?value:[];}
-function guiString(value){return typeof value==="string"?value:"";}
-function toGuiStatusViewModel(value){const source=guiRecord(value);return {repository:guiString(source.root),head:guiString(source.head)};}
-function toGuiCommitViewModels(value){return guiArray(value).map(item=>{const source=guiRecord(item);return {hash:guiString(source.hash),subject:guiString(source.subject)};});}
-function toGuiGraphViewModel(value){const source=guiRecord(value);return {schemaVersion:guiString(source.schemaVersion),repository:guiString(source.repository),commit:guiString(source.commit),nodes:guiArray(source.nodes).map(item=>{const node=guiRecord(item);return {id:guiString(node.id),kind:guiString(node.kind),label:guiString(node.label),attributes:guiRecord(node.attributes)};}),edges:guiArray(source.edges).map(item=>{const edge=guiRecord(item);return {source:guiString(edge.source),target:guiString(edge.target),relation:guiString(edge.relation)};})};}
-function toGuiExecutionViewModel(plan,feedback){const source=guiRecord(plan);const feedbackRecord=guiRecord(feedback);return {steps:guiArray(source.steps).map(item=>{const step=guiRecord(item);return {id:guiString(step.id),affectedTestCaseIds:guiArray(step.affectedTestCaseIds).filter(id=>typeof id==="string"),command:step.command};}),execution:feedbackRecord.execution};}
-function toGuiChangeIntelligenceViewModel(value){const source=guiRecord(value);return {intelligence:source.intelligence??null};}
-`;
+export const GUI_VIEW_MODEL_SCRIPT = `\nfunction guiRecord(value){return value&&typeof value==="object"?value:{};}\nfunction guiArray(value){return Array.isArray(value)?value:[];}\nfunction guiString(value){return typeof value==="string"?value:"";}\nfunction toGuiStatusViewModel(value){const source=guiRecord(value);return {repository:guiString(source.root),head:guiString(source.head)};}\nfunction toGuiCommitViewModels(value){return guiArray(value).map(item=>{const source=guiRecord(item);return {hash:guiString(source.hash),subject:guiString(source.subject)};});}\nfunction toGuiGraphViewModel(value){const source=guiRecord(value);return {schemaVersion:guiString(source.schemaVersion),repository:guiString(source.repository),commit:guiString(source.commit),nodes:guiArray(source.nodes).map(item=>{const node=guiRecord(item);const attributes=guiRecord(node.attributes);const kind=guiString(attributes.kind)||guiString(node.type)||guiString(node.kind);const label=guiString(attributes.name)||guiString(attributes.path)||guiString(node.label)||kind;return {id:guiString(node.id),kind,label,attributes};}),edges:guiArray(source.edges).map(item=>{const edge=guiRecord(item);return {source:guiString(edge.source),target:guiString(edge.target),relation:guiString(edge.relation)};})};}\nfunction toGuiExecutionViewModel(plan,feedback){const source=guiRecord(plan);const feedbackRecord=guiRecord(feedback);return {steps:guiArray(source.steps).map(item=>{const step=guiRecord(item);return {id:guiString(step.id),affectedTestCaseIds:guiArray(step.affectedTestCaseIds).filter(id=>typeof id==="string"),command:step.command};}),execution:feedbackRecord.execution};}\nfunction toGuiChangeIntelligenceViewModel(value){const source=guiRecord(value);return {intelligence:source.intelligence??null};}\n`;
