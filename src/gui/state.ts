@@ -1,5 +1,12 @@
 export type GuiLoadState = "idle" | "loading" | "ready" | "empty" | "error" | "stale";
 export type GuiExecutionState = "idle" | "running" | "completed" | "failed";
+export type GuiGraphStatus = "empty" | "relationships-unavailable" | "valid" | "indexing" | "error";
+
+export interface GuiCameraState {
+  x: number;
+  y: number;
+  scale: number;
+}
 
 export interface GuiState {
   load: GuiLoadState;
@@ -8,9 +15,11 @@ export interface GuiState {
   selectedNode: string | null;
   error: string | null;
   stale: boolean;
+  camera: GuiCameraState;
+  graphMode: "edited-files" | "dependencies" | "tests";
 }
 
-export const createGuiState = (): GuiState => ({ load: "idle", execution: "idle", commit: "", selectedNode: null, error: null, stale: false });
+export const createGuiState = (): GuiState => ({ load: "idle", execution: "idle", commit: "", selectedNode: null, error: null, stale: false, camera: { x: 0, y: 0, scale: 1 }, graphMode: "edited-files" });
 export const beginGuiLoad = (state: GuiState, commit: string): GuiState => ({ ...state, load: "loading", commit, error: null, stale: false });
 export const completeGuiLoad = (state: GuiState, empty = false): GuiState => ({ ...state, load: empty ? "empty" : "ready", error: null, stale: false });
 export const failGuiLoad = (state: GuiState, error: string): GuiState => ({ ...state, load: "error", error, stale: false });
@@ -20,7 +29,7 @@ export const completeGuiExecution = (state: GuiState, success: boolean): GuiStat
 export const selectGuiNode = (state: GuiState, nodeId: string): GuiState => ({ ...state, selectedNode: nodeId });
 
 export const GUI_STATE_SCRIPT = [
-  'const createGuiState=()=>({load:"idle",execution:"idle",commit:"",selectedNode:null,error:null,stale:false});',
+  'const createGuiState=()=>({load:"idle",execution:"idle",commit:"",selectedNode:null,error:null,stale:false,camera:{x:0,y:0,scale:1},graphMode:"edited-files"});',
   'const beginGuiLoad=(state,commit)=>({...state,load:"loading",commit,error:null,stale:false});',
   'const completeGuiLoad=(state,empty=false)=>({...state,load:empty?"empty":"ready",error:null,stale:false});',
   'const failGuiLoad=(state,error)=>({...state,load:"error",error,stale:false});',

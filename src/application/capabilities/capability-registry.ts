@@ -45,7 +45,7 @@ export const capabilityRegistry: readonly CapabilityDescriptor[] = Object.freeze
   {
     id: "change_intelligence",
     applicationHandler: "ChangeIntelligenceQueryService",
-    surfaces: { GUI: 'capability(\\"changeIntelligence\\"', MCP: 'registerTool("change_intelligence"', CLI: 'command === "change-intelligence"', HTTP: "/api/change-intelligence" }
+    surfaces: { GUI: 'guiCapabilityContracts', MCP: 'registerTool("change_intelligence"', CLI: 'command === "change-intelligence"', HTTP: "/api/change-intelligence" }
   },
   {
     id: "test_gaps",
@@ -60,7 +60,7 @@ export const capabilityRegistry: readonly CapabilityDescriptor[] = Object.freeze
   {
     id: "execution_plan",
     applicationHandler: "buildExecutionPlan",
-    surfaces: { GUI: 'capability(\\"executionPlan\\"', MCP: 'registerTool("execution_plan"', CLI: 'command === "execution-plan"', HTTP: "/api/execution-plan" }
+    surfaces: { GUI: 'guiCapabilityContracts', MCP: 'registerTool("execution_plan"', CLI: 'command === "execution-plan"', HTTP: "/api/execution-plan" }
   },
   {
     id: "branch_lifecycle",

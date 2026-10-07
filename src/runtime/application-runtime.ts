@@ -14,6 +14,7 @@ import { OperationService } from "../application/operations/operation-service.js
 import { OperationHistoryService, type OperationHistoryQuery } from "../application/operations/operation-history-service.js";
 import { ProgressService } from "../application/operations/progress-service.js";
 import { InterruptedOperationRecoveryService } from "../application/recovery/interrupted-operation-recovery-service.js";
+import { createSnapshot } from "../domain/graph/snapshot.js";
 import { JsonRecoveryJournalStore } from "../infrastructure/persistence/json-recovery-journal-store.js";
 import type { RecoveryJournalStore } from "../application/ports/recovery-journal.js";
 
@@ -38,6 +39,7 @@ export class ApplicationRuntime {
 
   private readonly indexer: IncrementalRepositoryIndexer;
   private readonly indexLock: IndexLock;
+  private readonly ensurePromises = new Map<string, Promise<import("../domain/graph/model.js").GraphSnapshot>>();
 
   private constructor(
     repository: RepositoryDiscovery,
@@ -133,6 +135,37 @@ export class ApplicationRuntime {
 
   private async persistOperations(): Promise<void> {
     await this.operationHistory.record(this.operations.list());
+  }
+
+  async loadSnapshot(commit?: string): Promise<import("../domain/graph/model.js").GraphSnapshot | null> {
+    const target = commit ?? await this.head();
+    const fingerprintSnapshot = createSnapshot({
+      analyzerVersion: this.analyzerVersion,
+      repository: this.repository.root,
+      commit: target,
+      configuration: this.configuration,
+      nodes: [],
+      edges: []
+    });
+    return this.store.getSnapshot(
+      this.repository.root,
+      target,
+      this.analyzerVersion,
+      fingerprintSnapshot.configurationFingerprint
+    );
+  }
+
+  async ensureSnapshot(commit?: string): Promise<import("../domain/graph/model.js").GraphSnapshot> {
+    const target = commit ?? await this.head();
+    const cached = await this.loadSnapshot(target);
+    if (cached) return cached;
+    const pending = this.ensurePromises.get(target);
+    if (pending) return pending;
+    const promise = this.index(target).then(result => result.snapshot).finally(() => {
+      this.ensurePromises.delete(target);
+    });
+    this.ensurePromises.set(target, promise);
+    return promise;
   }
 
   async index(commit?: string): Promise<IncrementalIndexResult> {

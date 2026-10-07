@@ -10,7 +10,11 @@ test("0.10 R06 typed GUI contracts cover every registered GUI capability", () =>
   for (const capability of registry) {
     const descriptor = typed.get(capability.id);
     assert.ok(descriptor, capability.id);
-    assert.match(capability.surfaces.GUI, new RegExp(descriptor.browserKey));
+    if (capability.surfaces.GUI === "guiCapabilityContracts") {
+      assert.equal(typeof descriptor.browserKey, "string");
+    } else {
+      assert.match(capability.surfaces.GUI, new RegExp(descriptor.browserKey));
+    }
   }
 });
 

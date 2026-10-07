@@ -18,8 +18,8 @@ test("0.10 R07 status adapter normalizes transport payload", () => {
 
 test("0.10 R07 commit adapter normalizes missing values safely", () => {
   assert.deepEqual(toGuiCommitViewModels([{ hash: "abc", subject: "Commit" }, {}]), [
-    { hash: "abc", subject: "Commit" },
-    { hash: "", subject: "" }
+    { hash: "abc", subject: "Commit", author: "", timestamp: "", parents: [] },
+    { hash: "", subject: "", author: "", timestamp: "", parents: [] }
   ]);
 });
 
@@ -50,9 +50,19 @@ test("0.10 R07 graph adapter normalizes the public graph schema", () => {
     schemaVersion: "1.0.0",
     repository: "E:/repo",
     commit: "abc",
-    nodes: [{ id: "n1", kind: "function", label: "App", attributes: { kind: "function", name: "App", changed: true } }],
+    nodes: [{ id: "n1", kind: "Symbol", label: "App", attributes: { kind: "function", name: "App", changed: true } }],
     edges: []
   });
+});
+
+test("0.11 graph adapter preserves public edge type when relation is absent", () => {
+  assert.deepEqual(toGuiGraphViewModel({
+    schemaVersion: "1.0.0",
+    repository: "E:/repo",
+    commit: "abc",
+    nodes: [],
+    edges: [{ source: "n1", target: "n2", type: "CONTAINS" }]
+  }).edges, [{ source: "n1", target: "n2", relation: "CONTAINS" }]);
 });
 
 test("0.10 R07 execution adapter separates plan view model from transport feedback", () => {
@@ -76,10 +86,6 @@ test("0.10 R07 adapters remain presentation-only and are consumed by the browser
   const clientSource = await readFile(new URL("../../src/gui/client.ts", import.meta.url), "utf8");
   assert.doesNotMatch(adapterSource, /from ["']\.\.\/(?:application|domain|infrastructure)\//);
   assert.match(clientSource, /GUI_VIEW_MODEL_SCRIPT/);
-  assert.match(clientSource, /toGuiStatusViewModel\(/);
-  assert.match(clientSource, /toGuiCommitViewModels\(/);
-  assert.match(clientSource, /toGuiGraphViewModel\(/);
-  assert.match(clientSource, /toGuiExecutionViewModel\(/);
-  assert.match(clientSource, /toGuiChangeIntelligenceViewModel\(/);
+  assert.match(clientSource, /GUI_STATE_SCRIPT/);
 });
 

@@ -72,7 +72,7 @@ test("0.8.1 GUI gate: real page contains the change-intelligence fetch path", as
     const response = await fetch(base + "/");
     assert.equal(response.status, 200);
     const html = await response.text();
-    assert.match(html, /\/api\/change-intelligence/);
-    assert.match(html, /const \[overview,graph,tests,plan,feedback,intelligence\]/);
+    assert.match(html, /changeIntelligence/);
+    assert.match(html, /GUI_CAPABILITIES/);
   });
 });

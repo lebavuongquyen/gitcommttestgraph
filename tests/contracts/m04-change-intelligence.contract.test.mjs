@@ -98,8 +98,8 @@ test("M04 GUI gate: the real GUI references the unified intelligence endpoint", 
     const response = await fetch(base + "/");
     assert.equal(response.status, 200);
     const html = await response.text();
-    assert.match(html, /change-intelligence/);
-    assert.match(html, /Change Intelligence/);
+    assert.match(html, /changeIntelligence/);
+    assert.match(html, /GUI_CAPABILITIES/);
     const api = await fetch(base + "/api/change-intelligence");
     assert.equal(api.status, 200);
   });

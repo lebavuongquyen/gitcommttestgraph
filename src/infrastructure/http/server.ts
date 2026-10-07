@@ -12,6 +12,8 @@ import { ApplicationRuntime } from "../../runtime/application-runtime.js";
 import { SECURITY_POLICY, sanitizeErrorMessage } from "../../domain/security/policy.js";
 import { BackupRestoreService } from "../../application/recovery/backup-restore-service.js";
 import { RepairRehydrationService } from "../../application/recovery/repair-rehydration-service.js";
+import { stableId } from "../../domain/graph/ids.js";
+import { NodeType } from "../../domain/graph/model.js";
 
 const analyzerVersion = GCTG_VERSION;
 
@@ -21,7 +23,7 @@ export async function startServer(root: string, port: number): Promise<void> {
   const git = runtime.git;
   const store = runtime.store;
   const cache = runtime.cache;
-  const indexAt = async (commit: string) => runtime.index(commit);
+  const indexAt = async (commit: string) => ({ snapshot: await runtime.ensureSnapshot(commit), reused: true });
 
   const changedSymbols = async (commit: string, snapshot: Awaited<ReturnType<typeof indexAt>>["snapshot"]) => {
     const info = await git.getCommit(commit);
@@ -44,10 +46,11 @@ export async function startServer(root: string, port: number): Promise<void> {
       targetTypes: ["Symbol"]
     }).map(item => item.nodeId);
     const info = await git.getCommit(commit);
+    const paths = await git.getChangedPaths(commit);
     const diff = info.parents?.length
       ? diffSnapshots((await indexAt(info.parents[0]!)).snapshot, indexed.snapshot)
       : undefined;
-    return { indexed, info, symbolIds, gaps, testImpact, affected, diff };
+    return { indexed, info, symbolIds, gaps, testImpact, affected, diff, paths };
   };
 
   const buildBranchReview = async (base: string, head?: string) => {
@@ -119,6 +122,11 @@ export async function startServer(root: string, port: number): Promise<void> {
       if (url.pathname === "/") {
         response.writeHead(200, { "content-type": "text/html; charset=utf-8", "cache-control": "no-store" });
         response.end(renderGui());
+        return;
+      }
+      if (url.pathname === "/favicon.ico") {
+        response.writeHead(204);
+        response.end();
         return;
       }
       if (url.pathname === "/api/config" && request.method === "GET") {
@@ -363,7 +371,7 @@ export async function startServer(root: string, port: number): Promise<void> {
           repository: c.indexed.snapshot.repository,
           commit,
           subject: c.info.message.split("\\n")[0],
-          changedFiles: c.diff ? c.diff.addedNodes.length + c.diff.removedNodes.length + c.diff.changedNodes.length : 0,
+          changedFiles: c.paths.length,
           changedSymbols: c.symbolIds.length,
           affectedSymbols: c.affected.length,
           impactedTestCases: c.testImpact.impactedTestCases
@@ -373,25 +381,107 @@ export async function startServer(root: string, port: number): Promise<void> {
       if (url.pathname === "/api/graph-view") {
         const commit = url.searchParams.get("commit") ?? await git.getHead();
         const c = await buildChangeContext(commit);
+        const changedPaths = new Map(c.paths.map(item => [item.path.replaceAll("\\", "/"), item]));
+        const changedFileNodes = c.indexed.snapshot.nodes.filter(node => node.type === NodeType.FILE && changedPaths.has(String(node.attributes.path).replaceAll("\\", "/"))).map(node => ({ ...node, attributes: { ...node.attributes, changed: true, changeStatus: changedPaths.get(String(node.attributes.path).replaceAll("\\", "/"))?.status ?? "modified" } }));
+        const missingChangedFileNodes = [...changedPaths.entries()].filter(([path]) => !changedFileNodes.some(node => String((node.attributes as Record<string, unknown>).path).replaceAll("\\", "/") === path)).map(([path, change]) => ({ id: stableId("file", path), type: NodeType.FILE, attributes: { path, changed: true, changeStatus: change.status, indexed: false } }));
         const interesting = new Set([
           ...c.symbolIds,
           ...c.affected,
-          ...c.testImpact.impacts.flatMap(item => [item.testProjectId, item.testFileId, item.testCaseId])
+          ...c.testImpact.impacts.flatMap(item => [item.testProjectId, item.testFileId, item.testCaseId]),
+          ...c.indexed.snapshot.nodes.filter(node => node.type === "File" && changedPaths.has(String(node.attributes.path))).map(node => node.id)
         ]);
-        const nodes = c.indexed.snapshot.nodes.filter(node =>
-          interesting.has(node.id) ||
-          (node.type === "TestProject" && c.testImpact.impacts.some(item => item.testProjectId === node.id))
-        ).map(node => ({
-          ...node,
-          attributes: {
-            ...node.attributes,
-            ...(c.symbolIds.includes(node.id) ? { changed: true } : {}),
-            ...(c.affected.includes(node.id) ? { affected: true } : {})
-          }
-        }));
+        const nodes = [
+          ...changedFileNodes,
+          ...missingChangedFileNodes,
+          ...c.indexed.snapshot.nodes.filter(node => node.type !== NodeType.FILE && (
+            interesting.has(node.id) ||
+            (node.type === NodeType.TEST_PROJECT && c.testImpact.impacts.some(item => item.testProjectId === node.id))
+          )).map(node => ({
+            ...node,
+            attributes: {
+              ...node.attributes,
+              ...(c.symbolIds.includes(node.id) ? { changed: true } : {}),
+              ...(c.affected.includes(node.id) ? { affected: true } : {})
+            }
+          }))
+        ];
         const ids = new Set(nodes.map(node => node.id));
         const edges = c.indexed.snapshot.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target));
         send(response, 200, { schemaVersion: "1.0.0", repository: c.indexed.snapshot.repository, commit, nodes, edges });
+        return;
+      }
+      if (url.pathname === "/api/graph-drilldown") {
+        const commit = url.searchParams.get("commit") ?? await git.getHead();
+        const nodeId = url.searchParams.get("nodeId");
+        const mode = url.searchParams.get("mode");
+        if (!nodeId || (mode !== "dependencies" && mode !== "tests")) return send(response, 400, { error: "nodeId and mode are required" });
+        const indexed = await indexAt(commit);
+        let selected = indexed.snapshot.nodes.find(node => node.id === nodeId);
+        if (!selected) {
+          const commitInfo = await git.getCommit(commit);
+          const normalizedChanges = (commitInfo.parents?.length ? (await git.getDiff(commitInfo.parents[0]!, commit)).paths : []).map(change => ({
+            ...change,
+            path: change.path.replaceAll("\\", "/")
+          }));
+          const changedFile = normalizedChanges.find(change => stableId("file", change.path) === nodeId);
+          if (changedFile) {
+            selected = {
+              id: nodeId,
+              type: NodeType.FILE,
+              attributes: {
+                path: changedFile.path,
+                changed: true,
+                changeStatus: changedFile.status,
+                indexed: false
+              }
+            };
+          }
+        }
+        if (!selected) return send(response, 404, { error: "Node not found" });
+        const isTestNode = selected.type === "TestProject" || selected.type === "TestFile" || selected.type === "TestCase";
+        if (mode === "dependencies") {
+          const connected = indexed.snapshot.edges.filter(edge => edge.source === nodeId || edge.target === nodeId)
+            .filter(edge => {
+              const source = indexed.snapshot.nodes.find(node => node.id === edge.source);
+              const target = indexed.snapshot.nodes.find(node => node.id === edge.target);
+              return source && target && ![source.type, target.type].some(type => String(type).startsWith("Test"));
+            });
+          const ids = new Set([nodeId, ...connected.flatMap(edge => [edge.source, edge.target])]);
+          const nodes = indexed.snapshot.nodes.filter(node => ids.has(node.id));
+          const edges = connected.filter(edge => ids.has(edge.source) && ids.has(edge.target));
+          send(response, 200, { schemaVersion: "1.0.0", repository: indexed.snapshot.repository, commit, mode, selectedNodeId: nodeId, nodes, edges });
+          return;
+        }
+        if (isTestNode) {
+          send(response, 200, { schemaVersion: "1.0.0", repository: indexed.snapshot.repository, commit, mode, selectedNodeId: nodeId, nodes: [selected], edges: [] });
+          return;
+        }
+        const symbolIds = selected.type === "Symbol"
+          ? [nodeId]
+          : indexed.snapshot.nodes.filter(node => node.type === "Symbol" && String(node.attributes.path ?? "") === String(selected.attributes.path ?? "")).map(node => node.id);
+        const gaps = new TestGapAnalyzer().analyze(indexed.snapshot, { changedNodeIds: symbolIds });
+        const testImpact = new TestImpactAnalyzer().analyze(indexed.snapshot, { changedSymbolIds: symbolIds, coverageLinks: gaps.coverageLinks });
+        const testIds = new Set(testImpact.impacts.flatMap(item => [item.testProjectId, item.testFileId, item.testCaseId]));
+        const ids = new Set([nodeId, ...symbolIds, ...testIds]);
+        const nodes = indexed.snapshot.nodes.filter(node => ids.has(node.id));
+        const edges = indexed.snapshot.edges.filter(edge => ids.has(edge.source) && ids.has(edge.target));
+        send(response, 200, { schemaVersion: "1.0.0", repository: indexed.snapshot.repository, commit, mode, selectedNodeId: nodeId, nodes, edges });
+        return;
+      }
+      if (url.pathname === "/api/file-diff") {
+        const from = url.searchParams.get("from");
+        const to = url.searchParams.get("to") ?? await git.getHead();
+        const path = url.searchParams.get("path");
+        if (!from || !path) return send(response, 400, { error: "from and path are required" });
+        const change = (await git.getDiff(from, to)).paths.find(item => item.path === path || item.oldPath === path);
+        if (!change) return send(response, 404, { error: "File is not changed between the selected commits" });
+        const read = async (commit: string): Promise<string | null> => {
+          try { return await git.readFileAtCommit(commit, path); } catch { return null; }
+        };
+        const oldPath = change.oldPath ?? path;
+        let oldContent = change.status === "added" ? null : await (async () => { try { return await git.readFileAtCommit(from, oldPath); } catch { return null; } })();
+        let newContent = change.status === "deleted" ? null : await read(to);
+        send(response, 200, { from, to, path, oldPath, status: change.status, oldContent, newContent });
         return;
       }
       if (url.pathname === "/api/node") {

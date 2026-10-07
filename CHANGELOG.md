@@ -1,5 +1,48 @@
 # Changelog
 
+## [0.11.0] - 2026-10-07
+
+### GUI/UX Architecture Reset
+- Added a dedicated graph camera model with pan, zoom and viewport-aware transforms.
+- Added a commit-first drill-down workflow: changed files and symbols are shown first, with Dependencies, Tests, Changes, Diff, and Focus opened on demand.
+- Added file-level previous/current content diff against the commit parent.
+- Commit history entries now show commit message, author, and timestamp.
+- Added graph-drilldown and file-diff GUI capabilities.
+- Added wheel zoom around the pointer.
+- Added pointer-based canvas pan and node drag interaction.
+- Added click selection and double-click focus.
+- Added Fit/Reset controls and keyboard graph navigation.
+- Added explicit graph semantic states for empty and relationship-unavailable graphs.
+- Added user-facing explanation when graph relationships are unavailable.
+- Added 0.11 interaction contract tests and live GUI audit evidence.
+- Kept GUI-first capability routing and MCP/application boundaries unchanged.
+- Fixed GUI read/query paths so persisted commit snapshots are loaded without starting a new index operation.
+- Added snapshot-load promise deduplication for concurrent first requests of the same unindexed commit.
+- Changed GUI commit loading status from "Indexing..." to "Loading..." and added regression coverage for repeat commit selection.
+- Preserved graph edge semantics by mapping public edge `type` to the GUI relation when `relation` is absent.
+- Styled `TestProject`, `TestFile`, and `TestCase` nodes as test nodes in the live graph regardless of capitalization.
+- Added a no-content favicon response so the real browser GUI no longer reports a missing `/favicon.ico` request.
+- Added regression coverage for public graph edge type normalization.
+- Reworked the 0.11 graph layout into semantic columns for changed files, changed symbols, test projects, test files, and impacted tests.
+- Preserved public node type in the GUI view model so `Symbol` nodes remain distinguishable from symbol sub-kinds such as `function` or `variable`.
+- Added graph column headings and increased vertical spacing to keep the impact graph readable as node counts grow.
+- Fixed node-drag pointer coordinates so repeated pointer moves update the drag origin safely instead of attempting to reassign immutable coordinates.
+- Added permanent interaction coverage for semantic graph columns and the drag-coordinate regression.
+
+
+## [0.10.4] - 2026-10-07
+
+### GUI usability and graph navigation
+- Fixed graph navigation so the graph canvas provides native horizontal and vertical scrolling for larger graphs.
+- Made graph dimensions adapt to node count and zoom level instead of being locked to the viewport.
+- Added an on-screen graph usage hint explaining scrolling, zooming and node selection.
+- Improved the GUI inspector heading and added a short explanation of the graph reading order.
+- Moved node technical JSON into a collapsed "Technical details" section so normal users are not confronted with raw payloads.
+- Added human-readable extraction of structured HTTP error responses so JSON error envelopes are no longer dumped directly into the GUI.
+- Added node-level error handling so one failed node request does not produce an unhandled browser error.
+- Preserved the existing GUI-first capability catalog and 0.10.x architecture.
+
+
 ## [0.10.3] - 2026-10-07
 
 ### GUI stability and usability
