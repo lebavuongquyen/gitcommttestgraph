@@ -1,4 +1,4 @@
-import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import type { OperationHistoryStore } from "../../application/ports/operation-history.js";
 import type { OperationRecord } from "../../domain/operation.js";
 import { assertSafeRepositoryPath, sanitizeErrorMessage } from "../../domain/security/policy.js";
@@ -23,11 +23,9 @@ export class JsonOperationHistoryStore implements OperationHistoryStore {
   async save(repositoryRoot: string, records: readonly OperationRecord[]): Promise<void> {
     const directory = assertSafeRepositoryPath(repositoryRoot, ".gctg");
     const path = assertSafeRepositoryPath(repositoryRoot, ".gctg/operations.json");
-    const temporary = assertSafeRepositoryPath(repositoryRoot, ".gctg/operations.json.tmp");
     const bounded = records.slice(-this.limit).map(sanitizeOperation);
     await mkdir(directory, { recursive: true });
-    await writeFile(temporary, JSON.stringify(bounded, null, 2) + "\n", "utf8");
-    await rename(temporary, path);
+    await writeFile(path, JSON.stringify(bounded, null, 2) + "\n", "utf8");
   }
 }
 

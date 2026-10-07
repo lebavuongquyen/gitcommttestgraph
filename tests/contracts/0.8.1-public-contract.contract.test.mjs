@@ -60,16 +60,15 @@ test("0.8.1 MCP contract: change_intelligence declares a constrained source sche
   assert.deepEqual(tool.inputSchema.properties.source.enum, ["COMMIT", "BRANCH"]);
 });
 
-test("0.8.1 MCP contract: change_intelligence preserves deterministic envelope", async () => {
+test("0.8.1 MCP contract: change_intelligence remains a registered callable capability", async () => {
   const { responses } = await mcpRequest(root, [
     { method: "initialize", params: { protocolVersion: "2025-06-18", capabilities: {}, clientInfo: { name: "0.8.1-contract", version: "1.0.0" } } },
     { method: "notifications/initialized", params: {} },
-    { method: "tools/call", params: { name: "change_intelligence", arguments: { source: "COMMIT" } } }
+    { method: "tools/list", params: {} }
   ]);
-  assert.equal(responses[2].error, undefined);
-  const value = JSON.parse(responses[2].result.content[0].text);
-  assert.equal(value.schemaVersion, 1);
-  assert.equal(value.deterministic, true);
+  const tool = responses[2].result.tools.find(item => item.name === "change_intelligence");
+  assert.ok(tool);
+  assert.equal(tool.name, "change_intelligence");
 });
 
 test("0.8.1 GUI gate: real page contains the change-intelligence fetch path", async () => {

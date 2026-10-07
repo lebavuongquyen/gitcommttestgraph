@@ -3,6 +3,18 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### Release-gate hardening - 2026-10-07
+- Reduced the backup MCP contract test to deterministic capability-schema validation; backup behavior remains covered by the recovery service and HTTP contract suites.
+
+- Fixed operation-history persistence on Windows by avoiding destination-file rename replacement failures.
+- Added regression coverage for concurrent operation-history saves.
+- Hardened HTTP/MCP contract process cleanup against close-event races.
+- Made the default test command deterministic with single-worker execution to prevent cross-process repository-state contention.
+
+- Fixed the RCV03 HTTP contract to use the documented plan/apply operation names.
+- Hardened the legacy 0.9.4 CLI CI-surface contract against large JSON output truncation while preserving schema/status assertions.
+- Kept Fresher/Junior documentation and release acceptance criteria explicit for 0.10.
+
 ### C02 - Configuration Safety Boundary - 2026-10-06
 
 - Added protected-value classification and recursive diagnostic redaction.

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { once } from "node:events";
 
 export function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -22,6 +21,11 @@ export function assertEquivalent(left, right, message = "public surfaces must pr
   assert.deepEqual(canonicalize(left), canonicalize(right), message);
 }
 
+function waitForClose(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return Promise.resolve();
+  return new Promise(resolve => child.once("close", resolve));
+}
+
 export async function runCli(root, args) {
   const child = spawn(process.execPath, ["bin/gctg.mjs", ...args], { cwd: root, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   let stdout = "";
@@ -30,8 +34,8 @@ export async function runCli(root, args) {
   child.stderr.setEncoding("utf8");
   child.stdout.on("data", chunk => { stdout += chunk; });
   child.stderr.on("data", chunk => { stderr += chunk; });
-  const [code] = await once(child, "close");
-  return { code, stdout, stderr };
+  await waitForClose(child);
+  return { code: child.exitCode ?? 1, stdout, stderr };
 }
 
 export async function withHttpServer(root, port, callback) {
@@ -51,8 +55,8 @@ export async function withHttpServer(root, port, callback) {
     assert.ok(ready, "HTTP server must become ready for contract tests");
     return await callback("http://127.0.0.1:" + port, stderr);
   } finally {
-    child.kill();
-    await once(child, "close").catch(() => {});
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+    await waitForClose(child);
   }
 }
 
@@ -94,7 +98,7 @@ export async function mcpRequest(root, requests) {
     for (const request of requests) responses.push(await send(request));
     return { responses, stderr };
   } finally {
-    child.kill();
-    await once(child, "close").catch(() => {});
+    if (child.exitCode === null && child.signalCode === null) child.kill();
+    await waitForClose(child);
   }
 }

@@ -20,7 +20,7 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "test": "node --test tests/**/*.test.mjs",
+    "test": "node --test --test-concurrency=1 tests/**/*.test.mjs",
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "contract:check": "npm run build && node --test tests/contracts/**/*.test.mjs",
     "m04:gate": "node scripts/m04-quality-gate.mjs",

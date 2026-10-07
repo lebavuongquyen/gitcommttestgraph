@@ -239,6 +239,7 @@ Start with these documents:
 - **[Getting Started](docs/GETTING-STARTED.md)** — for fresher/junior developers and first-time users.
 - **[CLI Reference](docs/CLI-REFERENCE-0.9.6.md)** — command reference.
 - **[Integration Guide](docs/INTEGRATION-GUIDE-0.9.6.md)** — CI, HTTP, MCP and SDK usage.
+- **[SDK Preview](docs/SDK-PREVIEW-0.9.6.md)** — preview package/API integration reference.
 - **[Versioning](docs/VERSIONING.md)** — release/version policy.
 - **[0.10 recovery documents](docs/)** — detailed implementation and acceptance documents for recovery capabilities.
 
@@ -266,3 +267,5 @@ Every published release must contain a complete feature or maintenance change, c
 GCTG analyzes Git history and repository files. Its recovery features operate only on GCTG-owned `.gctg` state and do not modify Git history.
 
 AI is optional. The core graph and impact analysis are deterministic.
+
+For programmatic consumers, the package also exposes the public API through the git-commit-test-graph/api entry point.

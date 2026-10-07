@@ -48,3 +48,25 @@ test("operation history filters without exposing sensitive metadata", async () =
     await rm(root, { recursive: true, force: true });
   }
 });
+
+test("operation history concurrent saves do not collide on temporary files", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-operations-"));
+  try {
+    const store = new JsonOperationHistoryStore();
+    const operations = new OperationService();
+    const one = operations.begin("one");
+    operations.succeed(one.id);
+    const two = operations.begin("two");
+    operations.succeed(two.id);
+    await Promise.all([
+      store.save(root, [one]),
+      store.save(root, [two])
+    ]);
+    const raw = JSON.parse(await readFile(join(root, ".gctg", "operations.json"), "utf8"));
+    assert.ok(Array.isArray(raw));
+    assert.equal(raw.length, 1);
+    assert.ok(["one", "two"].includes(raw[0].name));
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+});
