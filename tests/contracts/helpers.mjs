@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { spawn } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 
 export function canonicalize(value) {
   if (Array.isArray(value)) return value.map(canonicalize);
@@ -26,6 +26,18 @@ function waitForClose(child) {
   return new Promise(resolve => child.once("close", resolve));
 }
 
+async function terminateChild(child) {
+  if (child.exitCode !== null || child.signalCode !== null) return;
+  if (process.platform === "win32" && child.pid) {
+    await new Promise(resolve => {
+      execFile("taskkill", ["/pid", String(child.pid), "/t", "/f"], { windowsHide: true }, () => resolve());
+    });
+  } else {
+    child.kill();
+  }
+  await waitForClose(child);
+}
+
 export async function runCli(root, args) {
   const child = spawn(process.execPath, ["bin/gctg.mjs", ...args], { cwd: root, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   let stdout = "";
@@ -34,8 +46,17 @@ export async function runCli(root, args) {
   child.stderr.setEncoding("utf8");
   child.stdout.on("data", chunk => { stdout += chunk; });
   child.stderr.on("data", chunk => { stderr += chunk; });
-  await waitForClose(child);
-  return { code: child.exitCode ?? 1, stdout, stderr };
+  const result = await new Promise(resolve => {
+    child.once("exit", (code, signal) => resolve({ code: code ?? 1, signal }));
+  });
+  await new Promise(resolve => {
+    let settled = false;
+    const finish = () => { if (!settled) { settled = true; resolve(); } };
+    child.stdout.once("end", finish);
+    child.stderr.once("end", finish);
+    setTimeout(finish, 1000);
+  });
+  return { code: result.code, stdout, stderr };
 }
 
 export async function withHttpServer(root, port, callback) {
@@ -55,8 +76,7 @@ export async function withHttpServer(root, port, callback) {
     assert.ok(ready, "HTTP server must become ready for contract tests");
     return await callback("http://127.0.0.1:" + port, stderr);
   } finally {
-    if (child.exitCode === null && child.signalCode === null) child.kill();
-    await waitForClose(child);
+    await terminateChild(child);
   }
 }
 
@@ -98,7 +118,6 @@ export async function mcpRequest(root, requests) {
     for (const request of requests) responses.push(await send(request));
     return { responses, stderr };
   } finally {
-    if (child.exitCode === null && child.signalCode === null) child.kill();
-    await waitForClose(child);
+    await terminateChild(child);
   }
 }
