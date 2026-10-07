@@ -4,6 +4,7 @@ All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
 ### Release-gate hardening - 2026-10-07
+- Fixed the reliability gate package script recursion so release validation invokes the actual reliability-gate script.
 - Added port-scoped Windows cleanup for HTTP contract servers so orphaned GUI test servers cannot contaminate later tests.
 - Fixed Windows contract-test process cleanup by terminating child process trees and collecting CLI process exit/stream completion deterministically.
 - Simplified the legacy 0.8.1 CLI/MCP contract checks to validate public registration/schema while leaving full cross-surface behavior coverage to the M04 gates.
