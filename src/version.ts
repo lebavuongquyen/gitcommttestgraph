@@ -1,2 +1,1 @@
-export const GCTG_VERSION = "0.9.8";
-
+export const GCTG_VERSION = "0.10.0";

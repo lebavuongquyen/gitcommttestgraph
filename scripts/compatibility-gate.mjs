@@ -12,9 +12,9 @@ const declarations=await readFile(join(root,"dist","public","index.d.ts"),"utf8"
 
 function assert(condition,message){if(!condition)throw new Error(message);console.log("PASS "+message);}
 
-assert(pkg.version==="0.9.8","package is 0.9.8");
-assert(contracts.PUBLIC_API_VERSION==="1.0.0","public API version remains 1.0.0");
+assert(typeof pkg.version==="string","package version is readable");
 const names=["graphSnapshot","changeIntelligence","impact","testImpact","executionPlan","historicalIntelligence","ciAnalysis","diagnostics","evidence","error"];
+assert(contracts.PUBLIC_API_VERSION==="1.0.0","public API version remains 1.0.0");
 for(const name of names)assert(name in contracts.publicContractRegistry,"contract remains: "+name);
 for(const command of ["config","ecosystem","monorepo","historical-intelligence","ci","diagnostics","change-intelligence","impact","test-impact","test-gaps","workflow","execution-plan","run-plan","execution-feedback"]){
   assert(cli.includes('command === "'+command+'"'),"CLI remains: "+command);
@@ -25,4 +25,4 @@ assert(typeof api.analyzeMonorepo==="function","public monorepo service remains 
 assert(typeof api.analyzeRepositoryEcosystem==="function","public ecosystem service remains exported");
 assert(declarations.includes("CiAnalysisResult"),"public CI type remains exported");
 assert(declarations.includes("OperationDiagnostics"),"public diagnostics type remains exported");
-console.log("Compatibility Gate passed for 0.9.8");
+console.log("Compatibility Gate passed for "+pkg.version);
