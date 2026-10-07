@@ -4,6 +4,8 @@ import { GUI_STATE_SCRIPT } from "./state.js";
 import { GUI_RECOVERY_SCRIPT } from "./recovery-controller.js";
 
 const GUI_RECOVERY_CAPABILITY_KEY = "recoveryRepair";
+const GUI_INTERRUPTED_RECOVERY_CAPABILITY_KEY = "recoveryInterrupted";
+void GUI_INTERRUPTED_RECOVERY_CAPABILITY_KEY;
 void GUI_RECOVERY_CAPABILITY_KEY;
 const GUI_BROWSER_CAPABILITIES = Object.fromEntries(
   guiCapabilityContracts.map(({ browserKey, path }) => [browserKey, path])

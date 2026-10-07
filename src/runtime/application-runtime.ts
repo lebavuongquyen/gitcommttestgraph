@@ -13,6 +13,9 @@ import { GCTG_VERSION } from "../version.js";
 import { OperationService } from "../application/operations/operation-service.js";
 import { OperationHistoryService, type OperationHistoryQuery } from "../application/operations/operation-history-service.js";
 import { ProgressService } from "../application/operations/progress-service.js";
+import { InterruptedOperationRecoveryService } from "../application/recovery/interrupted-operation-recovery-service.js";
+import { JsonRecoveryJournalStore } from "../infrastructure/persistence/json-recovery-journal-store.js";
+import type { RecoveryJournalStore } from "../application/ports/recovery-journal.js";
 
 export interface ApplicationRuntimeOptions {
   readonly analyzerVersion?: string;
@@ -30,6 +33,8 @@ export class ApplicationRuntime {
   readonly operations: OperationService;
   readonly operationHistory: OperationHistoryService;
   readonly progress: ProgressService;
+  readonly recovery: InterruptedOperationRecoveryService;
+  private readonly recoveryJournal: RecoveryJournalStore;
 
   private readonly indexer: IncrementalRepositoryIndexer;
   private readonly indexLock: IndexLock;
@@ -45,7 +50,9 @@ export class ApplicationRuntime {
     analyzerVersion: string,
     operations: OperationService,
     operationHistory: OperationHistoryService,
-    progress: ProgressService
+    progress: ProgressService,
+    recovery: InterruptedOperationRecoveryService,
+    recoveryJournal: RecoveryJournalStore
   ) {
     this.repository = repository;
     this.git = repository.git;
@@ -60,6 +67,8 @@ export class ApplicationRuntime {
     this.operations = operations;
     this.operationHistory = operationHistory;
     this.progress = progress;
+    this.recovery = recovery;
+    this.recoveryJournal = recoveryJournal;
   }
 
   static async create(root: string, options: ApplicationRuntimeOptions = {}): Promise<ApplicationRuntime> {
@@ -92,6 +101,15 @@ export class ApplicationRuntime {
     const history = await operationHistory.load();
     operations.restore(history);
     const progress = new ProgressService();
+    const recoveryJournal = new JsonRecoveryJournalStore();
+    const recovery = new InterruptedOperationRecoveryService(repository.root, recoveryJournal, operations, operationHistory, async commit => {
+      const release = await indexLock.acquire();
+      try {
+        return indexer.index({ repository: repository.root, commit, configuration, analyzerVersion: options.analyzerVersion ?? GCTG_VERSION });
+      } finally {
+        await release();
+      }
+    });
     return new ApplicationRuntime(
       repository,
       configuration,
@@ -103,7 +121,9 @@ export class ApplicationRuntime {
       options.analyzerVersion ?? GCTG_VERSION,
       operations,
       operationHistory,
-      progress
+      progress,
+      recovery,
+      recoveryJournal
     );
   }
 
@@ -121,10 +141,13 @@ export class ApplicationRuntime {
     await this.persistOperations();
     this.operations.start(operation.id);
     await this.persistOperations();
+    await this.recoveryJournal.save(this.repository.root, { schemaVersion: 1, operationId: operation.id, operationName: operation.name, commit: target, phase: "prepared", startedAt: operation.startedAt, updatedAt: new Date().toISOString(), metadata: operation.metadata });
     this.progress.start(operation.id, "acquire-lock");
     const release = await this.indexLock.acquire();
+    await this.recoveryJournal.save(this.repository.root, { schemaVersion: 1, operationId: operation.id, operationName: operation.name, commit: target, phase: "locked", startedAt: operation.startedAt, updatedAt: new Date().toISOString(), metadata: operation.metadata });
     this.progress.update(operation.id, "analyze", 0, 1);
     try {
+      await this.recoveryJournal.save(this.repository.root, { schemaVersion: 1, operationId: operation.id, operationName: operation.name, commit: target, phase: "analyzing", startedAt: operation.startedAt, updatedAt: new Date().toISOString(), metadata: operation.metadata });
       const result = await this.indexer.index({
         repository: this.repository.root,
         commit: target,
@@ -135,6 +158,7 @@ export class ApplicationRuntime {
       this.progress.update(operation.id, "complete", 1, 1);
       this.operations.succeed(operation.id);
       await this.persistOperations();
+      await this.recoveryJournal.clear(this.repository.root);
       return result;
     } catch (error) {
       this.operations.fail(operation.id, error);

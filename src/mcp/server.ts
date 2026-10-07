@@ -187,6 +187,15 @@ export function createGctgMcpServer(root: string) {
     return result(await new ConsistencyChecker(ctx.store).check());
   });
 
+  server.registerTool("recovery_interrupted", {
+    title: "Interrupted Operation Recovery",
+    description: "Inspect, resume, or rollback an interrupted GCTG operation.",
+    inputSchema: { operation: z.enum(["status", "resume", "rollback"]).default("status") }
+  }, async ({ operation }) => {
+    const ctx = await context(root);
+    const recoveryResult = operation === "status" ? await ctx.recovery.status() : operation === "resume" ? await ctx.recovery.resume() : await ctx.recovery.rollback();
+    return result(recoveryResult);
+  });
   server.registerTool("recovery_repair", {
     title: "Recovery Repair",
     description: "Preview or apply evidence-backed GCTG snapshot repair and HEAD rehydration. Refuses ambiguous or corrupt evidence.",

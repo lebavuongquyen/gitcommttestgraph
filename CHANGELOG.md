@@ -3,6 +3,13 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### RCV04 - Interrupted-operation Recovery - 2026-10-07
+
+- Added persistent recovery journal with explicit operation phases.
+- Added resume and rollback paths with idempotent deterministic re-indexing.
+- Added GUI, HTTP /api/recovery/interrupted and MCP recovery_interrupted surfaces.
+- Added simulated-interruption and journal persistence tests plus RCV04 documentation.
+
 ### RCV03 - Repair / Rehydration - 2026-10-07
 
 - Added evidence-backed repair planning with explicit preview/apply separation.

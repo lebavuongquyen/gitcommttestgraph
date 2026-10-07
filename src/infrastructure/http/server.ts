@@ -191,6 +191,19 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, { supported: true, format: "gctg-backup", schemaVersion: 1 });
         return;
       }
+      if (url.pathname === "/api/recovery/interrupted" && request.method === "GET") {
+        send(response, 200, await runtime.recovery.status());
+        return;
+      }
+      if (url.pathname === "/api/recovery/interrupted" && request.method === "POST") {
+        const body = await readJsonBody(request) as { operation?: string };
+        const operation = body.operation ?? "status";
+        if (operation === "status") send(response, 200, await runtime.recovery.status());
+        else if (operation === "resume") send(response, 200, await runtime.recovery.resume());
+        else if (operation === "rollback") send(response, 200, await runtime.recovery.rollback());
+        else return send(response, 400, { error: "operation must be status, resume or rollback" });
+        return;
+      }
       if (url.pathname === "/api/recovery/repair" && request.method === "POST") {
         const body = await readJsonBody(request) as { operation?: string };
         const operation = body.operation ?? "plan";
