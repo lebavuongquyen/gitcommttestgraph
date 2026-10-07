@@ -187,6 +187,16 @@ export function createGctgMcpServer(root: string) {
     return result(await new ConsistencyChecker(ctx.store).check());
   });
 
+  server.registerTool("recovery_repair", {
+    title: "Recovery Repair",
+    description: "Preview or apply evidence-backed GCTG snapshot repair and HEAD rehydration. Refuses ambiguous or corrupt evidence.",
+    inputSchema: { operation: z.enum(["plan", "apply"]).default("plan") }
+  }, async ({ operation }) => {
+    const ctx = await context(root);
+    const { RepairRehydrationService } = await import("../application/recovery/repair-rehydration-service.js");
+    const service = new RepairRehydrationService(ctx);
+    return result({ operation, plan: operation === "plan" ? await service.plan(ctx.repository.root) : await service.apply(ctx.repository.root) });
+  });
   server.registerTool("backup_restore", {
     title: "Backup / Restore",
     description: "Create, inspect or restore a checksum-protected backup of GCTG-owned repository state without modifying Git history.",

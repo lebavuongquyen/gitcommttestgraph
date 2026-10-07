@@ -11,6 +11,7 @@ import { GCTG_VERSION } from "../../version.js";
 import { ApplicationRuntime } from "../../runtime/application-runtime.js";
 import { SECURITY_POLICY, sanitizeErrorMessage } from "../../domain/security/policy.js";
 import { BackupRestoreService } from "../../application/recovery/backup-restore-service.js";
+import { RepairRehydrationService } from "../../application/recovery/repair-rehydration-service.js";
 
 const analyzerVersion = GCTG_VERSION;
 
@@ -190,9 +191,24 @@ export async function startServer(root: string, port: number): Promise<void> {
         send(response, 200, { supported: true, format: "gctg-backup", schemaVersion: 1 });
         return;
       }
+      if (url.pathname === "/api/recovery/repair" && request.method === "POST") {
+        const body = await readJsonBody(request) as { operation?: string };
+        const operation = body.operation ?? "plan";
+        if (operation !== "plan" && operation !== "apply") return send(response, 400, { error: "operation must be plan or apply" });
+        const service = new RepairRehydrationService(runtime);
+        const plan = operation === "plan" ? await service.plan(repository.root) : await service.apply(repository.root);
+        send(response, 200, { operation, plan });
+        return;
+      }
       if (url.pathname === "/api/recovery" && request.method === "POST") {
         const body = await readJsonBody(request) as { operation?: string; backupPath?: string };
         const operation = body.operation ?? "create";
+        if (operation === "repair_plan" || operation === "repair_apply") {
+          const service = new RepairRehydrationService(runtime);
+          const plan = operation === "repair_plan" ? await service.plan(repository.root) : await service.apply(repository.root);
+          send(response, 200, { operation, plan });
+          return;
+        }
         const service = new BackupRestoreService();
         if (operation === "create") {
           const backupPath = body.backupPath ?? repository.root + "/.gctg/backups/gctg-backup-" + Date.now() + ".json";

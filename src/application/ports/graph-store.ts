@@ -20,4 +20,8 @@ export interface GraphNodeStore {
   query(request: GraphQueryRequest): Promise<GraphQueryResult>;
 }
 
-export interface GraphStore extends GraphSnapshotStore, GraphNodeStore {}
+export interface GraphStore extends GraphSnapshotStore, GraphNodeStore {
+  listSnapshots(): Promise<readonly import("./snapshot-maintenance.js").SnapshotRecord[]>;
+  checkConsistency(): Promise<readonly import("./snapshot-consistency.js").SnapshotConsistencyIssue[]>;
+  rebuildManifestFromPhysicalSnapshots(): Promise<void>;
+}

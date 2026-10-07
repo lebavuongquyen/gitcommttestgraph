@@ -3,6 +3,15 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### RCV03 - Repair / Rehydration - 2026-10-07
+
+- Added evidence-backed repair planning with explicit preview/apply separation.
+- Added physical-snapshot manifest rebuild for orphan-only evidence.
+- Added deterministic Git-backed HEAD rehydration through the normal indexer.
+- Added fail-closed blocking for manifest, duplicate, missing-object and corrupt-object evidence.
+- Exposed repair through GUI, HTTP /api/recovery/repair and MCP recovery_repair.
+- Added focused RCV03 tests and docs/0.10.2-RCV03-REPAIR-REHYDRATION.md.
+
 ### RCV02 - Backup / Restore - 2026-10-07
 
 - Added checksum-protected portable backups for GCTG-owned state.

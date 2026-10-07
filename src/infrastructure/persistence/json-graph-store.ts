@@ -102,7 +102,7 @@ export class JsonGraphStore implements GraphStore, GraphStorage, SnapshotMainten
         }
       }
     } catch (error) {
-      if (!isMissing(error)) issues.push({ kind: "manifest", path: manifestPath, detail: "Manifest cannot be parsed." });
+      if (isMissing(error)) issues.push({ kind: "manifest", path: manifestPath, detail: "Manifest is missing." }); else issues.push({ kind: "manifest", path: manifestPath, detail: "Manifest cannot be parsed." });
     }
 
     const referenced = new Set(entries.map(entry => entry.path));
@@ -119,6 +119,27 @@ export class JsonGraphStore implements GraphStore, GraphStorage, SnapshotMainten
     return issues.sort((a, b) => (a.kind + (a.path ?? "")).localeCompare(b.kind + (b.path ?? "")));
   }
 
+  async rebuildManifestFromPhysicalSnapshots(): Promise<void> {
+    const manifestPath = join(this.directory, "manifest.json");
+    const entries: SnapshotManifestEntry[] = [];
+    const identities = new Set<string>();
+    const files: string[] = [];
+    await walk(this.directory, async path => {
+      if (path === manifestPath || !path.endsWith(".json")) return;
+      files.push(path);
+    });
+    for (const path of files.sort()) {
+      const snapshot = JSON.parse(await readFile(path, "utf8")) as unknown;
+      validateSnapshot(snapshot);
+      const identity = [snapshot.repository, snapshot.commit, snapshot.analyzerVersion, snapshot.configurationFingerprint].join("\u0000");
+      if (identities.has(identity)) throw new Error("Cannot rebuild manifest: duplicate snapshot identity for " + snapshot.commit);
+      identities.add(identity);
+      entries.push({ repository: snapshot.repository, commit: snapshot.commit, analyzerVersion: snapshot.analyzerVersion, configurationFingerprint: snapshot.configurationFingerprint, path });
+    }
+    await this.manifestLock.acquire().then(async release => {
+      try { await this.writeManifest(entries); } finally { await release(); }
+    });
+  }
   async deleteSnapshot(record: SnapshotRecord): Promise<void> {
     const release = await this.manifestLock.acquire();
     try {
