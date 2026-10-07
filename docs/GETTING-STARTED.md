@@ -20,17 +20,17 @@ If you are unsure what to do, follow the **First Session** section from top to b
 
 Git Commit Test Graph (GCTG) is a developer tool that connects:
 
-**Git â†’ changed code â†’ affected code â†’ tests â†’ execution plan**
+**Git -> changed code -> affected code -> tests -> execution plan**
 
 Imagine you changed this:
 
 ```text
 src/payment/CheckoutService.ts
-        â†“
+        v
 CheckoutService.calculateTotal()
-        â†“
+        v
 OrderService.createOrder()
-        â†“
+        v
 checkout tests
 ```
 
@@ -56,7 +56,7 @@ It can tell you **which tests appear relevant** and **which commands can be exec
 
 This is the recommended starting point.
 
-## Step 1 â€” Make sure Node.js and Git are installed
+## Step 1 - Make sure Node.js and Git are installed
 
 Run:
 
@@ -69,7 +69,7 @@ Node.js 20 or newer is required.
 
 ---
 
-## Step 2 â€” Build GCTG
+## Step 2 - Build GCTG
 
 If you are running GCTG from its source repository:
 
@@ -82,7 +82,7 @@ After this, the CLI entry point is available through the repository's GCTG execu
 
 ---
 
-## Step 3 â€” Open the Git repository you want to analyze
+## Step 3 - Open the Git repository you want to analyze
 
 GCTG analyzes the repository from your current working directory.
 
@@ -106,7 +106,7 @@ git status
 
 ---
 
-## Step 4 â€” Check GCTG
+## Step 4 - Check GCTG
 
 Run:
 
@@ -120,7 +120,7 @@ If you get an error, see [Troubleshooting](#10-troubleshooting).
 
 ---
 
-## Step 5 â€” Start the GUI
+## Step 5 - Start the GUI
 
 Run:
 
@@ -140,7 +140,7 @@ Keep the terminal running while using the GUI.
 
 The screen is divided into three main areas.
 
-## Left â€” Recent commits
+## Left - Recent commits
 
 This is your Git history.
 
@@ -148,7 +148,7 @@ Choose the commit you want to understand.
 
 For a first test, choose a recent commit that changed application code.
 
-## Center â€” Graph
+## Center - Graph
 
 The center shows the useful change-impact neighborhood.
 
@@ -166,13 +166,13 @@ The graph deliberately does not display every node in a large repository.
 
 The GUI distinguishes at least:
 
-- **Changed** â€” directly associated with the selected change
-- **Affected** â€” semantically impacted by the change
-- **Test** â€” a test-related node
+- **Changed** - directly associated with the selected change
+- **Affected** - semantically impacted by the change
+- **Test** - a test-related node
 
 Click a node to inspect it.
 
-## Right â€” Inspector
+## Right - Inspector
 
 The right panel contains the information you need to decide what to do next.
 
@@ -199,19 +199,19 @@ After opening the GUI, use this workflow:
 
 ```text
 1. Select commit
-      â†“
+      v
 2. Look at Changed nodes
-      â†“
+      v
 3. Click an important node
-      â†“
+      v
 4. Read Affected nodes
-      â†“
+      v
 5. Open Test impact
-      â†“
+      v
 6. Open Execution
-      â†“
+      v
 7. Review the suggested commands
-      â†“
+      v
 8. Run impacted tests when appropriate
 ```
 
@@ -223,7 +223,7 @@ This is the core GCTG workflow.
 
 There are two ways.
 
-## GUI â€” recommended
+## GUI - recommended
 
 1. Select the commit.
 2. Find **Test impact** on the right.

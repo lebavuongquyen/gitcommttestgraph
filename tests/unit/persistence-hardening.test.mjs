@@ -97,3 +97,21 @@ test("semantic cache reuses identical source artifacts", async () => {
     await rm(root, { recursive: true, force: true });
   }
 });
+
+
+test("index lock immediately recovers a lock owned by a dead process", async () => {
+  const root = await mkdtemp(join(tmpdir(), "gctg-dead-lock-"));
+  const lockPath = join(root, "index.lock");
+  try {
+    await writeFile(lockPath, JSON.stringify({
+      ownerId: "dead-owner",
+      pid: 999999,
+      createdAt: new Date().toISOString()
+    }));
+    const release = await new IndexLock(lockPath, { staleAfterMs: 10 * 60_000, timeoutMs: 200, retryDelayMs: 10 }).acquire();
+    await release();
+  } finally {
+    const { rm } = await import("node:fs/promises");
+    await rm(root, { recursive: true, force: true });
+  }
+});

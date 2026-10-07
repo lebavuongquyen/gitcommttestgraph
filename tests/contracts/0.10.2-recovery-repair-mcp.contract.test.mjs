@@ -9,8 +9,12 @@ test("RCV03 MCP recovery_repair tool is registered", async () => {
   const request = JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list", params: {} }) + "\n";
   child.stdin.write(request);
   let output = "";
-  child.stdout.on("data", chunk => { output += chunk.toString(); });
-  await new Promise(resolve => setTimeout(resolve, 1000));
+  let matched = false;
+  child.stdout.on("data", chunk => {
+    output += chunk.toString();
+    if (/recovery_repair/.test(output)) matched = true;
+  });
+  for (let attempt = 0; attempt < 50 && !matched; attempt += 1) await new Promise(resolve => setTimeout(resolve, 100));
   child.kill();
   assert.match(output, /recovery_repair/);
 });

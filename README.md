@@ -4,7 +4,7 @@
 
 You do not need to understand graphs, MCP, or TypeScript internals to start using it.
 
-> **Start here:** [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)
+> **Start here:** [English Getting Started](docs/GETTING-STARTED.md) · [Hướng dẫn tiếng Việt](docs/GETTING-STARTED.vi.md)
 
 ## What problem does GCTG solve?
 
@@ -21,19 +21,19 @@ GCTG turns those questions into a visual and machine-readable workflow:
 
 ```
 Git commit
-   â†“
+   v
 Code changes
-   â†“
+   v
 Semantic impact
-   â†“
+   v
 Affected tests
-   â†“
+   v
 Execution plan
-   â†“
+   v
 Review / verification
 ```
 
-## Quick start â€” 5 minutes
+## Quick start - 5 minutes
 
 ### 1. Requirements
 
@@ -218,15 +218,15 @@ GCTG is designed around this order:
 
 ```
 Feature
-  â†“
+  v
 Application / domain behavior
-  â†“
+  v
 Tests
-  â†“
+  v
 GUI
-  â†“
+  v
 MCP
-  â†“
+  v
 CLI / automation
 ```
 
@@ -236,12 +236,12 @@ The GUI and MCP use the same application capabilities. MCP is not a second imple
 
 Start with these documents:
 
-- **[Getting Started](docs/GETTING-STARTED.md)** â€” for fresher/junior developers and first-time users.
-- **[CLI Reference](docs/CLI-REFERENCE-0.9.6.md)** â€” command reference.
-- **[Integration Guide](docs/INTEGRATION-GUIDE-0.9.6.md)** â€” CI, HTTP, MCP and SDK usage.
-- **[SDK Preview](docs/SDK-PREVIEW-0.9.6.md)** â€” preview package/API integration reference.
-- **[Versioning](docs/VERSIONING.md)** â€” release/version policy.
-- **[0.10 recovery documents](docs/)** â€” detailed implementation and acceptance documents for recovery capabilities.
+- **[Getting Started](docs/GETTING-STARTED.md)** - for fresher/junior developers and first-time users.
+- **[CLI Reference](docs/CLI-REFERENCE-0.9.6.md)** - command reference.
+- **[Integration Guide](docs/INTEGRATION-GUIDE-0.9.6.md)** - CI, HTTP, MCP and SDK usage.
+- **[SDK Preview](docs/SDK-PREVIEW-0.9.6.md)** - preview package/API integration reference.
+- **[Versioning](docs/VERSIONING.md)** - release/version policy.
+- **[0.10 recovery documents](docs/)** - detailed implementation and acceptance documents for recovery capabilities.
 
 The older 0.9.6 documents describe the preview-era interfaces. The Getting Started guide is the recommended user entry point.
 

@@ -2,6 +2,17 @@
 
 All notable changes to git-commit-test-graph are documented here.
 
+## [0.10.1] - 2026-10-07
+
+### Documentation integrity
+- Removed developer-machine-specific paths from user-facing documentation.
+- Added the Vietnamese first-user guide alongside the English Getting Started guide.
+- Normalized documentation punctuation and encoding artifacts in release-facing documentation.
+- Hardened the RCV03 and RCV04 MCP contract tests against slow Windows process startup.
+- Improved index-lock recovery so locks owned by dead processes can be reclaimed immediately.
+- Increased the Windows HTTP contract-server startup allowance to reduce false failures on slower developer machines.
+- Kept the 0.10.x line focused on hardening and maintenance; no architectural refactor is included.
+
 ## [0.10.0] - 2026-10-07
 ### Release-gate hardening - 2026-10-07
 - Fixed the reliability gate package script recursion so release validation invokes the actual reliability-gate script.

@@ -75,7 +75,7 @@ export async function withHttpServer(root, port, callback) {
   child.stderr.on("data", chunk => { stderr += chunk; });
   try {
     let ready = false;
-    for (let attempt = 0; attempt < 50; attempt += 1) {
+    for (let attempt = 0; attempt < 150; attempt += 1) {
       try {
         const response = await fetch("http://127.0.0.1:" + port + "/api/status");
         if (response.ok) { ready = true; break; }

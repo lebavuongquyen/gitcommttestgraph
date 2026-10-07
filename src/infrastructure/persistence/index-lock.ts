@@ -45,23 +45,29 @@ export class IndexLock {
   private async takeOverIfStale(staleAfterMs: number): Promise<boolean> {
     try {
       const raw = await readFile(this.path, "utf8");
-      const value = JSON.parse(raw) as { createdAt?: unknown };
+      const value = JSON.parse(raw) as { createdAt?: unknown; pid?: unknown };
       const createdAt = typeof value.createdAt === "string" ? Date.parse(value.createdAt) : NaN;
+      const pid = typeof value.pid === "number" && Number.isInteger(value.pid) && value.pid > 0 ? value.pid : undefined;
+      if (pid !== undefined && !isProcessAlive(pid)) return await this.removeStaleLock();
       if (Number.isFinite(createdAt) && Date.now() - createdAt <= staleAfterMs) return false;
-      const stalePath = this.path + ".stale-" + randomUUID();
-      try {
-        await rename(this.path, stalePath);
-      } catch (error) {
-        if (isAlreadyExists(error)) return false;
-        const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
-        if (code === "ENOENT") return false;
-        throw error;
-      }
-      await rm(stalePath, { force: true });
-      return true;
+      return await this.removeStaleLock();
     } catch {
       return false;
     }
+  }
+
+  private async removeStaleLock(): Promise<boolean> {
+    const stalePath = this.path + ".stale-" + randomUUID();
+    try {
+      await rename(this.path, stalePath);
+    } catch (error) {
+      if (isAlreadyExists(error)) return false;
+      const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+      if (code === "ENOENT") return false;
+      throw error;
+    }
+    await rm(stalePath, { force: true });
+    return true;
   }
 
   private async release(ownerId: string): Promise<void> {
@@ -76,6 +82,16 @@ export class IndexLock {
 
 function isAlreadyExists(error: unknown): boolean {
   return !!error && typeof error === "object" && "code" in error && error.code === "EEXIST";
+}
+
+function isProcessAlive(pid: number): boolean {
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch (error) {
+    const code = error && typeof error === "object" && "code" in error ? error.code : undefined;
+    return code === "EPERM";
+  }
 }
 
 function delay(ms: number): Promise<void> {
