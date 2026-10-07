@@ -1,153 +1,268 @@
 # Git Commit Test Graph
 
-Deterministic semantic Git repository graph, test graph, change-impact engine and GUI-first software-engineering workbench.
+**Git Commit Test Graph (GCTG)** helps developers understand **what changed, what code is affected, which tests matter, and what should be run** in a Git repository.
 
-## Principles
+You do not need to understand graphs, MCP, or TypeScript internals to start using it.
 
-- Historical truth comes from `git show <commit>:path`.
-- Graph identity is deterministic and commit-aware.
-- TypeScript Compiler API is used for semantic analysis.
-- Package and workspace boundaries are explicit.
-- Test projects, files and cases are first-class graph nodes.
-- Configuration, fixture and schema artifacts are modeled separately.
-- AI is optional and outside the core graph engine.
-- Static test-gap analysis is not runtime code coverage.
-- Test-impact analysis maps changed symbols to impacted tests and runnable commands.
-- Workflow and execution-plan projections remain deterministic.
-- GUI is an adapter over application/query capabilities; it does not own domain logic.
-- MCP is an adapter over the same application capabilities; it does not own feature logic.
+> **Start here:** [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md)
 
-## CLI
+## What problem does GCTG solve?
+
+When a developer changes code, the usual questions are:
+
+1. What exactly changed?
+2. Which functions/classes/files are affected?
+3. Which tests should I care about?
+4. What should I run before creating a PR?
+5. If a branch contains many commits, what is the real review risk?
+6. If GCTG was interrupted while indexing, can I safely recover?
+
+GCTG turns those questions into a visual and machine-readable workflow:
+
+```
+Git commit
+   ↓
+Code changes
+   ↓
+Semantic impact
+   ↓
+Affected tests
+   ↓
+Execution plan
+   ↓
+Review / verification
+```
+
+## Quick start — 5 minutes
+
+### 1. Requirements
+
+- Windows, macOS, or Linux
+- Node.js 20 or newer
+- A Git repository
+- Git available in your terminal
+
+Check:
+
+```bash
+node --version
+git --version
+```
+
+### 2. Install and build GCTG
+
+If you are working from this source repository:
+
+```bash
+npm install
+npm run build
+```
+
+### 3. Go to the repository you want to analyze
+
+Run GCTG from the target Git repository:
+
+```bash
+cd path/to/your-project
+```
+
+For example:
+
+```bash
+cd E:\10_Learning\Javascript\GitCommitterGraph
+```
+
+### 4. Check the repository
+
+```gctg status```
+
+This is the safest first command. It tells you whether GCTG can see the repository and its current state.
+
+### 5. Start the GUI
+
+```gctg serve 3717```
+
+Open the local address printed in the terminal.
+
+The GUI is the recommended way for a first-time user.
+
+### 6. Select a commit
+
+In the GUI:
+
+1. Choose a recent commit.
+2. Look at the center graph.
+3. Click a changed or affected node.
+4. Read the Inspector on the right.
+5. Open **Test impact** to see related tests.
+6. Open **Execution** to see the suggested test execution plan.
+
+You can now use GCTG without learning the CLI.
+
+## The mental model
+
+You only need to remember five concepts:
+
+| Concept | Meaning |
+| --- | --- |
+| **Commit** | A point in Git history that GCTG can analyze |
+| **Changed** | Code directly changed by that commit |
+| **Affected** | Code that may be impacted by the change |
+| **Test impact** | Tests that are relevant to the changed/affected code |
+| **Execution plan** | The ordered commands GCTG recommends running |
+
+GCTG is an **analysis and engineering workbench**. It does not replace Git, your test runner, or your CI system.
+
+## Common tasks
+
+### "I just made a commit. What should I test?"
+
+```bash
+gctg test-impact HEAD
+gctg execution-plan HEAD --format md
+```
+
+Or use the GUI and open **Test impact** and **Execution**.
+
+### "Show me what changed"
+
+```bash
+gctg change-intelligence COMMIT HEAD
+```
+
+### "Which tests have gaps?"
+
+```bash
+gctg test-gaps HEAD
+```
+
+### "Review my branch"
+
+```bash
+gctg branches
+gctg branch-review main HEAD
+```
+
+The GUI also has **base branch**, **head branch**, and **Review branch** controls.
+
+### "Review a GitHub Pull Request"
+
+```bash
+gctg pr-review owner/repository 123
+```
+
+For private repositories, configure `GITHUB_TOKEN`.
+
+The local repository must contain the PR base/head commits or refs before semantic indexing can analyze them.
+
+### "I want an agent to use GCTG"
+
+Use the MCP server:
+
+```bash
+gctg-mcp
+```
+
+MCP is intended for AI/software-engineering agents. A normal developer should start with the GUI.
+
+## Recovery
+
+GCTG keeps its own state under `.gctg/`.
+
+Recovery features can:
+
+- create and inspect GCTG backups;
+- repair/rebuild recoverable GCTG state;
+- detect an interrupted indexing operation;
+- resume or safely roll back an interrupted operation.
+
+These operations affect **GCTG-owned state only**. GCTG does not rewrite Git history.
+
+The GUI exposes these under **Recovery**.
+
+## CLI reference
+
+The main commands are:
 
 ```text
 gctg status
 gctg config
-gctg ecosystem [commit]
-gctg monorepo [commit]
-gctg historical-intelligence <fromCommit> [toCommit] --max-commits N
-gctg ci [COMMIT <commit>|BRANCH <base> [head]] --format json|sarif|summary
-gctg diagnostics [commit]
 gctg commits [limit]
 gctg branches
-gctg branch-review <base> [head]
-gctg pr-review <owner/repo> <number>
 gctg index [commit]
-gctg graph [commit] [nodeType]
-gctg diff <fromCommit> <toCommit>
-gctg impact <commit> <nodeId> [nodeId...]
+gctg graph [commit] [type]
+gctg diff <from> <to>
+gctg impact <commit> <nodeId...>
 gctg tests [commit]
-gctg test-gaps [commit] [--package <name-or-id>]
-gctg test-impact [commit] [--package <name-or-id>]
+gctg test-gaps [commit]
+gctg test-impact [commit]
 gctg workflow [commit]
 gctg execution-plan [commit] [--format json|yaml|md|mermaid]
 gctg run-plan [commit]
 gctg execution-feedback [commit]
-gctg run <executable> [args...]
+gctg change-intelligence [COMMIT <commit>]
+gctg branch-review <base> [head]
+gctg pr-review <owner/repo> <number>
+gctg ci [COMMIT <commit>|BRANCH <base> [head]]
+gctg diagnostics [commit]
 gctg serve [port]
 ```
 
-## GUI
+For the complete beginner-friendly workflow, see [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
-Run `gctg serve [port]` and open the local address printed by the CLI.
+For the detailed CLI reference, see [docs/CLI-REFERENCE-0.9.6.md](docs/CLI-REFERENCE-0.9.6.md).
 
-The GUI provides:
-- Repository status and recent commit explorer.
-- Historical commit selection.
-- Focused Git → Code → Test graph.
-- Changed versus affected symbol visualization.
-- Node inspector with incoming/outgoing edges.
-- Static test-impact visibility.
-- Visual execution-plan panel showing impacted test commands and dependency order.
-- Explicit "Run impacted tests" action with persisted runtime feedback.
-- Per-step execution status and last-run result visibility.
-- Branch base/head selectors and Branch Intelligence review cockpit.
-- Branch merge-base, commit range, changed-symbol, removed-symbol, affected-symbol and review-risk visibility.
-- Branch commit-level evidence and uncertainty visibility.
-- Pull Request Intelligence cockpit with GitHub PR metadata, review state, check state, semantic risk and merge-readiness visibility.
-- Query endpoints for test gaps, execution plans and runtime feedback.
+## GUI-first design
 
-The graph canvas intentionally shows the change-impact neighborhood instead of every node in a large repository. This keeps the UI useful for repositories with thousands of graph nodes.
-
-The execution panel uses the same deterministic execution-plan and runtime-feedback capabilities exposed by MCP as execution_plan, run_execution_plan and execution_feedback. Branch review uses the same BranchChangeSetService and BranchReviewService exposed through MCP as branches and branch_review. Pull Request Intelligence uses PullRequestChangeSetService, PullRequestReviewService and GitHubPullRequestProvider and is exposed through HTTP, GUI, CLI and MCP as pull_request_review. GUI and MCP therefore share application/domain behavior rather than duplicating it.
-
-## Documentation
-
-0.9.6 preview references:
-- `docs/API-REFERENCE-0.9.6.md`
-- `docs/MCP-REFERENCE-0.9.6.md`
-- `docs/CLI-REFERENCE-0.9.6.md`
-- `docs/INTEGRATION-GUIDE-0.9.6.md`
-- `docs/TROUBLESHOOTING-0.9.6.md`
-- `docs/PERFORMANCE-GUIDE-0.9.6.md`
-- `docs/SECURITY-MODEL-0.9.6.md`
-- `docs/EXTENSION-GUIDE-0.9.6.md`
-- `docs/SDK-PREVIEW-0.9.6.md`
-
-The SDK preview supports only the `git-commit-test-graph/api` package subpath. Internal modules are not part of the preview compatibility surface.
-
-## Architecture
-
-```
-Git Repository
-      |
-      +--> Branch ChangeSet / Review
-      |
-      v
-Semantic Graph
-      |
-      +--> Impact / Test Analysis
-      |
-      +--> GUI HTTP Query Boundary
-      |
-      +--> MCP Adapter
-      |
-      +--> CLI Adapter
-```
-
-Feature development order is:
+GCTG is designed around this order:
 
 ```
 Feature
   ↓
-Application / Domain implementation
+Application / domain behavior
   ↓
-Tests + acceptance
+Tests
   ↓
-GUI representation
+GUI
   ↓
-MCP exposure
+MCP
   ↓
-CLI / automation when needed
-  ↓
-Complete feature release
+CLI / automation
 ```
 
-## MCP Agent Server
+The GUI and MCP use the same application capabilities. MCP is not a second implementation of the feature.
 
-The package exposes an MCP server for software-engineering agents. MCP is intentionally kept as an adapter boundary. The agent task protocol provides explicit policy, evidence, uncertainty, execution approval and runtime decision semantics.
+## Documentation map
 
-For local MCP hosts, configure the command: `gctg-mcp`.
+Start with these documents:
 
-The MCP server uses stdio. Protocol traffic is written to stdout; diagnostics are written to stderr.
+- **[Getting Started](docs/GETTING-STARTED.md)** — for fresher/junior developers and first-time users.
+- **[CLI Reference](docs/CLI-REFERENCE-0.9.6.md)** — command reference.
+- **[Integration Guide](docs/INTEGRATION-GUIDE-0.9.6.md)** — CI, HTTP, MCP and SDK usage.
+- **[Versioning](docs/VERSIONING.md)** — release/version policy.
+- **[0.10 recovery documents](docs/)** — detailed implementation and acceptance documents for recovery capabilities.
 
-Pull Request Intelligence uses the GitHub REST API through a provider adapter. Public repositories can be queried without a token; set `GITHUB_TOKEN` for authenticated/private repositories. The local repository must contain the PR base/head commits or refs before semantic indexing can analyze them.
-
-## Persistence
-
-Snapshots are stored under `.gctg/graph`. Semantic artifacts are content-addressed under `.gctg/cache/semantic`. CLI and server indexing use an atomic repository lock.
+The older 0.9.6 documents describe the preview-era interfaces. The Getting Started guide is the recommended user entry point.
 
 ## Development
 
-```text
+From the GCTG source repository:
+
+```bash
 npm install
 npm run typecheck
 npm run build
 npm test
-npm run check
 ```
 
 Node.js 20 or newer is required.
 
 ## Release discipline
 
-Every publish must ship a complete feature or maintenance change, complete documentation and a changelog entry. Versioning follows `docs/VERSIONING.md`. The release gate is mandatory; a minor release must not represent a partial feature.
+Every published release must contain a complete feature or maintenance change, complete documentation, and a changelog entry. The release gate is mandatory. See [docs/VERSIONING.md](docs/VERSIONING.md).
+
+## Safety boundary
+
+GCTG analyzes Git history and repository files. Its recovery features operate only on GCTG-owned `.gctg` state and do not modify Git history.
+
+AI is optional. The core graph and impact analysis are deterministic.

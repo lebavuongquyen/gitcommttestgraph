@@ -3,6 +3,122 @@
 All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
+### C02 - Configuration Safety Boundary - 2026-10-06
+
+- Added protected-value classification and recursive diagnostic redaction.
+- Added a secure value provider application port.
+- Prevented classified configuration fields from being accepted by ordinary configuration validation.
+- Added unit coverage for classification, nested redaction and validation safety.
+
+### C03 - Effective Configuration Explanation - 2026-10-06
+
+- Added a small explanation model for effective configuration values.
+- Made configuration precedence explicit: DEFAULT, REPOSITORY, then RUNTIME.
+- Added winning-source attribution and source locations for nested configuration values.
+- Added targeted tests and Fresher/Junior-oriented documentation without changing resolution behavior.
+
+### C04 - Configuration History and Reload - 2026-10-07
+
+- Added append-only configuration change evidence with operation ID and timestamp.
+- Added explicit runtime configuration reload.
+- Added configuration history access through the application runtime.
+- Exposed history and reload operations through the existing MCP configuration tool.
+- Added persistence tests and Fresher/Junior-oriented documentation.
+
+### H01 - Branch Lifecycle Model - 2026-10-07
+
+- Added read-only branch lifecycle evidence based on current refs and available reflog data.
+- Added deleted and recreated branch evidence classification.
+- Exposed branch lifecycle analysis through HTTP and MCP.
+- Added focused tests and Fresher/Junior-oriented documentation.
+
+### H02 - Reachability Analyzer - 2026-10-07
+
+- Added deterministic commit reachability analysis against current branch refs.
+- Added explicit protected-commit evidence support.
+- Preserved uncertainty when Git evidence is unavailable.
+- Exposed reachability through HTTP and MCP.
+- Added focused tests and documentation.
+
+### H03 - Retention Planner - 2026-10-07
+
+- Added deterministic retention planning from policy, protection evidence and deleted-branch grace periods.
+- Added quota-pressure evaluation without allowing protected evidence to be silently selected.
+- Exposed retention planning through HTTP and MCP.
+- Added focused tests and documentation.
+
+### H04 - Cleanup Preview and Apply - 2026-10-07
+
+- Added exact, deterministic cleanup previews for GCTG-owned snapshots.
+- Added proof-checked cleanup apply with stale-preview rejection.
+- Added idempotent repeated apply behavior and manifest locking.
+- Exposed cleanup preview/apply through HTTP and MCP.
+- Added focused tests and documentation.
+
+### H05 - Snapshot Accounting and Compaction - 2026-10-07
+
+- Added snapshot count and size accounting.
+- Added deterministic quota-pressure compaction planning.
+- Protected snapshot paths are excluded from compaction candidates.
+- Exposed accounting and compaction planning through HTTP and MCP.
+- Added focused tests and documentation.
+
+### O01 - Operation Model - 2026-10-07
+
+- Added explicit queued/running/succeeded/failed/cancelled/recovered operation states.
+- Added parent operation linkage and operation metadata.
+- Integrated indexing lifecycle with the shared runtime operation tracker.
+- Exposed operation inspection through HTTP and MCP.
+- Added focused tests and documentation.
+
+### O02 - Progress Stages - 2026-10-07
+
+- Added explicit progress stage model for runtime operations.
+- Integrated indexing with lock/analyze/complete progress stages.
+- Exposed progress through HTTP and MCP.
+- Added focused tests and documentation.
+
+### RCV01 - Consistency Checker - 2026-10-07
+
+- Added read-only consistency checking for manifest, snapshot objects and incomplete temporary artifacts.
+- Detects duplicate identities, missing objects, corrupt objects and orphan objects.
+- Exposed consistency checking through HTTP /api/consistency-check and MCP consistency_check.
+- Added focused storage, unit and cross-surface contract coverage.
+- Added docs/0.10.2-RCV01-CONSISTENCY-CHECKER.md.
+
+### O06 - Diagnostic Bundle - 2026-10-07
+
+- Added a machine-readable diagnostic bundle combining health, bounded operation history, configuration provenance, storage accounting and reproducibility metadata.
+- Exposed the bundle through HTTP /api/diagnostic-bundle and MCP diagnostic_bundle.
+- Preserved the existing secret-safe boundaries.
+- Added focused unit and cross-surface contract coverage.
+- Added docs/0.10.2-O06-DIAGNOSTIC-BUNDLE.md.
+
+### O05 - Failure Taxonomy - 2026-10-07
+
+- Added deterministic validation, Git, analysis, storage, corruption, resource, execution, external-provider and recovery failure categories.
+- Added failureCategory to failed operation records.
+- Added conservative retryability classification without automatic retries.
+- Preserved secret-safe error messages.
+- Added focused unit coverage and documentation.
+
+### O04 - Persistent Operation History - 2026-10-07
+
+- Persisted bounded runtime operation history in repository-owned .gctg/operations.json.
+- Restored operation history when the shared application runtime starts.
+- Added deterministic name/state/limit filtering.
+- Added secret-safe metadata and error redaction.
+- Exposed operation history through HTTP /api/operations and MCP operations.
+- Added focused unit and cross-surface contract coverage.
+- Added docs/0.10.2-O04-OPERATION-HISTORY.md.
+
+### O03 - Health Aggregation - 2026-10-07
+
+- Added read-only health aggregation for Git, snapshot storage and failed runtime operations.
+- Added HEALTHY, DEGRADED and UNHEALTHY statuses.
+- Exposed health through HTTP and MCP.
+- Added focused tests and documentation.
+
 ### RCV04 - Interrupted-operation Recovery - 2026-10-07
 
 - Added persistent recovery journal with explicit operation phases.
@@ -457,122 +573,3 @@ All notable changes to git-commit-test-graph are documented here.
 ## [0.3.8] - 2026-10-04
 
 See Git history for the previous release.
-
-[executed on device: QuyenLe (f538f86d-fbfa-478e-a5df-d3f9a375cbf0)]
-
-[executed on device: QuyenLe (f538f86d-fbfa-478e-a5df-d3f9a375cbf0)]
-### C02 - Configuration Safety Boundary - 2026-10-06
-
-- Added protected-value classification and recursive diagnostic redaction.
-- Added a secure value provider application port.
-- Prevented classified configuration fields from being accepted by ordinary configuration validation.
-- Added unit coverage for classification, nested redaction and validation safety.
-
-### C03 - Effective Configuration Explanation - 2026-10-06
-
-- Added a small explanation model for effective configuration values.
-- Made configuration precedence explicit: DEFAULT, REPOSITORY, then RUNTIME.
-- Added winning-source attribution and source locations for nested configuration values.
-- Added targeted tests and Fresher/Junior-oriented documentation without changing resolution behavior.
-
-### C04 - Configuration History and Reload - 2026-10-07
-
-- Added append-only configuration change evidence with operation ID and timestamp.
-- Added explicit runtime configuration reload.
-- Added configuration history access through the application runtime.
-- Exposed history and reload operations through the existing MCP configuration tool.
-- Added persistence tests and Fresher/Junior-oriented documentation.
-
-### H01 - Branch Lifecycle Model - 2026-10-07
-
-- Added read-only branch lifecycle evidence based on current refs and available reflog data.
-- Added deleted and recreated branch evidence classification.
-- Exposed branch lifecycle analysis through HTTP and MCP.
-- Added focused tests and Fresher/Junior-oriented documentation.
-
-### H02 - Reachability Analyzer - 2026-10-07
-
-- Added deterministic commit reachability analysis against current branch refs.
-- Added explicit protected-commit evidence support.
-- Preserved uncertainty when Git evidence is unavailable.
-- Exposed reachability through HTTP and MCP.
-- Added focused tests and documentation.
-
-### H03 - Retention Planner - 2026-10-07
-
-- Added deterministic retention planning from policy, protection evidence and deleted-branch grace periods.
-- Added quota-pressure evaluation without allowing protected evidence to be silently selected.
-- Exposed retention planning through HTTP and MCP.
-- Added focused tests and documentation.
-
-### H04 - Cleanup Preview and Apply - 2026-10-07
-
-- Added exact, deterministic cleanup previews for GCTG-owned snapshots.
-- Added proof-checked cleanup apply with stale-preview rejection.
-- Added idempotent repeated apply behavior and manifest locking.
-- Exposed cleanup preview/apply through HTTP and MCP.
-- Added focused tests and documentation.
-
-### H05 - Snapshot Accounting and Compaction - 2026-10-07
-
-- Added snapshot count and size accounting.
-- Added deterministic quota-pressure compaction planning.
-- Protected snapshot paths are excluded from compaction candidates.
-- Exposed accounting and compaction planning through HTTP and MCP.
-- Added focused tests and documentation.
-
-### O01 - Operation Model - 2026-10-07
-
-- Added explicit queued/running/succeeded/failed/cancelled/recovered operation states.
-- Added parent operation linkage and operation metadata.
-- Integrated indexing lifecycle with the shared runtime operation tracker.
-- Exposed operation inspection through HTTP and MCP.
-- Added focused tests and documentation.
-
-### O02 - Progress Stages - 2026-10-07
-
-- Added explicit progress stage model for runtime operations.
-- Integrated indexing with lock/analyze/complete progress stages.
-- Exposed progress through HTTP and MCP.
-- Added focused tests and documentation.
-
-### RCV01 - Consistency Checker - 2026-10-07
-
-- Added read-only consistency checking for manifest, snapshot objects and incomplete temporary artifacts.
-- Detects duplicate identities, missing objects, corrupt objects and orphan objects.
-- Exposed consistency checking through HTTP /api/consistency-check and MCP consistency_check.
-- Added focused storage, unit and cross-surface contract coverage.
-- Added docs/0.10.2-RCV01-CONSISTENCY-CHECKER.md.
-
-### O06 - Diagnostic Bundle - 2026-10-07
-
-- Added a machine-readable diagnostic bundle combining health, bounded operation history, configuration provenance, storage accounting and reproducibility metadata.
-- Exposed the bundle through HTTP /api/diagnostic-bundle and MCP diagnostic_bundle.
-- Preserved the existing secret-safe boundaries.
-- Added focused unit and cross-surface contract coverage.
-- Added docs/0.10.2-O06-DIAGNOSTIC-BUNDLE.md.
-
-### O05 - Failure Taxonomy - 2026-10-07
-
-- Added deterministic validation, Git, analysis, storage, corruption, resource, execution, external-provider and recovery failure categories.
-- Added failureCategory to failed operation records.
-- Added conservative retryability classification without automatic retries.
-- Preserved secret-safe error messages.
-- Added focused unit coverage and documentation.
-
-### O04 - Persistent Operation History - 2026-10-07
-
-- Persisted bounded runtime operation history in repository-owned .gctg/operations.json.
-- Restored operation history when the shared application runtime starts.
-- Added deterministic name/state/limit filtering.
-- Added secret-safe metadata and error redaction.
-- Exposed operation history through HTTP /api/operations and MCP operations.
-- Added focused unit and cross-surface contract coverage.
-- Added docs/0.10.2-O04-OPERATION-HISTORY.md.
-
-### O03 - Health Aggregation - 2026-10-07
-
-- Added read-only health aggregation for Git, snapshot storage and failed runtime operations.
-- Added HEALTHY, DEGRADED and UNHEALTHY statuses.
-- Exposed health through HTTP and MCP.
-- Added focused tests and documentation.
