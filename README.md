@@ -1,4 +1,4 @@
-# Git Commit Test Graph
+﻿# Git Commit Test Graph
 
 **Git Commit Test Graph (GCTG)** helps developers understand **what changed, what code is affected, which tests matter, and what should be run** in a Git repository.
 
@@ -21,19 +21,19 @@ GCTG turns those questions into a visual and machine-readable workflow:
 
 ```
 Git commit
-   ↓
+   â†“
 Code changes
-   ↓
+   â†“
 Semantic impact
-   ↓
+   â†“
 Affected tests
-   ↓
+   â†“
 Execution plan
-   ↓
+   â†“
 Review / verification
 ```
 
-## Quick start — 5 minutes
+## Quick start â€” 5 minutes
 
 ### 1. Requirements
 
@@ -69,7 +69,7 @@ cd path/to/your-project
 For example:
 
 ```bash
-cd E:\10_Learning\Javascript\GitCommitterGraph
+cd path/to/your-project
 ```
 
 ### 4. Check the repository
@@ -218,15 +218,15 @@ GCTG is designed around this order:
 
 ```
 Feature
-  ↓
+  â†“
 Application / domain behavior
-  ↓
+  â†“
 Tests
-  ↓
+  â†“
 GUI
-  ↓
+  â†“
 MCP
-  ↓
+  â†“
 CLI / automation
 ```
 
@@ -236,12 +236,12 @@ The GUI and MCP use the same application capabilities. MCP is not a second imple
 
 Start with these documents:
 
-- **[Getting Started](docs/GETTING-STARTED.md)** — for fresher/junior developers and first-time users.
-- **[CLI Reference](docs/CLI-REFERENCE-0.9.6.md)** — command reference.
-- **[Integration Guide](docs/INTEGRATION-GUIDE-0.9.6.md)** — CI, HTTP, MCP and SDK usage.
-- **[SDK Preview](docs/SDK-PREVIEW-0.9.6.md)** — preview package/API integration reference.
-- **[Versioning](docs/VERSIONING.md)** — release/version policy.
-- **[0.10 recovery documents](docs/)** — detailed implementation and acceptance documents for recovery capabilities.
+- **[Getting Started](docs/GETTING-STARTED.md)** â€” for fresher/junior developers and first-time users.
+- **[CLI Reference](docs/CLI-REFERENCE-0.9.6.md)** â€” command reference.
+- **[Integration Guide](docs/INTEGRATION-GUIDE-0.9.6.md)** â€” CI, HTTP, MCP and SDK usage.
+- **[SDK Preview](docs/SDK-PREVIEW-0.9.6.md)** â€” preview package/API integration reference.
+- **[Versioning](docs/VERSIONING.md)** â€” release/version policy.
+- **[0.10 recovery documents](docs/)** â€” detailed implementation and acceptance documents for recovery capabilities.
 
 The older 0.9.6 documents describe the preview-era interfaces. The Getting Started guide is the recommended user entry point.
 
@@ -269,3 +269,4 @@ GCTG analyzes Git history and repository files. Its recovery features operate on
 AI is optional. The core graph and impact analysis are deterministic.
 
 For programmatic consumers, the package also exposes the public API through the git-commit-test-graph/api entry point.
+
