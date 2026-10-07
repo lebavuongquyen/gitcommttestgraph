@@ -38,6 +38,15 @@ async function terminateChild(child) {
   await waitForClose(child);
 }
 
+async function terminateHttpProcesses(port) {
+  if (process.platform !== "win32") return;
+  const pattern = "bin/gctg.mjs serve " + String(port);
+  await new Promise(resolve => {
+    const script = "$pattern=" + JSON.stringify(pattern) + "; Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like ('*' + $pattern + '*') -and $_.ProcessId -ne $PID } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }";
+    execFile("powershell.exe", ["-NoProfile", "-Command", script], { windowsHide: true }, () => resolve());
+  });
+}
+
 export async function runCli(root, args) {
   const child = spawn(process.execPath, ["bin/gctg.mjs", ...args], { cwd: root, stdio: ["ignore", "pipe", "pipe"], windowsHide: true });
   let stdout = "";
@@ -77,6 +86,7 @@ export async function withHttpServer(root, port, callback) {
     return await callback("http://127.0.0.1:" + port, stderr);
   } finally {
     await terminateChild(child);
+    await terminateHttpProcesses(port);
   }
 }
 
