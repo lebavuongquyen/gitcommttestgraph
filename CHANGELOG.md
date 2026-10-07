@@ -4,6 +4,7 @@ All notable changes to git-commit-test-graph are documented here.
 
 ## [0.10.0] - Unreleased
 ### Release-gate hardening - 2026-10-07
+- Simplified the legacy 0.8.1 CLI/MCP contract checks to validate public registration/schema while leaving full cross-surface behavior coverage to the M04 gates.
 - Reduced the backup MCP contract test to deterministic capability-schema validation; backup behavior remains covered by the recovery service and HTTP contract suites.
 
 - Fixed operation-history persistence on Windows by avoiding destination-file rename replacement failures.
