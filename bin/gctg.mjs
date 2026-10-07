@@ -17,6 +17,10 @@ async function indexAt(runtime, commit) {
 }
 
 try {
+  if (command === "--help" || command === "-h" || command === "help") {
+    console.log("Usage: gctg [--version] | config | ecosystem [commit] | status | commits [limit] | branches | change-intelligence [COMMIT <commit>] | branch-review <base> [head] | pr-review <owner/repo> <number> | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] --allow-execution | serve [port]");
+    process.exit(0);
+  }
   if (command === "--version" || command === "-v") {
     console.log(packageJson.version);
     process.exit(0);
@@ -343,7 +347,7 @@ try {
     console.log("gctg server listening on http://127.0.0.1:" + port);
     await new Promise(() => {});
   }
-  console.log("Usage: gctg [--version] | config | ecosystem [commit] | status | commits [limit] | branches | change-intelligence [COMMIT <commit>] | branch-review <base> [head] | pr-review <owner/repo> <number> | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] | serve [port]");
+  console.log("Usage: gctg [--help] [--version] | config | ecosystem [commit] | status | commits [limit] | branches | change-intelligence [COMMIT <commit>] | branch-review <base> [head] | pr-review <owner/repo> <number> | index [commit] | graph [commit] [type] | diff <from> <to> | impact <commit> <nodeId...> | test-gaps [commit] [--package <name-or-id>] | test-impact [commit] [--package <name-or-id>] | workflow [commit] | execution-plan [commit] [--format json|yaml|md|mermaid] | run-plan [commit] | execution-feedback [commit] | tests [commit] | run <executable> [args...] --allow-execution | serve [port]");
   process.exit(command === "help" ? 0 : 2);
 } catch (error) {
   const message = error instanceof Error ? error.message : String(error);

@@ -1,4 +1,18 @@
-# Changelog
+# Changelog\n\n## [0.10.2] - 2026-10-07
+
+### CLI distribution
+- Completed the public `gctg` CLI entry point for npm and pnpm global installation.
+- Added successful `gctg --help`, `gctg -h` and `gctg help` entry points.
+- Preserved `gctg --version` and `gctg -v`.
+- Moved the TypeScript runtime dependency from development dependencies to production dependencies because the semantic analyzer loads TypeScript at runtime.
+- Verified isolated npm global installation from the release package.
+- Verified pnpm one-off execution from the release package.
+- Verified npx one-off execution from the release package.
+- Added permanent CLI help contract coverage.
+- Added the public `docs/CLI-REFERENCE.md` covering installation, commands, automation and GUI/MCP entry points.
+- Kept the 0.10.x scope focused on CLI distribution; no 0.11 architectural refactor is included.
+
+
 
 All notable changes to git-commit-test-graph are documented here.
 

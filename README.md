@@ -49,14 +49,35 @@ node --version
 git --version
 ```
 
-### 2. Install and build GCTG
+### 2. Install GCTG
 
-If you are working from this source repository:
+For normal use, install the published package globally:
 
 ```bash
-npm install
-npm run build
+npm install -g git-commit-test-graph
 ```
+
+Or with pnpm:
+
+```bash
+pnpm add -g git-commit-test-graph
+```
+
+For one-off use without a global installation:
+
+```bash
+npx --package git-commit-test-graph gctg --help
+pnpm dlx --package git-commit-test-graph gctg --help
+```
+
+Verify the CLI:
+
+```bash
+gctg --version
+gctg --help
+```
+
+If you are contributing from the source repository, use `npm install` and `npm run build` instead.
 
 ### 3. Go to the repository you want to analyze
 
@@ -210,7 +231,7 @@ gctg serve [port]
 
 For the complete beginner-friendly workflow, see [docs/GETTING-STARTED.md](docs/GETTING-STARTED.md).
 
-For the detailed CLI reference, see [docs/CLI-REFERENCE-0.9.6.md](docs/CLI-REFERENCE-0.9.6.md).
+For the detailed CLI reference, see [docs/CLI-REFERENCE.md](docs/CLI-REFERENCE.md).
 
 ## GUI-first design
 
@@ -237,13 +258,11 @@ The GUI and MCP use the same application capabilities. MCP is not a second imple
 Start with these documents:
 
 - **[Getting Started](docs/GETTING-STARTED.md)** - for fresher/junior developers and first-time users.
-- **[CLI Reference](docs/CLI-REFERENCE-0.9.6.md)** - command reference.
-- **[Integration Guide](docs/INTEGRATION-GUIDE-0.9.6.md)** - CI, HTTP, MCP and SDK usage.
-- **[SDK Preview](docs/SDK-PREVIEW-0.9.6.md)** - preview package/API integration reference.
-- **[Versioning](docs/VERSIONING.md)** - release/version policy.
-- **[0.10 recovery documents](docs/)** - detailed implementation and acceptance documents for recovery capabilities.
+- **[Vietnamese Getting Started](docs/GETTING-STARTED.vi.md)** - first-user guide in Vietnamese.
+- **[CLI Reference](docs/CLI-REFERENCE.md)** - installation, commands and automation.
+- **[Release notes](docs/releases/)** - published user-facing release notes.
 
-The older 0.9.6 documents describe the preview-era interfaces. The Getting Started guide is the recommended user entry point.
+The Getting Started guide is the recommended user entry point.
 
 ## Development
 
@@ -260,7 +279,7 @@ Node.js 20 or newer is required.
 
 ## Release discipline
 
-Every published release must contain a complete feature or maintenance change, complete documentation, and a changelog entry. The release gate is mandatory. See [docs/VERSIONING.md](docs/VERSIONING.md).
+Every published release must contain a complete feature or maintenance change, complete documentation, and a changelog entry. The release gate is mandatory. See [docs/releases/](docs/releases/).
 
 ## Safety boundary
 

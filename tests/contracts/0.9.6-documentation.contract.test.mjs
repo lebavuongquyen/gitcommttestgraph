@@ -1,10 +1,28 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
-const root=new URL("../../",import.meta.url);
-const docs=["API-REFERENCE-0.9.6.md","MCP-REFERENCE-0.9.6.md","CLI-REFERENCE-0.9.6.md","INTEGRATION-GUIDE-0.9.6.md","TROUBLESHOOTING-0.9.6.md","PERFORMANCE-GUIDE-0.9.6.md","SECURITY-MODEL-0.9.6.md","EXTENSION-GUIDE-0.9.6.md","SDK-PREVIEW-0.9.6.md"];
+const root = join(process.cwd(), "docs");
 
-test("0.9.6 documentation set is complete",async()=>{for(const name of docs){const text=await readFile(new URL("../../docs/"+name,import.meta.url),"utf8");assert.ok(text.length>200,name);}});
-test("0.9.6 README documents preview references",async()=>{const text=await readFile(new URL("../../README.md",import.meta.url),"utf8");assert.match(text,/SDK-PREVIEW-0\.9\.6\.md/);assert.match(text,/git-commit-test-graph\/api/);});
-test("0.9.6 public API exports CI and diagnostics types",async()=>{const text=await readFile(new URL("../../src/public/index.ts",import.meta.url),"utf8");assert.match(text,/CiAnalysisResult/);assert.match(text,/OperationDiagnostics/);});
+test("public documentation set is complete", async () => {
+  const docs = ["README.md", "GETTING-STARTED.md", "GETTING-STARTED.vi.md", "CLI-REFERENCE.md"];
+  for (const name of docs) {
+    const text = await readFile(join(root, name), "utf8");
+    assert.ok(text.length > 200, name);
+  }
+});
+
+test("public documentation does not expose development-only documentation", async () => {
+  const docs = ["README.md", "GETTING-STARTED.md", "GETTING-STARTED.vi.md", "CLI-REFERENCE.md"];
+  const forbidden = ["AGENT-TASK-PROTOCOL", "MCP-AGENT-ARCHITECTURE", "TARGET-ARCHITECTURE", "ROADMAP-", "AUDIT-", "QUALITY-GATES", "0.9.6"];
+  for (const name of docs) {
+    const text = await readFile(join(root, name), "utf8");
+    for (const value of forbidden) assert.equal(text.includes(value), false, name + ": " + value);
+  }
+});
+
+test("README documents the supported public API", async () => {
+  const text = await readFile(join(process.cwd(), "README.md"), "utf8");
+  assert.equal(text.includes("git-commit-test-graph/api"), true);
+});

@@ -23,6 +23,14 @@ test("CLI public contract: config exposes resolved configuration", async () => {
   assert.ok(Array.isArray(value.sources));
 });
 
+test("CLI public contract: help flags return zero exit code", async () => {
+  for (const flag of ["help", "--help", "-h"]) {
+    const result = await runCli(root, [flag]);
+    assert.equal(result.code, 0, flag + ": " + result.stderr);
+    assert.match(result.stdout, /Usage: gctg/);
+  }
+});
+
 test("CLI public contract: unknown command fails with non-zero exit code", async () => {
   const result = await runCli(root, ["__contract_unknown__"]);
   assert.equal(result.code, 2);

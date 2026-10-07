@@ -67,7 +67,7 @@ const sourceVersion = await readFile(join(root, "src/version.ts"), "utf8");
 const changelog = await readFile(join(root, "CHANGELOG.md"), "utf8");
 const release = await readFile(join(root, "docs/releases/" + version + ".md"), "utf8");
 const readme = await readFile(join(root, "README.md"), "utf8");
-const versioning = await readFile(join(root, "docs/VERSIONING.md"), "utf8");
+const publicDocs = await readFile(join(root, "docs/README.md"), "utf8");
 
 console.log("GCTG Release Gate v2");
 console.log("Version: " + version);
@@ -85,7 +85,7 @@ assert(release.includes("## Acceptance"), "release acceptance section exists");
 assert(release.includes("## Publish rule"), "release publish rule exists");
 assert(readme.includes("## GUI"), "README GUI documentation exists");
 assert(readme.includes("## Release discipline"), "README release discipline exists");
-assert(versioning.includes("## Rules") && versioning.includes("## Release Gate"), "versioning policy exists");
+assert(publicDocs.includes("documentation intended for users and integrators") && publicDocs.includes("project-docs"), "public documentation boundary exists");
 
 let latestTag = "";
 try {
